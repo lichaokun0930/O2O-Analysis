@@ -5,6 +5,7 @@ FastAPI 后端主程序
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from typing import List, Optional
 from datetime import datetime, timedelta
 import os
@@ -54,7 +55,7 @@ async def health_check(db: Session = Depends(get_db)):
     """健康检查"""
     try:
         # 检查数据库连接
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         
         # 统计数据量
         product_count = db.query(Product).count()
