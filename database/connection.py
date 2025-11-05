@@ -84,9 +84,9 @@ def init_database():
     """
     from database.models import Base
     
-    print("🔧 正在创建数据库表...")
+    print("[Creating database tables...]")
     Base.metadata.create_all(bind=engine)
-    print("✅ 数据库表创建完成！")
+    print("[OK] Database tables created!")
 
 
 def drop_all_tables():
@@ -110,12 +110,13 @@ def check_connection():
     检查数据库连接是否正常
     """
     try:
+        from sqlalchemy import text
         with engine.connect() as conn:
-            result = conn.execute("SELECT 1")
-            print("✅ 数据库连接成功！")
+            result = conn.execute(text("SELECT 1"))
+            print("[OK] Database connection successful!")
             return True
     except Exception as e:
-        print(f"❌ 数据库连接失败: {e}")
+        print(f"[ERROR] Database connection failed: {e}")
         return False
 
 

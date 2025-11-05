@@ -218,12 +218,12 @@ DATABASE_INTEGRATION_STATUS = {
 def remind_database_first():
     """在关键操作时提醒开发者遵守数据库优先原则"""
     print("\n" + "="*60)
-    print("🔥 数据库优先原则提醒")
+    print("[DATABASE FIRST] 数据库优先原则提醒")
     print("="*60)
-    print("📌 你正在进行数据操作，请确认：")
-    print("   ✓ 是否需要存储到数据库？")
-    print("   ✓ 是否可以从数据库读取？")
-    print("   ✓ 如果使用Excel，是否只是临时方案？")
+    print("[INFO] 你正在进行数据操作，请确认：")
+    print("   OK  是否需要存储到数据库？")
+    print("   OK  是否可以从数据库读取？")
+    print("   OK  如果使用Excel，是否只是临时方案？")
     print("="*60 + "\n")
 
 # 导出所有规范

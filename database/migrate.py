@@ -37,7 +37,7 @@ def migrate_excel_to_database(excel_path: str, force_reimport: bool = False):
         force_reimport: 是否强制重新导入（即使已导入过）
     """
     print("\n" + "="*80)
-    print("🚀 开始数据迁移：Excel → PostgreSQL")
+    print("[Data Migration] Excel -> PostgreSQL")
     print("="*80 + "\n")
     
     # 1. 检查数据库连接
@@ -59,32 +59,34 @@ def migrate_excel_to_database(excel_path: str, force_reimport: bool = False):
         ).first()
         
         if existing and not force_reimport:
-            print(f"ℹ️ 文件已导入过（{existing.uploaded_at}），跳过")
-            print(f"   如需重新导入，请使用参数: --force")
+            print(f"[INFO] File already imported on {existing.uploaded_at}")
+            print(f"       Use --force to reimport")
             return True
     
     # 4. 加载Excel数据
-    print(f"📂 正在加载数据: {file_name}")
+    print(f"[Loading data] {file_name}")
     processor = RealDataProcessor(data_dir=str(PROJECT_ROOT / "实际数据"))
     
     try:
-        df = processor.load_and_process_data()
-        print(f"✅ 数据加载成功: {len(df)} 行")
+        # RealDataProcessor返回字典，取第一个DataFrame
+        data_dict = processor.load_all_data()
+        df = list(data_dict.values())[0] if data_dict else pd.DataFrame()
+        print(f"[OK] Data loaded: {len(df)} rows")
     except Exception as e:
-        print(f"❌ 数据加载失败: {e}")
+        print(f"[ERROR] Data load failed: {e}")
         return False
     
     # 5. 智能场景打标
-    print("\n🎯 正在执行智能场景打标...")
+    print("\n[Tagging scenes...]")
     tagger = ProductSceneTagger()
     try:
         df = tagger.tag_product_scenes(df)
-        print("✅ 场景打标完成")
+        print("[OK] Scene tagging completed")
     except Exception as e:
-        print(f"⚠️ 场景打标失败: {e}，继续导入...")
+        print(f"[WARNING] Scene tagging failed: {e}, continuing...")
     
     # 6. 开始导入数据
-    print("\n📥 正在导入数据到数据库...")
+    print("\n[Importing data to database...]")
     
     rows_imported = 0
     rows_failed = 0
