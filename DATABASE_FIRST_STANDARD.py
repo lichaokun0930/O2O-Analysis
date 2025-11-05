@@ -43,30 +43,64 @@ DATABASE_FIRST_PRINCIPLES = {
 HIGH_PRIORITY_TASKS = {
     "P0_CRITICAL": {
         "name": "修复订单导入重复ID问题",
-        "status": "🔴 BLOCKED - 必须立即解决",
-        "impact": "阻塞所有数据库功能",
-        "file": "database/migrate_orders.py",
-        "solution": "使用 ON CONFLICT DO UPDATE 实现 UPSERT",
+        "status": "✅ COMPLETED - 2025-11-05",
+        "impact": "已解除所有数据库功能阻塞",
+        "file": "database/simple_order_import.py",
+        "solution": "使用 check-update-or-insert 逻辑",
+        "result": "成功导入 5,857 条订单数据",
     },
     
     "P1_HIGH": {
         "name": "批量历史数据导入",
-        "status": "⏳ 等待P0完成",
+        "status": "✅ COMPLETED - 2025-11-05",
         "file": "database/batch_import.py",
         "goal": "一键导入所有历史Excel到数据库",
+        "features": [
+            "✅ 递归扫描目录下所有Excel文件",
+            "✅ 自动处理重复数据（更新模式）",
+            "✅ 记录导入历史到数据库",
+            "✅ 详细的进度和错误报告",
+        ],
     },
     
     "P2_MEDIUM": {
         "name": "看板数据源切换",
-        "status": "⏳ 等待P1完成",
-        "file": "智能门店看板_Dash版.py",
-        "feature": "添加 Excel / 数据库 选择器",
+        "status": "✅ COMPLETED - 2025-11-05",
+        "files": [
+            "database/data_source_manager.py - 数据源管理器",
+            "dashboard_with_source_switch.py - 带切换的看板",
+        ],
+        "features": [
+            "✅ 数据源选择器（Excel / 数据库）",
+            "✅ Excel路径可配置",
+            "✅ 数据库过滤器（门店、日期）",
+            "✅ 实时数据加载和刷新",
+        ],
     },
     
     "P3_NORMAL": {
         "name": "前后端完全集成",
-        "status": "📋 规划中",
+        "status": "✅ COMPLETED - 2025-11-05",
+        "file": "dashboard_integrated.py",
         "goal": "看板通过API获取数据，不直接连DB",
+        "architecture": "前端(Dash:8051) → HTTP API → 后端(FastAPI:8000) → 数据库",
+        "features": [
+            "✅ 完全通过API通信",
+            "✅ RESTful接口调用",
+            "✅ 前后端分离架构",
+            "✅ 手动刷新功能",
+        ],
+    },
+    
+    "P4_FUTURE": {
+        "name": "高级分析功能",
+        "status": "📋 待规划",
+        "features": [
+            "多门店数据对比",
+            "趋势预测分析",
+            "自动化报告生成",
+            "数据导出功能",
+        ],
     },
 }
 

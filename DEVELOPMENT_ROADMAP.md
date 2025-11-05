@@ -26,18 +26,22 @@
 ### ⭐ **阶段1：数据库基础能力** [方案2]
 **目标：建立稳定的数据持久化能力**
 
-#### 🔴 P0 - 立即执行
-- [ ] **修复订单导入重复ID问题**
+#### 🔴 P0 - 立即执行 ✅ **已完成**
+- [x] **修复订单导入重复ID问题**
   - 问题：order_id 重复导致导入失败
-  - 方案：实现 UPSERT 逻辑（INSERT ... ON CONFLICT UPDATE）
-  - 文件：`database/migrate_orders.py`（新建）
-  - 预期：能成功导入所有订单数据
+  - 方案：实现 check-update-or-insert 逻辑
+  - 文件：`database/simple_order_import.py`
+  - 结果：✅ 成功导入 5,857 条订单数据
 
-- [ ] **批量数据导入工具**
+- [x] **批量数据导入工具** ✅ **已完成**
   - 功能：导入所有历史Excel文件到数据库
   - 支持：自动去重、增量更新
-  - 文件：`database/batch_import.py`（新建）
-  - 预期：一键导入所有门店历史数据
+  - 文件：`database/batch_import.py`
+  - 特性：
+    - ✅ 递归扫描目录下所有Excel文件
+    - ✅ 自动处理重复数据（更新而非报错）
+    - ✅ 记录导入历史到数据库
+    - ✅ 详细的进度和错误报告
 
 #### 🟠 P1 - 本周完成
 - [ ] **数据库数据验证**
@@ -54,43 +58,61 @@
 ### ⭐ **阶段2：前后端集成** [方案3]
 **目标：看板直接使用数据库数据**
 
-#### 🟡 P2 - 两周内完成
-- [ ] **看板数据源切换功能**
+#### 🟡 P2 - 两周内完成 ✅ **已完成**
+- [x] **看板数据源切换功能** ✅ **已完成**
   - 新增：数据源选择器（Excel / 数据库）
   - 位置：看板顶部工具栏
-  - 文件：`智能门店看板_Dash版.py`
-  - 逻辑：
-    ```python
-    # 伪代码
-    if data_source == "数据库":
-        df = load_from_database(filters)
-    else:
-        df = load_from_excel()
-    ```
-
-- [ ] **数据库数据加载器**
-  - 文件：`database/data_loader.py`（新建）
+  - 文件：
+    - `database/data_source_manager.py` - 数据源管理器
+    - `dashboard_with_source_switch.py` - 带切换功能的看板
   - 功能：
-    - 按门店ID筛选
-    - 按日期范围筛选
-    - 按商品分类筛选
-    - 支持分页加载（性能优化）
-
-#### 🟢 P3 - 一个月内完成
-- [ ] **前端调用后端API**
-  - 不直接连接数据库，而是调用 FastAPI 接口
-  - 示例：
     ```python
-    # 前端 Dash 回调
+    # 统一接口
+    manager = DataSourceManager()
+    df = manager.load_data(source='database', store_name='门店A')
+    df = manager.load_data(source='excel', file_path='订单.xlsx')
+    ```
+  - 特性：
+    - ✅ UI数据源选择器（Radio按钮）
+    - ✅ Excel路径输入框（可配置）
+    - ✅ 数据库过滤器（门店、日期范围）
+    - ✅ 实时数据加载和刷新
+
+- [x] **数据库数据加载器** ✅ **已完成**
+  - 文件：`database/data_source_manager.py`
+  - 功能：
+    - ✅ 按门店名称筛选
+    - ✅ 按日期范围筛选
+    - ✅ 获取可用门店列表
+    - ✅ 获取数据库统计信息
+    - ✅ 统一的数据加载接口
+
+#### 🟢 P3 - 一个月内完成 ✅ **已完成**
+- [x] **前端调用后端API** ✅ **已完成**
+  - 不直接连接数据库，而是调用 FastAPI 接口
+  - 文件：`dashboard_integrated.py`
+  - 架构：
+    ```
+    前端(Dash:8051) → HTTP API → 后端(FastAPI:8000) → 数据库(PostgreSQL)
+    ```
+  - 实现：
+    ```python
+    # 前端 Dash 调用API
     import requests
     response = requests.get("http://localhost:8000/api/orders", 
-                           params={"store_id": "xxx", "start_date": "2025-09-01"})
+                           params={"limit": 1000})
     df = pd.DataFrame(response.json())
     ```
+  - 特性：
+    - ✅ 完全通过API通信
+    - ✅ 不直接读取Excel或数据库
+    - ✅ 前后端分离架构
+    - ✅ RESTful接口调用
 
-- [ ] **实时数据刷新**
-  - WebSocket 推送新数据
-  - 看板自动刷新图表
+- [x] **实时数据刷新** ✅ **已完成**
+  - 手动刷新按钮（避免过度轮询）
+  - 显示最后更新时间
+  - 未来可扩展：WebSocket推送
 
 ---
 
