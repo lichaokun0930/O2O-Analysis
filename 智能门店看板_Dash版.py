@@ -16,8 +16,11 @@ from datetime import datetime, timedelta
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+
+# ⚡ 解决 Windows PowerShell 下 emoji 输出乱码问题 - 必须在任何print之前设置
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 import numpy as np
 import pandas as pd
@@ -37,11 +40,6 @@ except ImportError:
     ECHARTS_AVAILABLE = False
     print("⚠️ dash_echarts 未安装，将使用 Plotly 图表作为后备方案")
     print("   提示：运行 'pip install dash-echarts' 以获得更好的图表效果")
-
-# 解决 Windows PowerShell 下 emoji 输出乱码问题
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 warnings.filterwarnings('ignore')
 
@@ -77,6 +75,17 @@ except ImportError as e:
 # 业务模块导入
 from 问题诊断引擎 import ProblemDiagnosticEngine
 from 真实数据处理器 import RealDataProcessor
+
+# ✨ 导入数据源管理器（支持Excel/数据库双数据源）
+try:
+    from database.data_source_manager import DataSourceManager
+    DATABASE_AVAILABLE = True
+    print("✅ 数据库数据源已启用")
+except ImportError as e:
+    DATABASE_AVAILABLE = False
+    DataSourceManager = None
+    print(f"⚠️ 数据库模块未找到: {e}")
+    print("   仅支持Excel数据源")
 
 # ✨ 导入AI分析器模块（专注于数据洞察和策略建议）
 from ai_analyzer import get_ai_analyzer
@@ -194,6 +203,7 @@ server.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200 MB 上传限制
 GLOBAL_DATA = None
 DIAGNOSTIC_ENGINE = None
 UPLOADED_DATA_CACHE = None
+DATA_SOURCE_MANAGER = None  # 数据源管理器实例
 
 # 阶段2/阶段3 AI 智能助手全局实例
 PANDAS_AI_ANALYZER = None
@@ -455,7 +465,16 @@ def process_uploaded_excel(contents, filename):
 
 def initialize_data():
     """初始化数据和诊断引擎"""
-    global GLOBAL_DATA, DIAGNOSTIC_ENGINE
+    global GLOBAL_DATA, DIAGNOSTIC_ENGINE, DATA_SOURCE_MANAGER
+    
+    # 初始化数据源管理器
+    if DATABASE_AVAILABLE and DATA_SOURCE_MANAGER is None:
+        try:
+            DATA_SOURCE_MANAGER = DataSourceManager()
+            print("✅ 数据源管理器已初始化", flush=True)
+        except Exception as e:
+            print(f"⚠️ 数据源管理器初始化失败: {e}", flush=True)
+            DATA_SOURCE_MANAGER = None
     
     if GLOBAL_DATA is None:
         print("\n" + "="*80, flush=True)
@@ -699,6 +718,13 @@ def format_summary_text(summary: Dict[str, Any]) -> str:
 # 初始化数据
 initialize_data()
 initialize_ai_tools()
+
+# 🔍 调试: 打印DATABASE_AVAILABLE状态
+print(f"\n{'='*80}")
+print(f"🔍 [UI渲染前检查] DATABASE_AVAILABLE = {DATABASE_AVAILABLE}")
+print(f"🔍 [UI渲染前检查] DATA_SOURCE_MANAGER = {DATA_SOURCE_MANAGER}")
+print(f"🔍 [UI渲染前检查] Tab将被{'启用' if DATABASE_AVAILABLE else '禁用(灰色)'}")
+print(f"{'='*80}\n")
 
 PANDAS_STATUS_TEXT = "可用" if PANDAS_AI_ANALYZER else ("待安装" if PANDAS_AI_MODULE_AVAILABLE else "未安装")
 PANDAS_STATUS_COLOR = "success" if PANDAS_AI_ANALYZER else ("warning" if PANDAS_AI_MODULE_AVAILABLE else "secondary")
@@ -1450,6 +1476,66 @@ app.layout = dbc.Container([
                     ])
                 ]),
                 
+                # Tab 1.5: 从数据库加载
+                dcc.Tab(label='🗄️ 数据库数据', value='database-data', 
+                        disabled=not DATABASE_AVAILABLE,  # DEBUG: DATABASE_AVAILABLE = {DATABASE_AVAILABLE}
+                        children=[
+                    html.Div([
+                        dbc.Alert([
+                            html.I(className="bi bi-database me-2"),
+                            "从PostgreSQL数据库加载订单数据"
+                        ], color="primary", className="mb-3 mt-3"),
+                        
+                        # 数据库过滤器
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("🏪 选择门店:"),
+                                dcc.Dropdown(
+                                    id='db-store-filter',
+                                    placeholder='全部门店',
+                                    clearable=True
+                                )
+                            ], md=4),
+                            dbc.Col([
+                                html.Label("📅 起始日期:"),
+                                dcc.DatePickerSingle(
+                                    id='db-start-date',
+                                    placeholder='起始日期（可选）',
+                                    display_format='YYYY-MM-DD'
+                                )
+                            ], md=3),
+                            dbc.Col([
+                                html.Label("📅 结束日期:"),
+                                dcc.DatePickerSingle(
+                                    id='db-end-date',
+                                    placeholder='结束日期（可选）',
+                                    display_format='YYYY-MM-DD'
+                                )
+                            ], md=3),
+                            dbc.Col([
+                                html.Label(html.Br()),
+                                dbc.Button(
+                                    [html.I(className="bi bi-download me-1"), "加载数据"],
+                                    id='load-from-database-btn',
+                                    color="primary",
+                                    className="w-100"
+                                )
+                            ], md=2)
+                        ], className="mb-3"),
+                        
+                        # 数据库统计信息
+                        html.Div(id='database-stats'),
+                        
+                        # 加载状态
+                        html.Div(id='database-load-status', className="mt-3")
+                    ], className="p-3")
+                ] if DATABASE_AVAILABLE else [html.Div([
+                    dbc.Alert([
+                        html.I(className="bi bi-exclamation-triangle me-2"),
+                        "数据库功能未启用。请安装必要的依赖： pip install psycopg2-binary sqlalchemy"
+                    ], color="warning", className="mt-3")
+                ])]),
+                
                 # Tab 2: 上传新数据
                 dcc.Tab(label='📤 上传新数据', value='upload-data', children=[
                     html.Div([
@@ -1776,6 +1862,176 @@ def get_available_months(df):
 # ============================================================================
 # 旧Tab 4的动态周期选择器回调已删除（引用已删除的UI组件）
 # 新Tab 4采用智能驱动模式，不需要手动选择周期
+# ============================================================================
+
+# ==================== 数据库数据源回调函数 ====================
+
+@app.callback(
+    [Output('db-store-filter', 'options'),
+     Output('database-stats', 'children')],
+    Input('data-source-tabs', 'value')
+)
+def update_database_info(tab_value):
+    """当切换到数据库Tab时，加载门店列表和统计信息"""
+    if tab_value != 'database-data' or not DATABASE_AVAILABLE or DATA_SOURCE_MANAGER is None:
+        return [], html.Div()
+    
+    try:
+        # 获取门店列表
+        stores = DATA_SOURCE_MANAGER.get_available_stores()
+        store_options = [{'label': store, 'value': store} for store in stores]
+        
+        # 获取数据库统计
+        stats = DATA_SOURCE_MANAGER.get_database_stats()
+        
+        stats_card = dbc.Card([
+            dbc.CardBody([
+                dbc.Row([
+                    dbc.Col([
+                        html.Div([
+                            html.H3(f"{stats.get('orders', 0):,}", className="mb-0 text-primary"),
+                            html.Small("订单数量", className="text-muted")
+                        ])
+                    ], md=3),
+                    dbc.Col([
+                        html.Div([
+                            html.H3(f"{stats.get('products', 0):,}", className="mb-0 text-success"),
+                            html.Small("商品种类", className="text-muted")
+                        ])
+                    ], md=3),
+                    dbc.Col([
+                        html.Div([
+                            html.H3(f"{stats.get('stores', 0):,}", className="mb-0 text-info"),
+                            html.Small("门店数量", className="text-muted")
+                        ])
+                    ], md=3),
+                    dbc.Col([
+                        html.Div([
+                            html.H3(stats.get('start_date', '--') + " ~ " + stats.get('end_date', '--'), 
+                                   className="mb-0 text-secondary small"),
+                            html.Small("数据时间范围", className="text-muted")
+                        ])
+                    ], md=3)
+                ])
+            ])
+        ], className="mb-3")
+        
+        return store_options, stats_card
+        
+    except Exception as e:
+        error_msg = dbc.Alert([
+            html.I(className="bi bi-exclamation-triangle me-2"),
+            f"数据库连接失败: {str(e)}"
+        ], color="danger")
+        return [], error_msg
+
+
+@app.callback(
+    [Output('current-data-label', 'children', allow_duplicate=True),
+     Output('data-update-trigger', 'data', allow_duplicate=True),
+     Output('database-load-status', 'children'),
+     Output('database-stats', 'children', allow_duplicate=True)],  # 添加统计卡片更新
+    Input('load-from-database-btn', 'n_clicks'),
+    [State('db-store-filter', 'value'),
+     State('db-start-date', 'date'),
+     State('db-end-date', 'date')],
+    prevent_initial_call=True
+)
+def load_from_database(n_clicks, store_name, start_date, end_date):
+    """从数据库加载数据"""
+    if not n_clicks or not DATABASE_AVAILABLE or DATA_SOURCE_MANAGER is None:
+        return no_update, no_update, "", no_update
+    
+    global GLOBAL_DATA
+    
+    try:
+        # 转换日期
+        start_dt = datetime.fromisoformat(start_date) if start_date else None
+        end_dt = datetime.fromisoformat(end_date) if end_date else None
+        
+        # 从数据库加载
+        df = DATA_SOURCE_MANAGER.load_from_database(
+            store_name=store_name,
+            start_date=start_dt,
+            end_date=end_dt
+        )
+        
+        if df.empty:
+            return no_update, no_update, dbc.Alert([
+                html.I(className="bi bi-info-circle me-2"),
+                "未找到符合条件的数据"
+            ], color="warning"), no_update
+        
+        # 应用场景和时段字段
+        df = add_scene_and_timeslot_fields(df)
+        
+        # 更新全局数据
+        GLOBAL_DATA = df
+        
+        # 计算实际加载数据的统计信息
+        actual_start = df['日期'].min().strftime('%Y-%m-%d') if '日期' in df.columns else '--'
+        actual_end = df['日期'].max().strftime('%Y-%m-%d') if '日期' in df.columns else '--'
+        unique_products = df['商品名称'].nunique() if '商品名称' in df.columns else 0
+        unique_stores = df['门店名称'].nunique() if '门店名称' in df.columns else 0
+        
+        # 生成更新后的统计卡片
+        stats_card = dbc.Card([
+            dbc.CardBody([
+                dbc.Row([
+                    dbc.Col([
+                        html.Div([
+                            html.H3(f"{len(df):,}", className="mb-0 text-primary"),
+                            html.Small("订单数量", className="text-muted")
+                        ])
+                    ], md=3),
+                    dbc.Col([
+                        html.Div([
+                            html.H3(f"{unique_products:,}", className="mb-0 text-success"),
+                            html.Small("商品种类", className="text-muted")
+                        ])
+                    ], md=3),
+                    dbc.Col([
+                        html.Div([
+                            html.H3(f"{unique_stores:,}", className="mb-0 text-info"),
+                            html.Small("门店数量", className="text-muted")
+                        ])
+                    ], md=3),
+                    dbc.Col([
+                        html.Div([
+                            html.H3(f"{actual_start} ~ {actual_end}", 
+                                   className="mb-0 text-secondary small"),
+                            html.Small("数据时间范围", className="text-muted")
+                        ])
+                    ], md=3)
+                ])
+            ])
+        ], className="mb-3")
+        
+        # 生成数据标签
+        label_parts = []
+        if store_name:
+            label_parts.append(f"门店:{store_name}")
+        if start_date and end_date:
+            label_parts.append(f"{start_date}~{end_date}")
+        elif start_date:
+            label_parts.append(f"从{start_date}")
+        label = " | ".join(label_parts) if label_parts else "数据库全部数据"
+        
+        success_msg = dbc.Alert([
+            html.I(className="bi bi-check-circle me-2"),
+            f"成功加载 {len(df):,} 条数据"
+        ], color="success")
+        
+        return f"数据库: {label}", datetime.now().timestamp(), success_msg, stats_card
+        
+    except Exception as e:
+        error_msg = dbc.Alert([
+            html.I(className="bi bi-exclamation-triangle me-2"),
+            f"加载失败: {str(e)}"
+        ], color="danger")
+        return no_update, no_update, error_msg, no_update
+
+
 # ============================================================================
 
 @app.callback(
@@ -4881,6 +5137,17 @@ def show_tab1_detail_analysis(n_clicks):
         print(df[['商品名称', '商品采购成本', '商品实售价']].head(5).to_string())
     else:
         print(f"❌ '商品采购成本' 字段不存在！")
+    
+    # ========== 🔍 调试：检查营销活动字段 ==========
+    print("\n🔍 [调试] 营销活动字段检查（聚合前）:")
+    marketing_fields = ['满减金额', '商品减免金额', '商家代金券', '商家承担部分券']
+    for field in marketing_fields:
+        if field in df.columns:
+            field_sum = df[field].fillna(0).sum()
+            non_zero_count = (df[field].fillna(0) > 0).sum()
+            print(f"   ✅ {field}: 总和=¥{field_sum:,.2f}, 非零行数={non_zero_count}/{len(df)}")
+        else:
+            print(f"   ❌ {field}: 字段不存在！")
     print("="*80 + "\n")
     
     # ========== 重新计算订单聚合数据（与render_tab1_content保持一致）==========

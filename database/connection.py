@@ -20,8 +20,9 @@ DATABASE_URL = os.getenv(
 )
 
 # 创建数据库引擎
+# 使用 pg8000 驱动避免 psycopg2 的 UTF-8 编码问题
 engine = create_engine(
-    DATABASE_URL,
+    DATABASE_URL.replace('postgresql://', 'postgresql+pg8000://'),
     poolclass=QueuePool,
     pool_size=5,              # 连接池大小
     max_overflow=10,          # 最大溢出连接数

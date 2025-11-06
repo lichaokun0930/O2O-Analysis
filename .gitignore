@@ -53,3 +53,10 @@ image/
 # *_backup_*.py
 *_删除*.py
 *temp*.py
+
+# 归档文件（不应该提交到版本库）
+已归档文件_*/
+*归档*/
+backups/
+temp_files/
+old_docs/
