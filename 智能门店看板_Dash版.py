@@ -316,19 +316,19 @@ CHANNELS_TO_REMOVE = ['饿了么咖啡', '美团咖啡']
 CALCULATION_MODES = {
     'service_fee_positive': {
         'label': '仅平台服务费>0',
-        'description': '仅统计已上报平台服务费的订单，更贴近财务口径。'
+        'description': '仅统计平台服务费>0的订单（剔除平台服务费=0的订单）'
     },
     'all_no_fallback': {
         'label': '全量（仅平台服务费）',
-        'description': '所有订单参与计算，但不使用平台佣金兜底逻辑。'
+        'description': '仅使用平台服务费字段，剔除平台服务费=0的订单'
     },
     'all_with_fallback': {
         'label': '全量（服务费+佣金兜底）（默认）',
-        'description': '对平台服务费缺失的订单使用平台佣金兜底（历史逻辑）。'
+        'description': '平台服务费<=0时使用平台佣金兜底，但最终必须>0才计入'
     }
 }
 
-DEFAULT_CALCULATION_MODE = 'all_with_fallback'  # ⚠️ 修复：改为全量模式，避免过滤订单导致数据不准
+DEFAULT_CALCULATION_MODE = 'all_with_fallback'  # ✅ 全量模式(兜底逻辑): 平台服务费<=0时使用平台佣金,但最终必须>0才计入
 
 
 def normalize_calc_mode(mode: Optional[str]) -> str:
@@ -10230,6 +10230,9 @@ def calculate_order_metrics(df, calc_mode: Optional[str] = None):
     
     order_agg['订单实际利润'] = _calculate_profit_formula(order_agg, calc_mode)
     
+    # ⚠️ 关键修复: 统一剔除平台服务费=0的订单
+    # 业务规则: 订单实际利润 = 利润额 - 平台服务费 - 物流配送费 + 企客后返
+    # 只有平台服务费>0的订单才是真实的平台订单,需要计入利润
     if calc_mode == 'service_fee_positive':
         # 兼容逻辑: 平台服务费>0 或 平台佣金>0
         # 原因: 历史数据导入时,Excel的'平台服务费'列未正确映射到platform_service_fee字段
@@ -10237,8 +10240,20 @@ def calculate_order_metrics(df, calc_mode: Optional[str] = None):
         filtered = order_agg[
             (order_agg['平台服务费'] > 0) | (order_agg['平台佣金'] > 0)
         ].copy()
+    elif calc_mode == 'all_with_fallback':
+        # ✅ 修复: all_with_fallback模式也需要剔除平台服务费=0的订单
+        # 逻辑: 先使用平台服务费,如果<=0则使用平台佣金兜底,但最终必须>0
+        service_fee_col = order_agg.get('平台服务费', pd.Series(0, index=order_agg.index))
+        commission_col = order_agg.get('平台佣金', pd.Series(0, index=order_agg.index))
+        # 计算有效的服务费(使用兜底后的值)
+        effective_fee = service_fee_col.copy()
+        fallback_mask = (effective_fee <= 0)
+        effective_fee = effective_fee.mask(fallback_mask, commission_col)
+        # 只保留有效服务费>0的订单
+        filtered = order_agg[effective_fee > 0].copy()
     else:
-        filtered = order_agg.copy()
+        # all_no_fallback: 只使用平台服务费,必须>0
+        filtered = order_agg[order_agg.get('平台服务费', 0) > 0].copy()
     
     filtered['计算口径'] = calc_mode
     
