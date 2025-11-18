@@ -8299,7 +8299,7 @@ def calculate_daily_sales_with_channel(df, order_agg, selected_channel='all'):
         
         daily_sales.rename(columns=col_mapping, inplace=True)
         
-        # 计算利润率
+        # ✅ 计算利润率 = 总利润 / 销售额（数据已正确剔除平台服务费=0的订单）
         daily_sales['利润率'] = (
             daily_sales['总利润'] / daily_sales['销售额'].replace(0, np.nan) * 100
         ).fillna(0).round(2)
@@ -9275,7 +9275,7 @@ def create_category_trend_chart_echarts(df, order_agg, selected_channel='all'):
     if len(category_stats) > 0:
         print(category_stats.head().to_string())
     
-    # 🔧 修复：利润率计算 = 利润额 / 销售额 * 100
+    # ✅ 计算利润率 = 利润额 / 销售额（利润额已正确剔除平台服务费=0的订单）
     category_stats['利润率'] = (category_stats['利润额'] / category_stats['销售额'].replace(0, np.nan) * 100).fillna(0).round(2)
     
     # 🔍 调试：查看利润率计算结果
