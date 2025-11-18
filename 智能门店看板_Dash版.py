@@ -1352,7 +1352,7 @@ def calculate_period_comparison(df: pd.DataFrame, start_date: datetime = None, e
             total_profit = order_metrics['订单实际利润'].sum() if '订单实际利润' in order_metrics.columns else 0
             expected_revenue = order_metrics['预计订单收入'].sum() if '预计订单收入' in order_metrics.columns else total_actual_sales
             
-            # 总利润率 = 利润 / 实收价格
+            # ✅ 总利润率 = 订单实际利润 / 实收价格（订单实际利润已正确剔除平台服务费=0的订单）
             profit_rate = (total_profit / total_actual_sales * 100) if total_actual_sales > 0 else 0
             
             # 动销商品数
@@ -1608,6 +1608,7 @@ def calculate_channel_comparison(df: pd.DataFrame, order_agg: pd.DataFrame,
         }).reset_index()
         current_metrics.columns = ['渠道', '订单数', '销售额', '总利润']
         current_metrics['客单价'] = current_metrics['销售额'] / current_metrics['订单数']
+        # ✅ 利润率 = 订单实际利润 / 销售额（订单实际利润已正确剔除平台服务费=0的订单）
         current_metrics['利润率'] = (current_metrics['总利润'] / current_metrics['销售额'] * 100).fillna(0)
         
         print(f"   📊 当前周期渠道指标(基于order_agg,与卡片一致):", flush=True)
@@ -1679,6 +1680,7 @@ def calculate_channel_comparison(df: pd.DataFrame, order_agg: pd.DataFrame,
             
             channel_metrics.columns = ['渠道', '订单数', '销售额', '总利润']
             channel_metrics['客单价'] = channel_metrics['销售额'] / channel_metrics['订单数']
+            # ✅ 利润率 = 订单实际利润 / 销售额（订单实际利润已正确剔除平台服务费=0的订单）
             channel_metrics['利润率'] = (channel_metrics['总利润'] / channel_metrics['销售额'] * 100).fillna(0)
             
             return channel_metrics
@@ -10466,7 +10468,7 @@ def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cach
     total_revenue = order_agg['订单总收入'].sum()
     total_profit = order_agg['订单实际利润'].sum()
     
-    # ✅ 修改: 总利润率 = 总利润 / 实收价格
+    # ✅ 总利润率 = 订单实际利润 / 实收价格（订单实际利润已正确剔除平台服务费=0的订单）
     profit_rate = (total_profit / total_actual_sales * 100) if total_actual_sales > 0 else 0
     
     # 🔍 调试: 打印卡片指标
