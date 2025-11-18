@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-智能门店数据导入系统
+智能门店数据导入系统 python 智能导入门店数据.py
 - 自动识别新增数据文件
 - 避免重复导入
 - 自动数据完整性校验
@@ -214,23 +214,36 @@ class SmartImporter:
                     ).delete()
                     self.session.commit()
             
-            # 5. 导入数据
-            print(f"\n3️⃣ 导入数据...")
+            # 5. 导入数据（批量插入优化）
+            print(f"\n3️⃣ 导入数据（批量模式）...")
             success_count = 0
             error_count = 0
             field_errors = {}  # 记录字段错误
+            batch_size = 5000  # 批量大小
+            batch_orders = []
+            
+            start_time = datetime.now()
             
             for idx, row in df.iterrows():
                 try:
                     order_data = self.map_row_to_order(row)
-                    order = Order(**order_data)
-                    self.session.add(order)
+                    batch_orders.append(order_data)
                     success_count += 1
                     
-                    # 每1000条提交一次
-                    if success_count % 1000 == 0:
+                    # 每batch_size条批量插入一次
+                    if len(batch_orders) >= batch_size:
+                        self.session.bulk_insert_mappings(Order, batch_orders)
                         self.session.commit()
-                        print(f"   进度: {success_count:,}/{len(df):,} ({success_count/len(df)*100:.1f}%)", end='\r')
+                        batch_orders = []
+                        
+                        # 计算进度和预估时间
+                        elapsed = (datetime.now() - start_time).total_seconds()
+                        speed = success_count / elapsed if elapsed > 0 else 0
+                        remaining = (len(df) - success_count) / speed if speed > 0 else 0
+                        
+                        print(f"   进度: {success_count:,}/{len(df):,} ({success_count/len(df)*100:.1f}%) | "
+                              f"速度: {speed:.0f}行/秒 | "
+                              f"预计剩余: {int(remaining)}秒", end='\r')
                 
                 except Exception as e:
                     error_count += 1
@@ -240,8 +253,13 @@ class SmartImporter:
                     if error_count <= 3:
                         print(f"\n   ⚠️  第{idx+1}行失败: {e}")
             
-            # 最终提交
-            self.session.commit()
+            # 插入剩余数据
+            if batch_orders:
+                self.session.bulk_insert_mappings(Order, batch_orders)
+                self.session.commit()
+            
+            total_time = (datetime.now() - start_time).total_seconds()
+            print(f"\n   ⏱️  总耗时: {total_time:.1f}秒 | 平均速度: {success_count/total_time:.0f}行/秒")
             
             print(f"\n\n4️⃣ 导入结果:")
             print(f"   ✅ 成功: {success_count:,}/{len(df):,} ({success_count/len(df)*100:.1f}%)")
@@ -276,11 +294,28 @@ class SmartImporter:
     
     def map_row_to_order(self, row):
         """映射Excel行到Order对象"""
+        # ✅ 智能识别日期字段
+        order_date = None
+        for date_field in ['下单时间', '日期', '订单时间', '时间', 'date', 'order_date']:
+            if date_field in row.index and pd.notna(row.get(date_field)):
+                try:
+                    order_date = pd.to_datetime(row.get(date_field))
+                    break
+                except:
+                    continue
+        
+        # 如果没有找到有效日期，使用当前时间并记录警告
+        if order_date is None:
+            order_date = datetime.now()
+            if not hasattr(self, '_date_warning_shown'):
+                print(f"⚠️  警告: 未找到有效日期字段，使用当前时间")
+                self._date_warning_shown = True
+        
         return {
             'order_id': str(row.get('订单ID', '')),
-            'date': pd.to_datetime(row.get('下单时间')) if pd.notna(row.get('下单时间')) else None,
+            'date': order_date,
             'store_name': str(row.get('门店名称', '')),
-            'store_id': str(row.get('门店ID', '')),
+            # ✅ 移除了store_id字段(Order模型中不存在)
             'product_name': str(row.get('商品名称', '')),
             'price': float(row.get('商品实售价', 0)),
             'original_price': float(row.get('商品原价', 0)),
@@ -290,9 +325,10 @@ class SmartImporter:
             'category_level1': str(row.get('一级分类名', '')),
             'category_level3': str(row.get('三级分类名', '')),
             'barcode': str(row.get('条码', '')),
-            'stock': int(row.get('剩余库存', 0)) if pd.notna(row.get('剩余库存')) else 0,
+            # ✅ 移除了stock字段(Order模型中不存在,应该在Product表中)
             'delivery_fee': float(row.get('物流配送费', 0)) if pd.notna(row.get('物流配送费')) else 0.0,
             'commission': float(row.get('平台佣金', 0)) if pd.notna(row.get('平台佣金')) else 0.0,
+            'platform_service_fee': float(row.get('平台服务费', 0)) if pd.notna(row.get('平台服务费')) else 0.0,  # 修复:添加平台服务费字段映射
             'user_paid_delivery_fee': float(row.get('用户支付配送费', 0)) if pd.notna(row.get('用户支付配送费')) else 0.0,
             'delivery_discount': float(row.get('配送费减免金额', 0)) if pd.notna(row.get('配送费减免金额')) else 0.0,
             'full_reduction': float(row.get('满减金额', 0)) if pd.notna(row.get('满减金额')) else 0.0,
@@ -300,12 +336,20 @@ class SmartImporter:
             'merchant_voucher': float(row.get('商家代金券', 0)) if pd.notna(row.get('商家代金券')) else 0.0,
             'merchant_share': float(row.get('商家承担部分券', 0)) if pd.notna(row.get('商家承担部分券')) else 0.0,
             'packaging_fee': float(row.get('打包袋金额', 0)) if pd.notna(row.get('打包袋金额')) else 0.0,
-            'delivery_distance': float(row.get('配送距离', 0)) if pd.notna(row.get('配送距离')) else 0.0,
-            'city': str(row.get('城市名称', '')),
+            # ✅ 新增营销维度字段
+            'gift_amount': float(row.get('满赠金额', 0)) if pd.notna(row.get('满赠金额')) else 0.0,
+            'other_merchant_discount': float(row.get('商家其他优惠', 0)) if pd.notna(row.get('商家其他优惠')) else 0.0,
+            'new_customer_discount': float(row.get('新客减免金额', 0)) if pd.notna(row.get('新客减免金额')) else 0.0,
+            # ✅ 新增利润维度字段
+            'corporate_rebate': float(row.get('企客后返', 0)) if pd.notna(row.get('企客后返')) else 0.0,
+            # ✅ 配送平台字段
+            'delivery_platform': str(row.get('配送平台', '')),
+            # ✅ 移除了delivery_distance和city字段(Order模型中不存在)
             'address': str(row.get('收货地址', '')),
             'channel': str(row.get('渠道', '')),
             'actual_price': float(row.get('实收价格', 0)) if pd.notna(row.get('实收价格')) else 0.0,
-            'amount': float(row.get('订单零售额', 0)) if pd.notna(row.get('订单零售额')) else 0.0,
+            # ✅ 修复: 存储"预计订单收入"而不是"订单零售额"(与migrate.py保持一致)
+            'amount': float(row.get('预计订单收入', row.get('订单零售额', 0))) if pd.notna(row.get('预计订单收入', row.get('订单零售额', 0))) else 0.0,
         }
     
     def validate_imported_data(self, file_path, df_source, imported_count):
@@ -341,6 +385,7 @@ class SmartImporter:
                 '商品实售价': ('price', 'sum'),
                 '物流配送费': ('delivery_fee', 'sum'),
                 '平台佣金': ('commission', 'sum'),
+                '平台服务费': ('platform_service_fee', 'sum'),  # 添加平台服务费验证
             }
             
             all_fields_ok = True

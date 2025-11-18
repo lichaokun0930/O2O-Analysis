@@ -157,13 +157,14 @@ def migrate_excel_to_database(excel_path: str, force_reimport: bool = False):
                         
                         # 销量
                         quantity=int(row.get('月售', 1)),
-                        amount=float(row.get('销售额', 0)),
-                        profit=float(row.get('实际利润', 0)),
+                        amount=float(row.get('预计订单收入', row.get('订单零售额', 0))),  # ✅ 修复:存储"预计订单收入"而不是"销售额"
+                        profit=float(row.get('利润额', row.get('实际利润', 0))),  # ✅ 修复:优先使用"利润额"字段
                         profit_margin=float(row.get('利润率', 0)),
                         
                         # 费用
                         delivery_fee=float(row.get('物流配送费', 0)),
                         commission=float(row.get('平台佣金', 0)),
+                        platform_service_fee=float(row.get('平台服务费', 0)),  # 修复:正确映射平台服务费字段
                         
                         # 场景
                         scene=row.get('场景', ''),

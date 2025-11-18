@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+.venv*/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# 数据库
+*.db
+*.sqlite
+*.sqlite3
+学习数据仓库/
+
+# 数据文件
+*.xlsx
+*.xls
+*.csv
+实际数据/
+门店数据/
+竞对情报报告/
+测试报告/
+
+# 环境配置
+.env
+*.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 日志
+*.log
+
+# 缓存
+*.pkl
+*.pkl.gz
+
+# 图片（可选，看您是否要提交）
+image/
+
+# 备份文件（只忽略临时备份，保留重要备份）
+# *备份*.py
+# *_backup_*.py
+*_删除*.py
+*temp*.py
+
+# 归档文件（不应该提交到版本库）
+已归档文件_*/
+*归档*/
+backups/
+temp_files/
+old_docs/

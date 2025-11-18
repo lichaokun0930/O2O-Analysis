@@ -107,6 +107,17 @@ class BatchDataImporter:
         updated = 0
         errors = 0
         
+        # ✅ 智能识别日期列
+        date_col = None
+        for possible_col in ['日期', '下单时间', '订单时间', '时间', 'date', 'order_date', 'created_at']:
+            if possible_col in df.columns:
+                date_col = possible_col
+                print(f"[日期列] 使用列名: {date_col}")
+                break
+        
+        if not date_col:
+            print(f"[警告] 未找到日期列，可用列: {list(df.columns)}")
+        
         try:
             for idx, row in df.iterrows():
                 try:
@@ -116,9 +127,22 @@ class BatchDataImporter:
                     
                     existing = db.query(Order).filter(Order.order_id == order_id).first()
                     
+                    # ✅ 修复：使用识别到的日期列
+                    order_date = None
+                    if date_col and pd.notna(row.get(date_col)):
+                        try:
+                            order_date = pd.to_datetime(row[date_col])
+                        except Exception as e:
+                            print(f"[警告] 订单 {order_id} 日期转换失败: {row.get(date_col)} - {e}")
+                    
+                    # ✅ 如果没有日期，使用文件名中的日期或当前时间
+                    if order_date is None or pd.isna(order_date):
+                        print(f"[警告] 订单 {order_id} 缺少有效日期，使用当前时间")
+                        order_date = datetime.now()
+                    
                     order_data = {
                         'order_id': order_id,
-                        'date': pd.to_datetime(row['日期']) if pd.notna(row.get('日期')) else None,
+                        'date': order_date,
                         'store_name': str(row.get('门店名称', 'UNKNOWN')),
                         'product_name': str(row.get('商品名称', '')),
                         'barcode': str(row.get('商品条形码', '')) if pd.notna(row.get('商品条形码')) else None,

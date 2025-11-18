@@ -65,9 +65,13 @@ class DataSourceManager:
         db = next(get_db())
         
         try:
-            # 构建查询 - JOIN Product表获取店内码
+            # 构建查询 - JOIN Product表获取店内码和库存
             from database.models import Product
-            query = db.query(Order, Product.store_code).outerjoin(
+            query = db.query(
+                Order, 
+                Product.store_code,
+                Product.stock  # 🆕 同时获取库存
+            ).outerjoin(
                 Product, Order.barcode == Product.barcode
             )
             
@@ -75,11 +79,33 @@ class DataSourceManager:
             if store_name:
                 print(f"[Database] 应用门店过滤: {store_name}")
                 query = query.filter(Order.store_name == store_name)
+            
+            # ✅ 修复单日查询：确保日期范围包含完整的一天
             if start_date:
-                print(f"[Database] 应用开始日期过滤: {start_date}")
+                # 转换为datetime对象，设置为当天00:00:00
+                from datetime import datetime, timedelta
+                if isinstance(start_date, str):
+                    start_date = datetime.fromisoformat(start_date)
+                if not isinstance(start_date, datetime):
+                    # 如果是date对象，转换为datetime
+                    start_date = datetime.combine(start_date, datetime.min.time())
+                
+                print(f"[Database] 应用开始日期过滤: {start_date.date()} 00:00:00")
                 query = query.filter(Order.date >= start_date)
+            
             if end_date:
-                print(f"[Database] 应用结束日期过滤: {end_date}")
+                # 转换为datetime对象，设置为当天23:59:59
+                from datetime import datetime, timedelta
+                if isinstance(end_date, str):
+                    end_date = datetime.fromisoformat(end_date)
+                if not isinstance(end_date, datetime):
+                    # 如果是date对象，转换为datetime
+                    end_date = datetime.combine(end_date, datetime.max.time())
+                else:
+                    # 如果已是datetime，设置时间为当天结束
+                    end_date = datetime.combine(end_date.date(), datetime.max.time())
+                
+                print(f"[Database] 应用结束日期过滤: {end_date.date()} 23:59:59 (包含当天)")
                 query = query.filter(Order.date <= end_date)
             
             # 执行查询
@@ -87,9 +113,15 @@ class DataSourceManager:
             results = query.all()
             print(f"[Database] 查询到 {len(results)} 条记录")
             
+            # 🔍 调试: 检查前5条记录的订单ID
+            if results:
+                print(f"[Database] 前5条记录的订单ID:")
+                for i, (order, store_code, stock) in enumerate(results[:5]):
+                    print(f"   {i+1}. order_id='{order.order_id}' (type={type(order.order_id).__name__})")
+            
             # 转换为DataFrame
             data = []
-            for order, store_code in results:
+            for order, store_code, stock in results:  # 🆕 解包时增加stock
                 data.append({
                     # 基础订单信息
                     '订单ID': order.order_id,
@@ -119,17 +151,20 @@ class DataSourceManager:
                     '销量': order.quantity,
                     '销售数量': order.quantity,  # 兼容字段
                     '月售': order.quantity,  # 兼容字段
-                    '库存': 0,  # Order模型中无库存字段,设为0
-                    '剩余库存': 0,  # 兼容字段,设为0
+                    '库存': stock if stock is not None else 0,  # 🆕 从Product表获取实际库存
+                    '剩余库存': stock if stock is not None else 0,  # 🆕 兼容字段,使用实际库存
                     '订单零售额': order.price * order.quantity,
                     '实收金额': (order.actual_price if order.actual_price else order.price) * order.quantity,
                     '用户支付金额': (order.actual_price if order.actual_price else order.price) * order.quantity,
-                    '预计订单收入': (order.actual_price if order.actual_price else order.price) * order.quantity,
+                    # 🔄 从amount字段读取Excel的"预计订单收入"（不再用price*quantity计算）
+                    '预计订单收入': order.amount if order.amount else (order.price * order.quantity),
+                    # ✅ 从数据库读取Excel导入的"利润额"字段（存储在profit字段中）
                     '利润额': order.profit if order.profit else 0.0,
                     
                     # 费用
                     '物流配送费': order.delivery_fee if order.delivery_fee else 0.0,
                     '平台佣金': order.commission if order.commission else 0.0,
+                    '平台服务费': order.platform_service_fee if order.platform_service_fee else 0.0,  # 修复:添加平台服务费映射
                     
                     # ✨ 营销活动字段
                     '用户支付配送费': order.user_paid_delivery_fee if order.user_paid_delivery_fee else 0.0,
@@ -139,6 +174,14 @@ class DataSourceManager:
                     '商家代金券': order.merchant_voucher if order.merchant_voucher else 0.0,
                     '商家承担部分券': order.merchant_share if order.merchant_share else 0.0,
                     '打包袋金额': order.packaging_fee if order.packaging_fee else 0.0,
+                    # ✅ 新增营销维度字段
+                    '满赠金额': order.gift_amount if hasattr(order, 'gift_amount') and order.gift_amount else 0.0,
+                    '商家其他优惠': order.other_merchant_discount if hasattr(order, 'other_merchant_discount') and order.other_merchant_discount else 0.0,
+                    '新客减免金额': order.new_customer_discount if hasattr(order, 'new_customer_discount') and order.new_customer_discount else 0.0,
+                    # ✅ 新增利润维度字段
+                    '企客后返': order.corporate_rebate if hasattr(order, 'corporate_rebate') and order.corporate_rebate else 0.0,
+                    # ✅ 新增配送平台字段
+                    '配送平台': order.delivery_platform if hasattr(order, 'delivery_platform') and order.delivery_platform else '',
                     
                     # ✨ 配送信息（Order模型中没有此字段）
                     '配送距离': 0.0,
@@ -152,6 +195,29 @@ class DataSourceManager:
             df = pd.DataFrame(data)
             
             print(f"[Database] 查询结果: {len(df):,} 行")
+            
+            # 🔍 检查渠道分布
+            if '渠道' in df.columns:
+                channel_counts = df['渠道'].value_counts()
+                print(f"[Database] 渠道分布:")
+                for ch, cnt in channel_counts.items():
+                    print(f"   {ch}: {cnt:,} 行")
+                    
+                # 🔍 特别检查闪购小程序
+                xiaochengxu_count = (df['渠道'] == '闪购小程序').sum()
+                print(f"[Database] 🔍 '闪购小程序'数据: {xiaochengxu_count} 行")
+            
+            # ✅ 剔除耗材数据(与Excel加载逻辑保持一致)
+            if '一级分类名' in df.columns:
+                original_len = len(df)
+                df = df[df['一级分类名'] != '耗材'].copy()
+                if len(df) < original_len:
+                    print(f"[Database] 已剔除耗材: {original_len - len(df):,} 行")
+                    
+                # 🔍 剔除耗材后再检查闪购小程序
+                if '渠道' in df.columns:
+                    xiaochengxu_after = (df['渠道'] == '闪购小程序').sum()
+                    print(f"[Database] 🔍 剔除耗材后'闪购小程序': {xiaochengxu_after} 行")
             
             self.current_source = 'database'
             return df

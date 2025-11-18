@@ -1,0 +1,154 @@
+
+================================================================================
+PostgreSQL 数据库导入指南
+================================================================================
+
+一、环境准备
+------------
+1. 安装 PostgreSQL 数据库（版本 12 或更高）
+   - Windows: https://www.postgresql.org/download/windows/
+   - Linux: apt-get install postgresql 或 yum install postgresql
+   - macOS: brew install postgresql
+
+2. 确保 PostgreSQL 服务正在运行
+   - Windows: 打开"服务"，找到 PostgreSQL 服务
+   - Linux: sudo systemctl status postgresql
+   - macOS: brew services start postgresql
+
+
+二、创建数据库
+--------------
+使用 psql 命令行工具或 pgAdmin 图形界面创建数据库：
+
+方法1：使用 psql 命令行
+------------------------
+psql -U postgres
+CREATE DATABASE o2o_dashboard;
+\q
+
+方法2：使用 SQL 语句
+-------------------
+CREATE DATABASE o2o_dashboard
+    WITH 
+    OWNER = postgres
+    ENCODING = 'UTF8'
+    LC_COLLATE = 'zh_CN.UTF-8'
+    LC_CTYPE = 'zh_CN.UTF-8'
+    TABLESPACE = pg_default
+    CONNECTION LIMIT = -1;
+
+
+三、导入数据
+------------
+
+📦 方法1：导入完整备份（推荐）
+-------------------------------
+psql -U postgres -d o2o_dashboard -f o2o_dashboard_full_YYYYMMDD_HHMMSS.sql
+
+这个命令会：
+✅ 创建所有表结构
+✅ 导入所有数据
+✅ 创建索引
+
+
+📋 方法2：先导入结构，再导入数据
+--------------------------------
+# 步骤1：导入表结构
+psql -U postgres -d o2o_dashboard -f o2o_dashboard_schema_YYYYMMDD_HHMMSS.sql
+
+# 步骤2：导入数据
+psql -U postgres -d o2o_dashboard -f o2o_dashboard_data_YYYYMMDD_HHMMSS.sql
+
+
+四、验证导入
+------------
+导入完成后，验证数据是否正确：
+
+psql -U postgres -d o2o_dashboard
+
+-- 查看所有表
+\dt
+
+-- 查看 orders 表结构
+\d orders
+
+-- 查看 orders 表数据量
+SELECT COUNT(*) FROM orders;
+
+-- 查看 products 表数据量
+SELECT COUNT(*) FROM products;
+
+-- 查看门店列表
+SELECT DISTINCT store_name FROM orders;
+
+-- 退出
+\q
+
+
+五、配置应用连接
+----------------
+修改应用的 .env 文件或 database/config.py 文件：
+
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=o2o_dashboard
+DB_USER=postgres
+DB_PASSWORD=你的密码
+
+
+六、常见问题
+------------
+
+问题1：导入时出现编码错误
+解决：确保数据库创建时使用 UTF8 编码
+      CREATE DATABASE o2o_dashboard ENCODING 'UTF8';
+
+问题2：导入时出现权限错误
+解决：使用超级用户导入，或授予相应权限
+      GRANT ALL PRIVILEGES ON DATABASE o2o_dashboard TO your_user;
+
+问题3：导入时间过长
+解决：先导入结构，创建索引前导入数据，最后创建索引
+
+问题4：表已存在错误
+解决：删除现有数据库重新创建
+      DROP DATABASE IF EXISTS o2o_dashboard;
+      CREATE DATABASE o2o_dashboard;
+
+
+七、数据库配置建议
+------------------
+
+1. 性能优化（修改 postgresql.conf）：
+   shared_buffers = 256MB
+   effective_cache_size = 1GB
+   work_mem = 16MB
+   maintenance_work_mem = 128MB
+
+2. 连接数配置：
+   max_connections = 100
+
+3. 日志配置：
+   logging_collector = on
+   log_directory = 'pg_log'
+   log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log'
+
+
+八、备份建议
+------------
+
+1. 定期备份（每天）：
+   pg_dump -h localhost -U postgres -d o2o_dashboard -F c -f backup_$(date +%Y%m%d).dump
+
+2. 自动备份脚本（Linux/macOS）：
+   #!/bin/bash
+   BACKUP_DIR="/path/to/backup"
+   DATE=$(date +%Y%m%d_%H%M%S)
+   pg_dump -h localhost -U postgres -d o2o_dashboard -F c -f ${BACKUP_DIR}/backup_${DATE}.dump
+   
+   # 保留最近7天的备份
+   find ${BACKUP_DIR} -name "backup_*.dump" -mtime +7 -delete
+
+3. Windows 计划任务：
+   创建 .bat 文件，使用 Windows 任务计划程序定时执行
+

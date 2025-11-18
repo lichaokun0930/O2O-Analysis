@@ -96,6 +96,7 @@ def upsert_orders(df: pd.DataFrame, batch_size: int = 1000):
                         # 费用
                         'delivery_fee': float(row.get('物流配送费', 0)) if pd.notna(row.get('物流配送费')) else 0,
                         'commission': float(row.get('平台佣金', 0)) if pd.notna(row.get('平台佣金')) else 0,
+                        'platform_service_fee': float(row.get('平台服务费', 0)) if pd.notna(row.get('平台服务费')) else 0,  # 修复:正确映射平台服务费字段
                         
                         # ✨ 营销活动字段 (Excel中都有!)
                         'user_paid_delivery_fee': float(row.get('用户支付配送费', 0)) if pd.notna(row.get('用户支付配送费')) else 0,

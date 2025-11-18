@@ -43,8 +43,9 @@ class Order(Base):
     # 费用
     delivery_fee = Column(Float, default=0, comment='物流配送费')
     commission = Column(Float, default=0, comment='平台佣金')
+    platform_service_fee = Column(Float, default=0, comment='平台服务费')
     
-    # 营销活动费用 (新增)
+    # 营销活动费用
     user_paid_delivery_fee = Column(Float, default=0, comment='用户支付配送费')
     delivery_discount = Column(Float, default=0, comment='配送费减免金额')
     full_reduction = Column(Float, default=0, comment='满减金额')
@@ -52,6 +53,15 @@ class Order(Base):
     merchant_voucher = Column(Float, default=0, comment='商家代金券')
     merchant_share = Column(Float, default=0, comment='商家承担部分券')
     packaging_fee = Column(Float, default=0, comment='打包袋金额')
+    gift_amount = Column(Float, default=0, comment='满赠金额')
+    other_merchant_discount = Column(Float, default=0, comment='商家其他优惠')
+    new_customer_discount = Column(Float, default=0, comment='新客减免金额')
+    
+    # 利润补偿项
+    corporate_rebate = Column(Float, default=0, comment='企客后返')
+    
+    # ✅ 配送信息
+    delivery_platform = Column(String(100), index=True, comment='配送平台')
     
     # 场景和时段
     scene = Column(String(50), index=True, comment='消费场景')

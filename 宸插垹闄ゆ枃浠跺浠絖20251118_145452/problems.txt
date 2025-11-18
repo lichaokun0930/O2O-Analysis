@@ -1,0 +1,35 @@
+﻿============================================================
+搜索所有与'实收价格'相关的代码行
+============================================================
+
+行 1305:                     '实收价格': 'sum',
+  [!] 可能的问题: 直接sum实收价格，未先乘以销量
+
+行 1326:             total_actual_sales = order_metrics['实收价格'].sum()
+  [!] 可能的问题: 直接sum实收价格，未先乘以销量
+
+行 1583:             '实收价格': 'sum',
+  [!] 可能的问题: 直接sum实收价格，未先乘以销量
+
+行 1653:                 '实收价格': 'sum',
+  [!] 可能的问题: 直接sum实收价格，未先乘以销量
+
+行 2619:         if '实收价格' not in order_agg.columns and '实收价格' in df.columns:
+
+行 2629:                 order_actual_price = df.groupby('订单ID')['实收价格'].sum().reset_index()
+  [!] 可能的问题: 直接sum实收价格，未先乘以销量
+python : Traceback (most recent call last):
+所在位置 行:1 字符: 1
++ python .\定位TAB1实收价格问题.py 2>&1 | Out-File -FilePath 
+problems.txt -Enco ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceba 
+   ck (most recent call last)::String) [], RemoteEx  
+  ception
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "D:\Python1\O2O_Analysis\O2O数据分析\测算模型\定位TAB1实收
+价格问题.py", line 22, in <module>
+    print(f"\n行 {i}: {line.rstrip()}")
+UnicodeEncodeError: 'gbk' codec can't encode characte
+r '\u26a0' in position 34: illegal multibyte sequence

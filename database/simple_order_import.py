@@ -68,6 +68,7 @@ def import_orders_simple(df: pd.DataFrame, batch_size: int = 500):
                     'amount': float(row.get('实收金额', 0)) if pd.notna(row.get('实收金额')) else 0,
                     'delivery_fee': float(row.get('物流配送费', 0)) if pd.notna(row.get('物流配送费')) else 0,
                     'commission': float(row.get('平台佣金', 0)) if pd.notna(row.get('平台佣金')) else 0,
+                    'platform_service_fee': float(row.get('平台服务费', 0)) if pd.notna(row.get('平台服务费')) else 0,  # 修复:正确映射平台服务费字段
                     'channel': str(row.get('渠道', '')) if pd.notna(row.get('渠道')) else None,
                     'scene': str(row.get('场景', '')) if pd.notna(row.get('场景')) else None,
                     'time_period': str(row.get('时段', '')) if pd.notna(row.get('时段')) else None,
