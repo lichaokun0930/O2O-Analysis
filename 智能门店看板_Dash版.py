@@ -2715,6 +2715,7 @@ def _create_channel_comparison_cards(df: pd.DataFrame, order_agg: pd.DataFrame,
         
         # 计算核心指标
         channel_stats['客单价'] = channel_stats['销售额'] / channel_stats['订单数']
+        # ✅ 利润率 = 订单实际利润 / 销售额（订单实际利润已正确剔除平台服务费=0的订单）
         channel_stats['利润率'] = (channel_stats['总利润'] / channel_stats['销售额'] * 100).fillna(0)
         channel_stats['营销成本率'] = (channel_stats['营销成本'] / channel_stats['销售额'] * 100).fillna(0)
         channel_stats['佣金率'] = (channel_stats['平台服务费'] / channel_stats['销售额'] * 100).fillna(0)
