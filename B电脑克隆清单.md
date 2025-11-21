@@ -15,6 +15,12 @@
 12. **echarts_responsive_utils.py** - ECharts响应式
 13. **tab5_extended_renders.py** - Tab5渲染
 
+### 营销分析模型 (✅ Tab7核心组件)
+14. **科学八象限分析器.py** - 八象限分析(品类动态阈值+置信度评估)
+15. **评分模型分析器.py** - 多维度评分模型(加权计算+分档评级)
+16. **verify_check/octant_analyzer.py** - 英文版八象限分析器(备用)
+17. **verify_check/scoring_analyzer.py** - 英文版评分分析器(备用)
+
 ## 配置文件 (✅ 已包含)
 1. **requirements.txt** - Python依赖
 2. **.env.example** - 环境变量模板
@@ -24,6 +30,11 @@
 1. **启动看板.ps1** - PowerShell启动
 2. **启动看板.bat** - 批处理启动
 3. **启动数据库.ps1** - 数据库启动
+4. **启动_门店加盟类型字段迁移.ps1** - 数据库字段迁移工具 🆕
+5. **启动_Requirements追踪系统.ps1** - Requirements依赖追踪系统 🆕
+
+## 工具模块 (✅ 已包含)
+1. **tools/track_requirements_changes.py** - Requirements变更追踪核心 (508行) 🆕
 
 ## 数据库文件 (✅ 已包含)
 1. **数据库导出/o2o_dashboard_full_*.sql** - 数据库导出文件
@@ -35,6 +46,8 @@
 3. **依赖和环境说明.md**
 4. **数据字段映射规范.md**
 5. **【权威】业务逻辑与数据字典完整手册.md**
+6. **Tab7八象限分析使用指南.md** - Tab7营销分析功能说明
+7. **营销分析功能说明.md** - 营销分析详细文档
 
 ## ⚠️ 不会推送到Git的文件 (需要手动准备)
 以下文件被.gitignore排除,需要在B电脑上单独准备:
@@ -125,6 +138,32 @@ python "智能门店看板_Dash版.py"
 - 本机访问: http://localhost:8050
 - 局域网访问: http://<B电脑IP>:8050
 
+### 7. 使用管理工具 (可选) 🆕
+
+**A. 门店加盟类型字段迁移** (如果使用PostgreSQL数据库)
+```powershell
+# 迁移数据库字段
+.\启动_门店加盟类型字段迁移.ps1
+
+# 按提示操作:
+# 1. 检查数据库连接
+# 2. 添加字段 (store_franchise_type)
+# 3. 批量更新数据
+# 4. 验证结果
+```
+
+**B. Requirements依赖追踪**
+```powershell
+# 追踪依赖变更
+.\启动_Requirements追踪系统.ps1
+
+# 功能:
+# 1. 对比当前版本
+# 2. 生成变更日志
+# 3. 保存快照
+# 4. 依赖冲突检测
+```
+
 ## 核心文件验证清单
 
 在B电脑上克隆后,检查以下文件是否存在:
@@ -136,6 +175,11 @@ python "智能门店看板_Dash版.py"
 - [ ] 启动看板.ps1
 - [ ] 快速启动指南.md
 - [ ] .gitignore
+- [ ] 科学八象限分析器.py 🆕
+- [ ] 评分模型分析器.py 🆕
+- [ ] 启动_门店加盟类型字段迁移.ps1 🆕
+- [ ] 启动_Requirements追踪系统.ps1 🆕
+- [ ] tools/track_requirements_changes.py 🆕
 
 ### 需要手动准备 (未推送)
 - [ ] .env (复制.env.example)
@@ -185,10 +229,29 @@ Git仓库包含:
 ✅ 数据处理器 (真实数据处理器.py, 订单数据处理器.py)
 ✅ 智能模块 (AI分析器, 场景打标引擎)
 ✅ UI组件 (ECharts工厂, 样式库, 加载组件)
+✅ **营销分析模型** (科学八象限分析器.py, 评分模型分析器.py) 🆕
 ✅ 配置文件 (requirements.txt, .env.example)
 ✅ 启动脚本 (PowerShell + Batch)
-✅ 文档 (使用指南, 业务逻辑手册)
+✅ 文档 (使用指南, 业务逻辑手册, Tab7营销分析指南)
 ✅ .gitignore (排除数据和敏感文件)
+
+### 🎯 Tab7营销分析功能完整性确认
+- ✅ **科学八象限分析器.py** (488行)
+  * 品类动态阈值
+  * 置信度评估
+  * 趋势分析
+  * 利润贡献度权重
+  
+- ✅ **评分模型分析器.py** (409行)
+  * 多维度评分 (0-100分)
+  * 权重加权计算
+  * 分档评级 (优秀/良好/合格/需改进/差)
+  * 象限映射
+
+- ✅ **verify_check/octant_analyzer.py** (英文版,备用)
+- ✅ **verify_check/scoring_analyzer.py** (英文版,备用)
+
+**B电脑克隆后,Tab7营销分析功能将完全可用!**
 
 ## 推送后验证
 
