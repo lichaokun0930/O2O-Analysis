@@ -149,6 +149,9 @@ class RealDataProcessor:
             '周': ['周', 'week', '星期'],
             '门店名称': ['门店名称', 'store_name', 'shop_name', '店名'],
             
+            # 门店类型信息 (用于加盟类型分析)
+            '门店加盟类型': ['门店加盟类型', '加盟类型', '门店类型', 'store_franchise_type', 'franchise_type', '店铺类型'],
+            
             # 渠道信息 (用于渠道分析和筛选)
             '渠道': ['渠道', 'channel', '订单渠道', '销售渠道', '平台', '订单平台', '来源渠道']
         }
@@ -170,7 +173,20 @@ class RealDataProcessor:
             standardized_df['商品实售价'] = pd.to_numeric(standardized_df['商品实售价'], errors='coerce')
         
         if '商品采购成本' in standardized_df.columns:
-            standardized_df['商品采购成本'] = pd.to_numeric(standardized_df['商品采购成本'], errors='coerce')
+            # 先记录转换前的总和用于验证
+            original_sum = pd.to_numeric(standardized_df['商品采购成本'], errors='coerce').sum()
+            
+            # 转换为数值,无法转换的保持原样
+            converted_values = pd.to_numeric(standardized_df['商品采购成本'], errors='coerce')
+            standardized_df['商品采购成本'] = converted_values
+            
+            # 验证转换后的数据
+            converted_sum = standardized_df['商品采购成本'].sum()
+            nan_count = standardized_df['商品采购成本'].isna().sum()
+            
+            if nan_count > 0:
+                print(f"⚠️ 警告: 有 {nan_count} 行成本数据无法转换为数字,已转换为NaN")
+                print(f"   成本数据损失: {original_sum - converted_sum:.2f}")
         
         if '月售' in standardized_df.columns:
             standardized_df['月售'] = pd.to_numeric(standardized_df['月售'], errors='coerce')

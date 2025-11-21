@@ -1,0 +1,599 @@
+/* 
+ * 🎨 智能门店看板 - 全设备响应式适配
+ * 解决不同屏幕尺寸下的展示差异问题
+ * 支持：手机、平板、笔记本、桌面显示器
+ */
+
+/* ==================== 全局响应式基础 ==================== */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    overflow-x: hidden; /* 防止横向滚动 */
+}
+
+/* ==================== 响应式断点定义 ==================== */
+/*
+  - 超小屏（手机）: < 576px
+  - 小屏（平板竖屏）: 576px - 767px
+  - 中屏（平板横屏）: 768px - 991px
+  - 大屏（笔记本）: 992px - 1199px
+  - 超大屏（桌面）: ≥ 1200px
+*/
+
+/* ==================== 📱 超小屏适配（手机）< 576px ==================== */
+
+@media (max-width: 575px) {
+    /* 容器和间距 */
+    .container-fluid {
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+    }
+    
+    /* 卡片样式 */
+    .card {
+        margin-bottom: 0.75rem !important;
+        border-radius: 8px !important;
+    }
+    
+    .card-header {
+        padding: 0.5rem !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+    }
+    
+    .card-body {
+        padding: 0.75rem !important;
+    }
+    
+    /* 数据卡片（如总利润、订单数等） */
+    .modern-card {
+        padding: 0.75rem !important;
+        min-height: auto !important;
+    }
+    
+    .modern-card h6 {
+        font-size: 11px !important;
+        margin-bottom: 0.3rem !important;
+    }
+    
+    .modern-card h4 {
+        font-size: 20px !important;
+        margin-bottom: 0.3rem !important;
+    }
+    
+    .modern-card .small {
+        font-size: 10px !important;
+    }
+    
+    /* 客单价分布卡片 */
+    .modern-card .fw-bold {
+        font-size: 13px !important;
+    }
+    
+    /* Tabs导航 */
+    .nav-tabs {
+        flex-wrap: wrap;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .nav-tabs .nav-link {
+        font-size: 12px !important;
+        padding: 0.4rem 0.6rem !important;
+        white-space: nowrap;
+    }
+    
+    .nav-tabs .nav-item {
+        flex: 0 0 auto;
+        margin-bottom: 4px;
+    }
+    
+    /* 表格 */
+    .table {
+        font-size: 11px !important;
+    }
+    
+    .table th,
+    .table td {
+        padding: 0.4rem !important;
+    }
+    
+    /* 按钮 */
+    .btn {
+        font-size: 12px !important;
+        padding: 0.4rem 0.8rem !important;
+    }
+    
+    .btn-sm {
+        font-size: 11px !important;
+        padding: 0.3rem 0.6rem !important;
+    }
+    
+    /* 日期选择器 */
+    .DatePickerRange,
+    .DatePickerSingle {
+        font-size: 12px !important;
+    }
+    
+    /* Alert提示框 */
+    .alert {
+        font-size: 11px !important;
+        padding: 0.5rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+    
+    /* 下拉选择 */
+    .Select-control,
+    .dropdown-menu {
+        font-size: 12px !important;
+    }
+    
+    /* ECharts图表 */
+    [id*="echarts"],
+    [id*="chart"] {
+        min-height: 250px !important;
+        max-height: 350px !important;
+    }
+    
+    /* 隐藏移动端不必要的元素 */
+    .hide-on-mobile {
+        display: none !important;
+    }
+    
+    /* Row间距 */
+    .row {
+        margin-left: -4px !important;
+        margin-right: -4px !important;
+    }
+    
+    .row > * {
+        padding-left: 4px !important;
+        padding-right: 4px !important;
+    }
+    
+    /* Badge标签 */
+    .badge {
+        font-size: 10px !important;
+        padding: 0.25rem 0.4rem !important;
+    }
+}
+
+/* ==================== 📱 小屏适配（平板竖屏）576px - 767px ==================== */
+
+@media (min-width: 576px) and (max-width: 767px) {
+    .container-fluid {
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+    
+    .card {
+        margin-bottom: 1rem !important;
+    }
+    
+    .card-header {
+        padding: 0.625rem !important;
+        font-size: 14px !important;
+    }
+    
+    .card-body {
+        padding: 0.875rem !important;
+    }
+    
+    .modern-card h6 {
+        font-size: 12px !important;
+    }
+    
+    .modern-card h4 {
+        font-size: 24px !important;
+    }
+    
+    .nav-tabs .nav-link {
+        font-size: 13px !important;
+        padding: 0.5rem 0.8rem !important;
+    }
+    
+    .table {
+        font-size: 12px !important;
+    }
+    
+    [id*="echarts"],
+    [id*="chart"] {
+        min-height: 300px !important;
+        max-height: 450px !important;
+    }
+}
+
+/* ==================== 💻 中屏适配（平板横屏）768px - 991px ==================== */
+
+@media (min-width: 768px) and (max-width: 991px) {
+    .container-fluid {
+        padding-left: 15px !important;
+        padding-right: 15px !important;
+    }
+    
+    .card {
+        margin-bottom: 1.25rem !important;
+    }
+    
+    .card-header {
+        padding: 0.75rem !important;
+        font-size: 15px !important;
+    }
+    
+    .modern-card h6 {
+        font-size: 13px !important;
+    }
+    
+    .modern-card h4 {
+        font-size: 28px !important;
+    }
+    
+    .nav-tabs .nav-link {
+        font-size: 14px !important;
+        padding: 0.6rem 1rem !important;
+    }
+    
+    .table {
+        font-size: 13px !important;
+    }
+    
+    [id*="echarts"],
+    [id*="chart"] {
+        min-height: 350px !important;
+        max-height: 500px !important;
+    }
+}
+
+/* ==================== 🖥️ 大屏适配（笔记本）992px - 1199px ==================== */
+
+@media (min-width: 992px) and (max-width: 1199px) {
+    .modern-card h4 {
+        font-size: 30px !important;
+    }
+    
+    [id*="echarts"],
+    [id*="chart"] {
+        min-height: 400px !important;
+    }
+}
+
+/* ==================== 🖥️ 超大屏适配（桌面显示器）≥ 1200px ==================== */
+
+@media (min-width: 1200px) {
+    .container-fluid {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .modern-card h4 {
+        font-size: 32px !important;
+    }
+    
+    [id*="echarts"],
+    [id*="chart"] {
+        min-height: 450px !important;
+    }
+}
+
+/* ==================== 🎯 Bootstrap Grid响应式优化 ==================== */
+
+/* 确保列在小屏幕下正确堆叠 */
+@media (max-width: 767px) {
+    .col-md-3,
+    .col-md-4,
+    .col-md-6,
+    .col-lg-3,
+    .col-lg-4,
+    .col-lg-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+        margin-bottom: 0.75rem;
+    }
+}
+
+/* ==================== 📊 图表容器通用响应式 ==================== */
+
+/* 图表容器基础样式 */
+[id*="echarts"],
+[id*="chart"],
+.graph-container {
+    width: 100% !important;
+    transition: height 0.3s ease;
+    position: relative;
+}
+
+/* 图表加载状态 */
+.chart-loading,
+._dash-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    font-size: 14px;
+    color: #6c757d;
+}
+
+/* ==================== 🎨 UI组件响应式优化 ==================== */
+
+/* 输入框 */
+input[type="text"],
+input[type="number"],
+input[type="date"],
+select,
+textarea {
+    font-size: 14px !important;
+}
+
+@media (max-width: 575px) {
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    select,
+    textarea {
+        font-size: 16px !important; /* 防止iOS自动缩放 */
+    }
+}
+
+/* 模态框 */
+.modal-dialog {
+    margin: 1rem;
+}
+
+@media (max-width: 575px) {
+    .modal-dialog {
+        margin: 0.5rem;
+        max-width: calc(100% - 1rem);
+    }
+    
+    .modal-body {
+        padding: 0.75rem !important;
+    }
+}
+
+/* 分页器 */
+.pagination {
+    font-size: 14px;
+}
+
+@media (max-width: 575px) {
+    .pagination {
+        font-size: 12px;
+    }
+    
+    .page-link {
+        padding: 0.4rem 0.6rem !important;
+    }
+}
+
+/* ==================== 🔄 动画和过渡 ==================== */
+
+/* 平滑过渡 */
+.card,
+.modern-card,
+.btn,
+[id*="echarts"] {
+    transition: all 0.3s ease;
+}
+
+/* 悬停效果（仅桌面） */
+@media (min-width: 992px) {
+    .modern-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    }
+}
+
+/* ==================== 📱 触摸优化 ==================== */
+
+/* 增大移动端可点击区域 */
+@media (max-width: 767px) {
+    .btn,
+    .nav-link,
+    .page-link,
+    a {
+        min-height: 44px; /* iOS人机界面指南推荐 */
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+/* 禁用触摸高亮 */
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* ==================== 🎯 性能优化 ==================== */
+
+/* GPU加速 */
+.modern-card,
+[id*="echarts"],
+.card {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: transform;
+}
+
+/* 防止过度重绘 */
+.chart-container,
+.card-body {
+    contain: layout style paint;
+}
+
+/* ==================== 🖨️ 打印样式 ==================== */
+
+@media print {
+    /* 移除背景色 */
+    * {
+        background: white !important;
+        color: black !important;
+    }
+    
+    /* 隐藏交互元素 */
+    .nav-tabs,
+    .btn,
+    .alert,
+    .dropdown,
+    input,
+    select {
+        display: none !important;
+    }
+    
+    /* 强制显示内容 */
+    .tab-content > .tab-pane {
+        display: block !important;
+        opacity: 1 !important;
+    }
+    
+    /* 图表固定高度 */
+    [id*="echarts"],
+    [id*="chart"] {
+        height: 400px !important;
+        page-break-inside: avoid;
+    }
+    
+    /* 卡片边距 */
+    .card {
+        page-break-inside: avoid;
+        margin-bottom: 1rem !important;
+    }
+}
+
+/* ==================== 🌓 深色模式支持（可选）==================== */
+
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #1a1a1a;
+        color: #e0e0e0;
+    }
+    
+    .card {
+        background-color: #2d2d2d;
+        border-color: #404040;
+    }
+    
+    [id*="echarts"],
+    [id*="chart"] {
+        background-color: #2d2d2d;
+    }
+}
+
+/* ==================== 🔧 工具类 ==================== */
+
+/* 响应式文字大小 */
+.text-responsive-sm {
+    font-size: clamp(11px, 2vw, 13px);
+}
+
+.text-responsive-md {
+    font-size: clamp(13px, 2.5vw, 16px);
+}
+
+.text-responsive-lg {
+    font-size: clamp(18px, 3vw, 24px);
+}
+
+/* 响应式间距 */
+.spacing-responsive {
+    padding: clamp(0.5rem, 2vw, 1.5rem);
+}
+
+/* 设备特定显示 */
+.show-mobile-only {
+    display: none;
+}
+
+@media (max-width: 767px) {
+    .show-mobile-only {
+        display: block !important;
+    }
+    
+    .hide-mobile {
+        display: none !important;
+    }
+}
+
+@media (min-width: 768px) {
+    .show-desktop-only {
+        display: block !important;
+    }
+    
+    .hide-desktop {
+        display: none !important;
+    }
+}
+
+/* ==================== 🎨 客单价分析特殊优化 ==================== */
+
+/* 客单价分布卡片在不同屏幕下的列数调整 */
+@media (max-width: 575px) {
+    /* 手机：1列 */
+    .row.g-3 > [class*="col-md-3"] {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+
+@media (min-width: 576px) and (max-width: 991px) {
+    /* 平板：2列 */
+    .row.g-3 > [class*="col-md-3"] {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+}
+
+@media (min-width: 992px) {
+    /* 桌面：4列（默认） */
+    .row.g-3 > [class*="col-md-3"] {
+        flex: 0 0 25%;
+        max-width: 25%;
+    }
+}
+
+/* ==================== 📐 固定比例容器 ==================== */
+
+/* 16:9比例容器（用于图表） */
+.ratio-16x9 {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%; /* 16:9 */
+}
+
+.ratio-16x9 > * {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* ==================== 🚀 滚动优化 ==================== */
+
+/* 平滑滚动 */
+html {
+    scroll-behavior: smooth;
+}
+
+/* 自定义滚动条（仅webkit浏览器） */
+@media (min-width: 992px) {
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+}

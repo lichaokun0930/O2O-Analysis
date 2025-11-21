@@ -104,6 +104,24 @@ except ImportError as e:
     print(f"⚠️ 组件样式库加载失败: {e}")
     print("   将使用原始dbc组件")
 
+# 🎨 导入加载进度组件库
+try:
+    from loading_components import (
+        create_loading_progress, create_skeleton_card, create_enhanced_loading,
+        create_tab_skeleton, create_data_loading_indicator, create_mini_loading,
+        wrap_with_loading, create_dashboard_skeleton
+    )
+    LOADING_COMPONENTS_AVAILABLE = True
+    print("✅ 加载进度组件库已加载")
+except ImportError as e:
+    LOADING_COMPONENTS_AVAILABLE = False
+    print(f"⚠️ 加载进度组件库加载失败: {e}")
+    # 定义占位函数避免报错
+    create_loading_progress = lambda *args, **kwargs: html.Div()
+    create_skeleton_card = lambda *args, **kwargs: html.Div()
+    create_tab_skeleton = lambda *args, **kwargs: html.Div()
+    create_dashboard_skeleton = lambda *args, **kwargs: html.Div()
+
 # 导入商品场景智能打标引擎
 try:
     from 商品场景智能打标引擎 import ProductSceneTagger
@@ -147,6 +165,21 @@ except ImportError as e:
     print(f"⚠️ Tab 7 分析器模块未找到: {e}")
     print("   营销成本八象限分析功能将不可用")
 
+# ✨ 导入Redis缓存管理器（性能优化）
+try:
+    from redis_config import redis_cache, cache_dataframe
+    REDIS_AVAILABLE = redis_cache.available
+    if REDIS_AVAILABLE:
+        print("✅ Redis缓存已启用 - 性能模式")
+    else:
+        print("⚠️ Redis未运行 - 降级为直接查询模式")
+except ImportError as e:
+    REDIS_AVAILABLE = False
+    redis_cache = None
+    cache_dataframe = None
+    print(f"⚠️ Redis模块未找到: {e}")
+    print("   提示: 运行 'pip install redis flask-caching' 安装依赖")
+
 # ✨ 导入数据源管理器（支持Excel/数据库双数据源）
 try:
     # ⚠️ 在导入任何数据库模块前，先确保 platform_service_fee 字段存在
@@ -162,22 +195,37 @@ try:
     
     # 初始化时获取门店列表
     def get_initial_store_options():
-        """获取初始门店列表用于下拉框"""
+        """获取初始门店列表用于下拉框（支持Redis缓存）"""
+        # 尝试从Redis缓存读取
+        if REDIS_AVAILABLE and redis_cache:
+            cached_options = redis_cache.get('store_options_list')
+            if cached_options:
+                print(f"🚀 从Redis缓存读取 {len(cached_options)} 个门店选项")
+                return cached_options
+        
+        # 缓存未命中，从数据库查询
         try:
             from database.connection import engine
             from sqlalchemy import text
             
+            print("💾 从数据库查询门店列表...")
             with engine.connect() as conn:
                 query = text("SELECT DISTINCT store_name FROM orders ORDER BY store_name")
                 results = conn.execute(query).fetchall()
             
             options = [{'label': r[0], 'value': r[0]} for r in results if r[0]]
-            print(f"✅ 已预加载 {len(options)} 个门店选项")
+            print(f"✅ 已加载 {len(options)} 个门店选项")
             for i, opt in enumerate(options, 1):
                 print(f"   {i}. {opt['label']}")
+            
+            # 存入Redis缓存（1小时过期）
+            if REDIS_AVAILABLE and redis_cache:
+                redis_cache.set('store_options_list', options, expire=3600)
+                print("✅ 门店列表已缓存到Redis")
+            
             return options
         except Exception as e:
-            print(f"⚠️ 预加载门店列表失败: {e}")
+            print(f"⚠️ 加载门店列表失败: {e}")
             import traceback
             traceback.print_exc()
             return []
@@ -312,6 +360,21 @@ print("ℹ️ RAG 向量知识库模块已暂时禁用（避免下载模型）")
 # ⭐ 关键业务规则：需要剔除的渠道（咖啡业务非O2O零售核心，与Streamlit保持一致）
 CHANNELS_TO_REMOVE = ['饿了么咖啡', '美团咖啡']
 
+# ⭐ 收费渠道定义：这些渠道必须剔除"平台服务费=0"的订单（异常订单）
+# 不在此列表中的渠道（线下、自有平台等）本身不收平台服务费，其"平台服务费=0"是正常订单
+PLATFORM_FEE_CHANNELS = [
+    '饿了么',
+    '京东到家',
+    '美团共橙',
+    '美团闪购',
+    '抖音',
+    '抖音直播',
+    '淘鲜达',
+    '京东秒送',
+    '美团咖啡店',
+    '饿了么咖啡店'
+]
+
 # 统一利润/配送计算口径配置
 CALCULATION_MODES = {
     'service_fee_positive': {
@@ -430,19 +493,7 @@ def build_data_source_card() -> dbc.Card:
                     color="primary",
                     className="w-100"
                 )
-            ], md=2),
-            dbc.Col([
-                html.Label(html.Br()),
-                dbc.Button(
-                    "🔄",
-                    id='refresh-cache-btn',
-                    color="secondary",
-                    outline=True,
-                    title="刷新数据范围缓存",
-                    className="w-100",
-                    style={'fontSize': '18px'}
-                )
-            ], md=1)
+            ], md=2)
         ], className="mb-3"),
 
         html.Div(id='cache-status-alert', className="mb-3"),
@@ -507,29 +558,16 @@ def build_data_source_card() -> dbc.Card:
         dcc.Upload(
             id='upload-data',
             children=html.Div([
-                html.I(className="bi bi-cloud-upload", style={'fontSize': '3rem', 'color': '#667eea'}),
+                html.I(className="bi bi-cloud-upload upload-icon"),
                 html.Br(),
-                html.B('拖拽文件到这里 或 点击选择文件', style={'fontSize': '1.1rem', 'marginTop': '10px'}),
+                html.B('拖拽文件到这里 或 点击选择文件', className="upload-title"),
                 html.Br(),
-                html.Span('支持 .xlsx / .xls 格式，可同时上传多个文件',
-                         style={'fontSize': '0.9rem', 'color': '#666', 'marginTop': '5px'}),
+                html.Span('支持 .xlsx / .xls 格式，可同时上传多个文件', className="upload-hint"),
                 html.Br(),
-                html.Span('💾 数据将自动保存到数据库，支持多人共享访问',
-                         style={'fontSize': '0.85rem', 'color': '#667eea', 'marginTop': '5px', 'fontWeight': 'bold'}) if DATABASE_AVAILABLE else ""
+                html.Span('💾 数据将自动保存到数据库，支持多人共享访问', 
+                         className="upload-database-hint") if DATABASE_AVAILABLE else ""
             ]),
-            style={
-                'width': '100%',
-                'height': '150px',
-                'lineHeight': '150px',
-                'borderWidth': '2px',
-                'borderStyle': 'dashed',
-                'borderRadius': '10px',
-                'borderColor': '#667eea',
-                'textAlign': 'center',
-                'background': '#f8f9ff',
-                'cursor': 'pointer',
-                'transition': 'all 0.3s'
-            },
+            className="upload-area",
             multiple=True
         ),
         
@@ -659,7 +697,11 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 # Dash 应用初始化
 app = Dash(
     __name__,
-    external_stylesheets=[dbc.themes.BOOTSTRAP],
+    external_stylesheets=[
+        dbc.themes.BOOTSTRAP,
+        "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css",
+        "/assets/dashboard_styles.css"  # 自定义样式表
+    ],
     suppress_callback_exceptions=True,
     meta_tags=[{'name': 'viewport', 'content': 'width=device-width, initial-scale=1.0'}]
 )
@@ -984,7 +1026,28 @@ def initialize_data():
         print("🔄 正在初始化数据...", flush=True)
         print("="*80, flush=True)
         
-        GLOBAL_DATA = load_real_business_data()
+        # 🔄 2025-11-19: 数据分离加载策略
+        # - GLOBAL_FULL_DATA: 完整数据(含耗材) → 用于利润计算
+        # - GLOBAL_DATA: 展示数据(不含耗材) → 用于分析图表
+        
+        df_loaded = load_real_business_data()
+        
+        if df_loaded is not None:
+            # 完整数据
+            GLOBAL_FULL_DATA = df_loaded.copy()
+            
+            # 展示数据(剔除耗材)
+            if '一级分类名' in df_loaded.columns:
+                GLOBAL_DATA = df_loaded[df_loaded['一级分类名'] != '耗材'].copy()
+                consumable_count = len(GLOBAL_FULL_DATA) - len(GLOBAL_DATA)
+                
+                print(f"\n📊 数据分离完成:")
+                print(f"   - 完整数据(GLOBAL_FULL_DATA): {len(GLOBAL_FULL_DATA):,} 行 (含耗材)")
+                print(f"   - 展示数据(GLOBAL_DATA): {len(GLOBAL_DATA):,} 行 (不含耗材)")
+                print(f"   - 耗材数据: {consumable_count:,} 行", flush=True)
+            else:
+                GLOBAL_DATA = df_loaded.copy()
+                print(f"⚠️ 未找到一级分类字段,使用完整数据", flush=True)
         
         if GLOBAL_DATA is not None:
             # ========== 🔍 调试日志：初始加载数据检查 ==========
@@ -1003,24 +1066,28 @@ def initialize_data():
                 print(f"\n❌ '商品采购成本' 字段不存在！", flush=True)
             print("="*80 + "\n", flush=True)
             
-            # ⭐ 关键业务规则1：剔除耗材数据（购物袋等）
+            # ⭐ 关键业务规则1：剔除耗材数据（购物袋等）- 已禁用
+            # ❌ 2025-11-18: 禁用耗材剔除,保留真实成本数据
+            # 原因: 耗材(购物袋)是订单成本的一部分,剔除会导致利润虚高
             # 识别标准：一级分类名 == '耗材'
             # 参考：订单数据业务逻辑确认.md、业务逻辑最终确认.md
-            original_rows = len(GLOBAL_DATA)
-            category_col = None
-            for col_name in ['一级分类名', '美团一级分类', '一级分类']:
-                if col_name in GLOBAL_DATA.columns:
-                    category_col = col_name
-                    break
+            # original_rows = len(GLOBAL_DATA)
+            # category_col = None
+            # for col_name in ['一级分类名', '美团一级分类', '一级分类']:
+            #     if col_name in GLOBAL_DATA.columns:
+            #         category_col = col_name
+            #         break
+            # 
+            # if category_col:
+            #     GLOBAL_DATA = GLOBAL_DATA[GLOBAL_DATA[category_col] != '耗材'].copy()
+            #     removed_consumables = original_rows - len(GLOBAL_DATA)
+            #     if removed_consumables > 0:
+            #         print(f"🔴 已剔除耗材数据: {removed_consumables:,} 行 (购物袋等，一级分类='耗材')", flush=True)
+            #         print(f"📊 剔除耗材后数据量: {len(GLOBAL_DATA):,} 行", flush=True)
+            # else:
+            #     print(f"⚠️ 未找到一级分类列，无法剔除耗材数据", flush=True)
             
-            if category_col:
-                GLOBAL_DATA = GLOBAL_DATA[GLOBAL_DATA[category_col] != '耗材'].copy()
-                removed_consumables = original_rows - len(GLOBAL_DATA)
-                if removed_consumables > 0:
-                    print(f"🔴 已剔除耗材数据: {removed_consumables:,} 行 (购物袋等，一级分类='耗材')", flush=True)
-                    print(f"📊 剔除耗材后数据量: {len(GLOBAL_DATA):,} 行", flush=True)
-            else:
-                print(f"⚠️ 未找到一级分类列，无法剔除耗材数据", flush=True)
+            print(f"✅ 保留耗材数据 (包含购物袋等成本)", flush=True)
             
             # ⭐ 关键业务规则2：标记咖啡渠道数据（仅在渠道对比中隐藏）
             if '渠道' in GLOBAL_DATA.columns:
@@ -1340,8 +1407,8 @@ def calculate_period_comparison(df: pd.DataFrame, start_date: datetime = None, e
                     agg_dict['企客后返'] = 'sum'  # 商品级字段
                     
                 # ✅ 使用统一的订单指标计算函数(与全局保持一致)
-                # 🔧 环比计算：使用all_with_fallback模式，保留所有订单（包括闪购小程序）
-                order_metrics = calculate_order_metrics(data, calc_mode='all_with_fallback')
+                # 🔧 环比计算：使用all_no_fallback模式，只保留平台服务费>0的订单
+                order_metrics = calculate_order_metrics(data, calc_mode='all_no_fallback')
             
             order_count = len(order_metrics)
             
@@ -1642,7 +1709,7 @@ def calculate_channel_comparison(df: pd.DataFrame, order_agg: pd.DataFrame,
             # ✅ 使用统一的订单聚合函数
             try:
                 # 🔧 修复: 使用all_with_fallback模式,确保包含所有订单(包括闪购小程序)
-                order_metrics = calculate_order_metrics(data, calc_mode='all_with_fallback')
+                order_metrics = calculate_order_metrics(data, calc_mode='all_no_fallback')
             except Exception as e:
                 print(f"⚠️ 上期数据聚合失败: {e}")
                 return None
@@ -3019,7 +3086,7 @@ def _create_channel_comparison_cards(df: pd.DataFrame, order_agg: pd.DataFrame,
 
 
 # ==================== 客单价深度分析组件 ====================
-def _create_aov_analysis(df: pd.DataFrame, order_agg: pd.DataFrame, selected_channel: str = 'all') -> html.Div:
+def _create_aov_analysis(df: pd.DataFrame, order_agg: pd.DataFrame, selected_channel: str = 'all', selected_store: str = None) -> html.Div:
     """
     创建客单价深度分析组件
     
@@ -3027,6 +3094,7 @@ def _create_aov_analysis(df: pd.DataFrame, order_agg: pd.DataFrame, selected_cha
         df: 原始订单数据
         order_agg: 订单聚合数据
         selected_channel: 选中的渠道 ('all'表示全部渠道)
+        selected_store: 选中的门店名称 (用于调试日志显示)
     
     Returns:
         客单价分析组件
@@ -3035,7 +3103,14 @@ def _create_aov_analysis(df: pd.DataFrame, order_agg: pd.DataFrame, selected_cha
         if df is None or len(df) == 0 or order_agg is None or len(order_agg) == 0:
             return html.Div()
         
-        # 🔧 剔除咖啡渠道（不再排除闪购小程序和收银机订单）
+        # � 从数据中获取实际门店名称(用于调试日志)
+        if selected_store is None and '门店' in df.columns:
+            store_names = df['门店'].dropna().unique()
+            selected_store = store_names[0] if len(store_names) > 0 else '未知门店'
+        elif selected_store is None:
+            selected_store = '未知门店'
+        
+        # �🔧 剔除咖啡渠道（不再排除闪购小程序和收银机订单）
         exclude_channels = CHANNELS_TO_REMOVE
         
         # 🔴 统一订单ID类型
@@ -3420,7 +3495,7 @@ def _create_aov_analysis(df: pd.DataFrame, order_agg: pd.DataFrame, selected_cha
         # ========== 5. 准备价格带分布数据(用于环形图) ==========
         # 调试: 打印客单价统计信息
         print("\n" + "="*60)
-        print("🔍 客单价区间分布详情 (启东门店):")
+        print(f"🔍 客单价区间分布详情 ({selected_store}):")
         print("="*60)
         print(f"📊 客单价统计:")
         print(f"   - 最小值: ¥{order_agg['客单价'].min():.2f}")
@@ -4516,64 +4591,131 @@ if MANTINE_AVAILABLE:
             # URL 路由组件（用于页面加载检测）
             dcc.Location(id='url', refresh=False),
             
+            # ========== Toast队列管理系统 ==========
+            html.Div(id='toast-container', children=[], style={
+                'position': 'fixed',
+                'top': '70px',
+                'right': '10px',
+                'width': '350px',
+                'zIndex': 10000,
+                'display': 'flex',
+                'flexDirection': 'column',
+                'gap': '10px'
+            }),
+            dcc.Store(id='toast-queue', data=[]),  # Toast消息队列
+            dcc.Store(id='toast-trigger', data=0),  # Toast触发计数器
+            dcc.Interval(id='toast-cleanup-interval', interval=1000, n_intervals=0),  # 清理过期Toast
+            
             # 隐藏的数据更新触发器
             dcc.Store(id='data-update-trigger', data=0),
-    dcc.Store(id='data-metadata', data={}),  # 存储数据元信息
-    dcc.Store(id='page-init-trigger', data={'loaded': False}),  # 页面初始化触发器
-    dcc.Store(id='pandasai-history-store', data=[]),
-    dcc.Store(id='rag-auto-summary-store', data={}),
-    
-    # ========== 门店切换支持 ==========
-    dcc.Store(id='current-store-id', data=None),  # 当前选中的门店ID
-    dcc.Store(id='store-data', data=[]),  # 当前门店的数据
-    
-    # ========== 性能优化: 前端数据缓存 (阶段3) ==========
-    dcc.Store(id='cached-order-agg', data=None),  # 缓存订单聚合数据
-    dcc.Store(id='cached-comparison-data', data=None),  # 缓存环比计算数据
-    dcc.Store(id='cache-version', data=0),  # 缓存版本号,用于判断缓存是否有效
-    
-    # ========== 性能优化: 异步加载控制 (阶段4) ==========
-    dcc.Store(id='tab1-core-ready', data=False),  # Tab1核心指标是否就绪
-    dcc.Store(id='tab2-core-ready', data=False),  # Tab2核心内容是否就绪
-    dcc.Store(id='tab3-core-ready', data=False),  # Tab3核心内容是否就绪
-    dcc.Interval(id='progressive-render-interval', interval=100, max_intervals=0, disabled=True),  # 渐进式渲染定时器
-    
-    # ========== 性能优化: WebWorker后台计算 (阶段8) ==========
-    dcc.Store(id='raw-orders-store', storage_type='memory'),  # 原始订单数据
-    dcc.Store(id='worker-aggregated-data', storage_type='memory'),  # Worker聚合结果
-    
-    # 头部
-    html.Div([
-        html.H1("🏪 门店诊断看板(订单数据)", style={'margin': 0, 'fontSize': '2.5rem'})
-    ], className='main-header'),
-    
-    # 全局数据信息卡片
-    html.Div(id='global-data-info-card'),
-
-    # 计算口径选择
-    build_calc_mode_selector(),
-    
-    # ========== 数据源选择区域 ==========
-    build_data_source_card(),
-    
-    # 主内容区 - 使用顶层Tabs组织所有功能模块
-    dbc.Row([
-        dbc.Col([
-            # 使用提示
-            dbc.Alert([
-                html.H5("👋 欢迎使用门店诊断看板！", className="mb-2"),
-                html.P("👇 选择功能模块开始数据分析", className="mb-0")
-            ], color="info", className="mb-4"),
+            dcc.Store(id='data-metadata', data={}),  # 存储数据元信息
+            dcc.Store(id='page-init-trigger', data={'loaded': False}),  # 页面初始化触发器
+            dcc.Store(id='pandasai-history-store', data=[]),
+            dcc.Store(id='rag-auto-summary-store', data=[]),
             
-            # 顶层功能Tabs
-            dcc.Tabs(id='main-tabs', value='tab-1', children=[
+            # ========== 门店切换支持 ==========
+            dcc.Store(id='current-store-id', data=None),  # 当前选中的门店ID
+            dcc.Store(id='store-data', data=[]),  # 当前门店的数据
+            
+            # ========== 性能优化: 前端数据缓存 (阶段3) ==========
+            dcc.Store(id='cached-order-agg', data=None),  # 缓存订单聚合数据
+            dcc.Store(id='cached-comparison-data', data=None),  # 缓存环比计算数据
+            dcc.Store(id='cache-version', data=0),  # 缓存版本号,用于判断缓存是否有效
+            
+            # ========== 性能优化: Tab懒加载状态跟踪 ==========
+            dcc.Store(id='tabs-loaded-status', data={
+                'tab-1': False, 'tab-2': False, 'tab-5': False, 'tab-7': False
+            }),  # ⚡ 跟踪每个Tab是否已加载过
+            
+            # ========== 全局刷新触发器 ==========
+            dcc.Store(id='global-refresh-trigger', data=0),  # 全局刷新触发计数器
+            
+            # ========== 性能优化: 异步加载控制 (阶段4) ==========
+            dcc.Store(id='tab1-core-ready', data=False),  # Tab1核心指标是否就绪
+            dcc.Store(id='tab2-core-ready', data=False),  # Tab2核心内容是否就绪
+            dcc.Store(id='tab3-core-ready', data=False),  # Tab3核心内容是否就绪
+            dcc.Interval(id='progressive-render-interval', interval=100, max_intervals=0, disabled=True),  # 渐进式渲染定时器
+            
+            # ========== 性能优化: WebWorker后台计算 (阶段8) ==========
+            dcc.Store(id='raw-orders-store', storage_type='memory'),  # 原始订单数据
+            dcc.Store(id='worker-aggregated-data', storage_type='memory'),  # Worker聚合结果
+            
+            # 头部
+            html.Div([
+                html.H1("🏪 门店诊断看板(订单数据)", style={'margin': 0, 'fontSize': '2.5rem'})
+            ], className='main-header'),
+            
+            # ========== 全局数据信息卡片 + 刷新按钮 ==========
+            dbc.Row([
+                dbc.Col([
+                    # 全局数据信息卡片 (初始显示骨架屏)
+                    html.Div(
+                        id='global-data-info-card',
+                        className='fade-in',
+                        children=create_skeleton_card(title=False, metrics=0, chart=False) if LOADING_COMPONENTS_AVAILABLE else dbc.Card([
+                            dbc.CardBody([
+                                html.Div([
+                                    html.Div(className="skeleton-box", style={
+                                        'width': '100%', 'height': '80px', 'borderRadius': '8px'
+
+                                    })
+                                ])
+                            ])
+                        ], className="mb-3", style={'border': '1px solid #e0e0e0'})
+                    )
+                ], md=11),
+                dbc.Col([
+                    # 全局刷新按钮
+                    dbc.Button(
+                        [
+                            html.I(className="bi bi-arrow-clockwise me-2"),
+                            "刷新数据"
+                        ],
+                        id='global-refresh-btn',
+                        color="primary",
+                        outline=True,
+                        className="w-100",
+                        title="清除缓存并重新加载当前门店数据",
+                        style={'height': '100%', 'minHeight': '60px'}
+                    )
+                ], md=1)
+            ], className="mb-3", align="center"),
+            
+            # 刷新状态提示
+            html.Div(id='global-refresh-status', className="mb-3"),
+
+            # 计算口径选择
+            build_calc_mode_selector(),
+            
+            # ========== 数据源选择区域 ==========
+            build_data_source_card(),
+            
+            # 主内容区 - 使用顶层Tabs组织所有功能模块
+            dbc.Row([
+                dbc.Col([
+                    # 使用提示
+                    dbc.Alert([
+                        html.H5("👋 欢迎使用门店诊断看板！", className="mb-2"),
+                        html.P("👇 选择功能模块开始数据分析", className="mb-0")
+                    ], color="info", className="mb-4"),
+                    
+                    # 顶层功能Tabs
+                    dcc.Tabs(id='main-tabs', value='tab-1', children=[
                 
                 # ========== Tab 1: 订单数据概览 ==========
                 dcc.Tab(label='📊 订单数据概览', value='tab-1', children=[
                     dcc.Loading(
                         id="loading-tab1",
-                        type="default",  # default, circle, dot, cube
-                        children=[html.Div(id='tab-1-content', className="p-3")]
+                        type="cube",
+                        color="#667eea",
+                        parent_className="loading-wrapper",
+                        parent_style={'minHeight': '400px', 'position': 'relative'},
+                        fullscreen=False,
+                        children=[html.Div(
+                            id='tab-1-content',
+                            className="p-3 fade-in",
+                            children=html.Div()  # ⚡ 懒加载优化: 初始为空,切换时才渲染
+                        )]
                     )
                 ]),
                 
@@ -4581,8 +4723,16 @@ if MANTINE_AVAILABLE:
                 dcc.Tab(label='💰 营销分析', value='tab-7', children=[
                     dcc.Loading(
                         id="loading-tab7",
-                        type="default",
-                        children=[html.Div(id='tab-7-content', className="p-3")]
+                        type="cube",
+                        color="#667eea",
+                        parent_className="loading-wrapper",
+                        parent_style={'minHeight': '400px', 'position': 'relative'},
+                        fullscreen=False,
+                        children=[html.Div(
+                            id='tab-7-content',
+                            className="p-3 fade-in",
+                            children=html.Div()  # ⚡ 懒加载优化: 初始为空
+                        )]
                     )
                 ]),
                 
@@ -4591,13 +4741,25 @@ if MANTINE_AVAILABLE:
                     dcc.Loading(
                         id="loading-tab2",
                         type="default",
-                        children=[html.Div(id='tab-2-content', className="p-3")]
+                        children=[html.Div(
+                            id='tab-2-content',
+                            className="p-3",
+                            children=html.Div()  # ⚡ 懒加载优化: 初始为空
+                        )]
                     )
                 ]),
                 
                 # ========== Tab 5: 时段场景分析 ==========
                 dcc.Tab(label='⏰ 时段场景(开发中)', value='tab-5', children=[
-                    html.Div(id='tab-5-content', className="p-3")
+                    dcc.Loading(
+                        id="loading-tab5",
+                        type="default",
+                        children=[html.Div(
+                            id='tab-5-content',
+                            className="p-3",
+                            children=html.Div()  # ⚡ 懒加载优化: 初始为空
+                        )]
+                    )
                 ]),
                 
             ])  # main-tabs结束（顶层Tabs）
@@ -4609,25 +4771,31 @@ if MANTINE_AVAILABLE:
     dbc.Modal([
         dbc.ModalHeader(dbc.ModalTitle("📦 商品详细信息", id='modal-product-title')),
         dbc.ModalBody([
-            dbc.Row([
-                # 左侧：商品基础信息
-                dbc.Col([
-                    html.H5("📋 基础信息", className="mb-3"),
-                    html.Div(id='product-basic-info')
-                ], md=6),
-                # 右侧：对比数据
-                dbc.Col([
-                    html.H5("📊 周期对比数据", className="mb-3"),
-                    html.Div(id='product-comparison-data')
-                ], md=6)
-            ], className="mb-4"),
-            # 历史趋势图
-            dbc.Row([
-                dbc.Col([
-                    html.H5("📈 销量趋势", className="mb-3"),
-                    dcc.Loading(dcc.Graph(id='product-trend-chart'))
-                ], md=12)
-            ])
+            dcc.Loading(
+                id="loading-modal-content",
+                type="default",
+                children=[
+                    dbc.Row([
+                        # 左侧：商品基础信息
+                        dbc.Col([
+                            html.H5("📋 基础信息", className="mb-3"),
+                            html.Div(id='product-basic-info')
+                        ], md=6),
+                        # 右侧：对比数据
+                        dbc.Col([
+                            html.H5("📊 周期对比数据", className="mb-3"),
+                            html.Div(id='product-comparison-data')
+                        ], md=6)
+                    ], className="mb-4"),
+                    # 历史趋势图
+                    dbc.Row([
+                        dbc.Col([
+                            html.H5("📈 销量趋势", className="mb-3"),
+                            dcc.Loading(dcc.Graph(id='product-trend-chart'))
+                        ], md=12)
+                    ])
+                ]
+            )
         ]),
         dbc.ModalFooter([
             dbc.Button("关闭", id='close-product-modal', className="ms-auto")
@@ -4640,6 +4808,14 @@ if MANTINE_AVAILABLE:
     dcc.Store(id='upload-timestamp', data=None),  # 上传时间戳
     dcc.Store(id='global-data-info', data={}),  # 全局数据统计信息
     
+    # ⚡ 回到顶部按钮
+    html.Button(
+        "↑",
+        id="back-to-top-btn",
+        className="back-to-top",
+        n_clicks=0
+    ),
+    
     # 调试输出（可选）
     html.Div(id='debug-output', style={'display': 'none'})
         ], fluid=True, className="p-4")
@@ -4650,12 +4826,28 @@ else:
         # URL 路由组件（用于页面加载检测）
         dcc.Location(id='url', refresh=False),
         
+        # ========== Toast队列管理系统 ==========
+        html.Div(id='toast-container', children=[], style={
+            'position': 'fixed',
+            'top': '70px',
+            'right': '10px',
+            'width': '350px',
+            'zIndex': 10000,
+            'display': 'flex',
+            'flexDirection': 'column',
+            'gap': '10px'
+        }),
+        dcc.Store(id='toast-queue', data=[]),  # Toast消息队列
+        dcc.Store(id='toast-trigger', data=0),  # Toast触发计数器
+        dcc.Interval(id='toast-cleanup-interval', interval=1000, n_intervals=0),  # 清理过期Toast
+        
         # 隐藏的数据更新触发器
         dcc.Store(id='data-update-trigger', data=0),
         dcc.Store(id='data-metadata', data={}),  # 存储数据元信息
         dcc.Store(id='page-init-trigger', data={'loaded': False}),  # 页面初始化触发器
         dcc.Store(id='pandasai-history-store', data=[]),
         dcc.Store(id='rag-auto-summary-store', data={}),
+        dcc.Store(id='export-status', data={'exporting': False}),  # 导出状态
 
         # ========== 门店切换支持 ==========
         dcc.Store(id='current-store-id', data=None),  # 当前选中的门店ID
@@ -4665,6 +4857,14 @@ else:
         dcc.Store(id='cached-order-agg', data=None),  # 缓存订单聚合数据
         dcc.Store(id='cached-comparison-data', data=None),  # 缓存环比计算数据
         dcc.Store(id='cache-version', data=0),  # 缓存版本号,用于判断缓存是否有效
+        
+        # ========== 性能优化: Tab懒加载状态跟踪 ==========
+        dcc.Store(id='tabs-loaded-status', data={
+            'tab-1': False, 'tab-2': False, 'tab-5': False, 'tab-7': False
+        }),  # ⚡ 跟踪每个Tab是否已加载过
+        
+        # ========== 全局刷新触发器 ==========
+        dcc.Store(id='global-refresh-trigger', data=0),  # 全局刷新触发计数器
         
         # ========== 性能优化: 异步加载控制 (阶段4) ==========
         dcc.Store(id='tab1-core-ready', data=False),  # Tab1核心指标是否就绪
@@ -4681,8 +4881,44 @@ else:
             html.H1("🏪 门店诊断看板(订单数据)", style={'margin': 0, 'fontSize': '2.5rem'})
         ], className='main-header'),
         
-        # 全局数据信息卡片
-        html.Div(id='global-data-info-card'),
+        # ========== 全局数据信息卡片 + 刷新按钮 ==========
+        dbc.Row([
+            dbc.Col([
+                # 全局数据信息卡片 (初始显示骨架屏)
+                html.Div(
+                    id='global-data-info-card',
+                    className='fade-in',
+                    children=create_skeleton_card(title=False, metrics=0, chart=False) if LOADING_COMPONENTS_AVAILABLE else dbc.Card([
+                        dbc.CardBody([
+                            html.Div([
+                                html.Div(className="skeleton-box", style={
+                                    'width': '100%', 'height': '80px', 'borderRadius': '8px'
+                                })
+                            ])
+                        ])
+                    ], className="mb-3", style={'border': '1px solid #e0e0e0'})
+                )
+            ], md=11),
+            dbc.Col([
+                # 全局刷新按钮
+                dbc.Button(
+                    [
+                        html.I(className="bi bi-arrow-clockwise me-2"),
+                        "刷新数据"
+                    ],
+                    id='global-refresh-btn',
+                    color="primary",
+                    outline=True,
+                    className="w-100",
+                    title="清除缓存并重新加载当前门店数据",
+                    style={'height': '100%', 'minHeight': '60px'}
+                )
+            ], md=1)
+        ], className="mb-3", align="center"),
+        
+        # 刷新状态提示
+        html.Div(id='global-refresh-status', className="mb-3"),
+        
         build_calc_mode_selector(),
         
         # ========== 数据源选择区域 ==========
@@ -4700,26 +4936,58 @@ else:
                     dcc.Tab(label='📊 订单数据概览', value='tab-1', children=[
                         dcc.Loading(
                             id="loading-tab1",
-                            type="default",
-                            children=[html.Div(id='tab-1-content', className="p-3")]
+                            type="cube",
+                            color="#667eea",
+                            parent_className="loading-wrapper",
+                            parent_style={'minHeight': '400px', 'position': 'relative'},
+                            children=[html.Div(
+                                id='tab-1-content',
+                                className="p-3 fade-in",
+                                children=create_tab_skeleton() if LOADING_COMPONENTS_AVAILABLE else html.Div()
+                            )]
                         )
                     ]),
                     dcc.Tab(label='💰 营销分析', value='tab-7', children=[
                         dcc.Loading(
                             id="loading-tab7",
-                            type="default",
-                            children=[html.Div(id='tab-7-content', className="p-3")]
+                            type="cube",
+                            color="#667eea",
+                            parent_className="loading-wrapper",
+                            parent_style={'minHeight': '400px', 'position': 'relative'},
+                            children=[html.Div(
+                                id='tab-7-content',
+                                className="p-3 fade-in",
+                                children=create_tab_skeleton() if LOADING_COMPONENTS_AVAILABLE else html.Div()
+                            )]
                         )
                     ]),
                     dcc.Tab(label='📦 商品分析(开发中)', value='tab-2', children=[
                         dcc.Loading(
                             id="loading-tab2",
-                            type="default",
-                            children=[html.Div(id='tab-2-content', className="p-3")]
+                            type="cube",
+                            color="#667eea",
+                            parent_className="loading-wrapper",
+                            parent_style={'minHeight': '400px', 'position': 'relative'},
+                            children=[html.Div(
+                                id='tab-2-content',
+                                className="p-3 fade-in",
+                                children=create_tab_skeleton() if LOADING_COMPONENTS_AVAILABLE else html.Div()
+                            )]
                         )
                     ]),
                     dcc.Tab(label='⏰ 时段场景(开发中)', value='tab-5', children=[
-                        html.Div(id='tab-5-content', className="p-3")
+                        dcc.Loading(
+                            id="loading-tab5",
+                            type="cube",
+                            color="#667eea",
+                            parent_className="loading-wrapper",
+                            parent_style={'minHeight': '400px', 'position': 'relative'},
+                            children=[html.Div(
+                                id='tab-5-content',
+                                className="p-3 fade-in",
+                                children=create_tab_skeleton() if LOADING_COMPONENTS_AVAILABLE else html.Div()
+                            )]
+                        )
                     ])
                 ])
             ], width=12)
@@ -4733,6 +5001,14 @@ else:
         dcc.Store(id='uploaded-data-metadata', data=None),
         dcc.Store(id='upload-timestamp', data=None),
         dcc.Store(id='global-data-info', data={}),
+        
+        # ⚡ 回到顶部按钮
+        html.Button(
+            "↑",
+            id="back-to-top-btn",
+            className="back-to-top",
+            n_clicks=0
+        ),
         
         # 调试输出
         html.Div(id='debug-output', style={'display': 'none'})
@@ -4924,6 +5200,41 @@ def update_date_range_from_quick_buttons(yesterday, today, last_week, this_week,
     return start_date, end_date
 
 
+def clear_store_cache(store_name, cache_manager=None):
+    """
+    清除指定门店的所有Redis缓存
+    
+    Args:
+        store_name: 门店名称
+        cache_manager: Redis缓存管理器实例
+    """
+    if not cache_manager or not cache_manager.enabled:
+        print(f"⚠️ Redis不可用,跳过缓存清理")
+        return
+    
+    try:
+        # 删除门店相关的所有缓存键
+        patterns = [
+            f"store_data:{store_name}:*",  # 查询数据缓存
+            f"store_full_data:{store_name}",  # 完整数据缓存
+        ]
+        
+        deleted_count = 0
+        for pattern in patterns:
+            count = cache_manager.delete(pattern)
+            deleted_count += count
+            if count > 0:
+                print(f"   🗑️  删除缓存: {pattern} ({count}个键)")
+        
+        if deleted_count > 0:
+            print(f"✅ 已清除门店 '{store_name}' 的 {deleted_count} 个缓存键")
+        else:
+            print(f"ℹ️ 门店 '{store_name}' 没有缓存需要清除")
+            
+    except Exception as e:
+        print(f"⚠️ 清除缓存失败: {e}")
+
+
 def _generate_load_success_response(df, start_date, end_date, cache_source="Database"):
     """
     生成数据加载成功的响应信息
@@ -4947,6 +5258,7 @@ def _generate_load_success_response(df, start_date, end_date, cache_source="Data
     cache_icon = {
         "Redis": "🎯",
         "Database": "📊",
+        "Upload": "📤",  # ✅ 添加上传来源
         "Local": "💾"
     }.get(cache_source, "📦")
     
@@ -5046,6 +5358,12 @@ def load_from_database(n_clicks, store_name, start_date, end_date):
                 print(f"🎯 [Redis缓存命中] 门店: {store_name}, 日期: {start_date} ~ {end_date}")
                 print(f"   数据行数: {len(cached_df):,}, 缓存命中率提升！")
                 
+                # 🔍 调试:检查Redis缓存中的成本数据
+                if '商品采购成本' in cached_df.columns:
+                    print(f"🔍 [Redis缓存-成本检查]")
+                    print(f"   成本总和: ¥{cached_df['商品采购成本'].sum():,.2f}")
+                    print(f"   成本NaN: {cached_df['商品采购成本'].isna().sum()}")
+                
                 # 更新全局数据
                 GLOBAL_DATA = cached_df
                 
@@ -5085,7 +5403,17 @@ def load_from_database(n_clicks, store_name, start_date, end_date):
             # Redis未命中，从数据库加载
             if full_df is None:
                 print("📊 从数据库加载完整数据...")
-                full_df = DATA_SOURCE_MANAGER.load_from_database(store_name=store_name)
+                loaded_data = DATA_SOURCE_MANAGER.load_from_database(store_name=store_name)
+                
+                # 处理返回值:可能是dict或DataFrame(兼容旧版本)
+                if isinstance(loaded_data, dict):
+                    full_df = loaded_data['full'].copy()
+                    print(f"📊 [数据分离] 完整数据: {len(full_df):,}行")
+                else:
+                    # 兼容旧版本
+                    full_df = loaded_data.copy()
+                    print(f"⚠️ [兼容模式] 返回DataFrame格式")
+                
                 full_df = add_scene_and_timeslot_fields(full_df)
                 
                 # 保存到Redis缓存
@@ -5110,11 +5438,35 @@ def load_from_database(n_clicks, store_name, start_date, end_date):
         
         # 从数据库加载(带日期过滤)
         print(f"📊 从数据库查询指定日期范围数据: {start_date} ~ {end_date}")
-        df = DATA_SOURCE_MANAGER.load_from_database(
+        loaded_data = DATA_SOURCE_MANAGER.load_from_database(
             store_name=store_name,
             start_date=start_dt,
             end_date=end_dt
         )
+        
+        # 处理返回值:可能是dict或DataFrame(兼容旧版本)
+        if isinstance(loaded_data, dict):
+            df = loaded_data['display'].copy()  # 查询数据库时使用展示数据(不含耗材)
+            print(f"📊 [数据分离] 展示数据: {len(df):,}行")
+            
+            # 🔍 调试:检查成本数据
+            if '商品采购成本' in df.columns:
+                print(f"🔍 [数据库加载后-成本检查]")
+                print(f"   数据行数: {len(df)}")
+                print(f"   成本字段dtype: {df['商品采购成本'].dtype}")
+                print(f"   成本总和: ¥{df['商品采购成本'].sum():,.2f}")
+                print(f"   成本非空: {df['商品采购成本'].notna().sum()}")
+                print(f"   成本NaN: {df['商品采购成本'].isna().sum()}")
+        else:
+            # 兼容旧版本:手动分离
+            df = loaded_data[loaded_data['一级分类名'] != '耗材'].copy() if '一级分类名' in loaded_data.columns else loaded_data.copy()
+            print(f"⚠️ [兼容模式] 手动分离耗材")
+            
+            # 🔍 调试:检查成本数据
+            if '商品采购成本' in df.columns:
+                print(f"🔍 [兼容模式-成本检查]")
+                print(f"   数据行数: {len(df)}")
+                print(f"   成本总和: ¥{df['商品采购成本'].sum():,.2f}")
         
         # ✅ 修复: 如果用户未指定日期,使用实际加载的数据范围
         if df is not None and not df.empty and '日期' in df.columns:
@@ -5147,6 +5499,13 @@ def load_from_database(n_clicks, store_name, start_date, end_date):
         print(f"🎯 开始场景打标处理({len(df)}行数据)...")
         df = add_scene_and_timeslot_fields(df)
         print(f"✅ 场景打标完成")
+        
+        # 🔍 调试:检查场景打标后成本数据
+        if '商品采购成本' in df.columns:
+            print(f"🔍 [场景打标后-成本检查]")
+            print(f"   数据行数: {len(df)}")
+            print(f"   成本总和: ¥{df['商品采购成本'].sum():,.2f}")
+            print(f"   成本NaN: {df['商品采购成本'].isna().sum()}")
         
         # 更新全局数据(筛选后的)
         GLOBAL_DATA = df
@@ -5198,73 +5557,19 @@ def update_store_data(trigger, store_name):
     return store_name, []
 
 
-# ✨ 新增：刷新数据范围缓存的回调
+# 缓存状态显示回调 - 仅在加载数据后显示
 @app.callback(
     Output('cache-status-alert', 'children'),
-    [Input('refresh-cache-btn', 'n_clicks'),
-     Input('load-from-database-btn', 'n_clicks')],
+    Input('load-from-database-btn', 'n_clicks'),
     State('db-store-filter', 'value'),
     prevent_initial_call=True
 )
-def refresh_or_show_cache_status(refresh_clicks, load_clicks, store_name):
-    """刷新缓存或显示缓存状态（包含Redis缓存）"""
+def show_cache_status(load_clicks, store_name):
+    """加载数据后显示缓存状态（包含Redis缓存）"""
     if not DATABASE_AVAILABLE or DATA_SOURCE_MANAGER is None:
         return no_update
     
     global QUERY_DATE_RANGE
-    
-    # 判断触发源
-    ctx = callback_context
-    if not ctx.triggered:
-        return no_update
-    
-    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    
-    if trigger_id == 'refresh-cache-btn' and refresh_clicks:
-        # 手动刷新缓存
-        try:
-            print("🔄 手动刷新数据范围缓存...")
-            
-            # ✅ 清除Redis缓存
-            redis_cleared = 0
-            if REDIS_CACHE_MANAGER and REDIS_CACHE_MANAGER.enabled and store_name:
-                redis_cleared = clear_store_cache(store_name, REDIS_CACHE_MANAGER)
-                if redis_cleared > 0:
-                    print(f"🗑️  已清除 {redis_cleared} 个Redis缓存项")
-            
-            # 重新加载数据
-            full_df = DATA_SOURCE_MANAGER.load_from_database(store_name=store_name)
-            
-            if not full_df.empty and '日期' in full_df.columns:
-                full_df = add_scene_and_timeslot_fields(full_df)
-                date_col = pd.to_datetime(full_df['日期'], errors='coerce')
-                QUERY_DATE_RANGE['db_min_date'] = date_col.min()
-                QUERY_DATE_RANGE['db_max_date'] = date_col.max()
-                QUERY_DATE_RANGE['cache_timestamp'] = datetime.now()
-                QUERY_DATE_RANGE['cache_store'] = store_name
-                
-                # ✅ 保存到Redis缓存
-                if REDIS_CACHE_MANAGER and REDIS_CACHE_MANAGER.enabled:
-                    full_redis_key = f"store_full_data:{store_name}"
-                    cache_dataframe(full_redis_key, full_df, ttl=1800, cache_manager=REDIS_CACHE_MANAGER)
-                    print(f"💾 完整数据已更新到Redis缓存")
-                
-                cache_info = f"本地+Redis" if redis_cleared > 0 else "本地"
-                return dbc.Alert([
-                    html.I(className="bi bi-check-circle me-2"),
-                    f"✅ {cache_info}缓存已刷新！数据范围: {QUERY_DATE_RANGE['db_min_date'].strftime('%Y-%m-%d')} ~ {QUERY_DATE_RANGE['db_max_date'].strftime('%Y-%m-%d')}"
-                ], color="success", dismissable=True, duration=4000)
-            else:
-                return dbc.Alert([
-                    html.I(className="bi bi-exclamation-triangle me-2"),
-                    "⚠️ 无法刷新缓存：数据库无数据"
-                ], color="warning", dismissable=True, duration=4000)
-        except Exception as e:
-            print(f"❌ 刷新缓存失败: {e}")
-            return dbc.Alert([
-                html.I(className="bi bi-x-circle me-2"),
-                f"❌ 刷新失败: {str(e)}"
-            ], color="danger", dismissable=True, duration=4000)
     
     # 加载数据后显示缓存状态
     if QUERY_DATE_RANGE.get('cache_timestamp'):
@@ -5290,12 +5595,139 @@ def refresh_or_show_cache_status(refresh_clicks, load_clicks, store_name):
     return no_update
 
 
+# ==================== 全局数据刷新回调函数 ====================
+@app.callback(
+    [Output('global-refresh-status', 'children'),
+     Output('global-refresh-trigger', 'data'),
+     Output('data-update-trigger', 'data', allow_duplicate=True),
+     Output('toast-queue', 'data')],
+    Input('global-refresh-btn', 'n_clicks'),
+    [State('db-store-filter', 'value'),
+     State('global-refresh-trigger', 'data'),
+     State('data-update-trigger', 'data'),
+     State('toast-queue', 'data')],
+    prevent_initial_call=True
+)
+def handle_global_refresh(n_clicks, store_name, current_refresh, current_trigger, current_toast_queue):
+    """处理全局数据刷新请求 - 清除所有缓存并重新加载数据"""
+    if not n_clicks:
+        raise PreventUpdate
+    
+    global GLOBAL_DATA, GLOBAL_FULL_DATA, QUERY_DATE_RANGE
+    
+    # 初始化Toast队列
+    if not current_toast_queue:
+        current_toast_queue = []
+    
+    try:
+        print("\n" + "="*80)
+        print("🔄 [全局刷新] 开始刷新数据...")
+        print(f"   当前门店: {store_name}")
+        print("="*80)
+        
+        # Step 1: 清除Redis缓存
+        redis_cleared = 0
+        if REDIS_CACHE_MANAGER and REDIS_CACHE_MANAGER.enabled and store_name:
+            redis_cleared = clear_store_cache(store_name, REDIS_CACHE_MANAGER)
+            print(f"🗑️  已清除 {redis_cleared} 个Redis缓存项")
+        
+        # Step 2: 清除本地缓存
+        QUERY_DATE_RANGE['cache_timestamp'] = None
+        print(f"🗑️  已清除本地缓存")
+        
+        # Step 3: 从数据库重新加载数据
+        if not DATABASE_AVAILABLE or DATA_SOURCE_MANAGER is None:
+            toast = add_toast("数据库功能未启用,无法刷新", "⚠️ 警告", "warning", "warning", 4000)
+            current_toast_queue.append(toast)
+            return no_update, current_refresh, current_trigger, current_toast_queue
+        
+        if not store_name:
+            toast = add_toast("请先选择门店", "ℹ️ 提示", "info", "info", 3000)
+            current_toast_queue.append(toast)
+            return no_update, current_refresh, current_trigger, current_toast_queue
+        
+        # 添加"正在刷新"Toast
+        toast_loading = add_toast("正在清除缓存并重新加载数据...", "🔄 刷新中", "primary", "info", 0, False)
+        current_toast_queue.append(toast_loading)
+        
+        # 重新从数据库加载
+        loaded_data = DATA_SOURCE_MANAGER.load_from_database(store_name=store_name)
+        
+        # 处理返回值
+        if isinstance(loaded_data, dict):
+            full_df = loaded_data['full'].copy()
+            display_df = loaded_data['display'].copy()
+            print(f"📊 [数据分离] 完整数据: {len(full_df):,}行, 展示数据: {len(display_df):,}行")
+        else:
+            full_df = loaded_data.copy()
+            display_df = loaded_data.copy()
+            print(f"⚠️ [兼容模式] 返回DataFrame格式: {len(full_df):,}行")
+        
+        if full_df.empty:
+            toast = add_toast("数据库中无数据", "⚠️ 警告", "warning", "warning", 4000)
+            current_toast_queue.append(toast)
+            return no_update, current_refresh, current_trigger, current_toast_queue
+        
+        # Step 4: 添加场景和时段字段
+        full_df = add_scene_and_timeslot_fields(full_df)
+        display_df = add_scene_and_timeslot_fields(display_df)
+        
+        # Step 5: 更新全局数据
+        GLOBAL_FULL_DATA = full_df
+        GLOBAL_DATA = display_df
+        
+        # Step 6: 更新日期范围缓存
+        if '日期' in full_df.columns:
+            date_col = pd.to_datetime(full_df['日期'], errors='coerce')
+            QUERY_DATE_RANGE['db_min_date'] = date_col.min()
+            QUERY_DATE_RANGE['db_max_date'] = date_col.max()
+            QUERY_DATE_RANGE['cache_timestamp'] = datetime.now()
+            QUERY_DATE_RANGE['cache_store'] = store_name
+        
+        # Step 7: 保存到Redis缓存
+        if REDIS_CACHE_MANAGER and REDIS_CACHE_MANAGER.enabled:
+            full_redis_key = f"store_full_data:{store_name}"
+            display_redis_key = f"store_data:{store_name}:display"
+            cache_dataframe(full_redis_key, full_df, ttl=1800, cache_manager=REDIS_CACHE_MANAGER)
+            cache_dataframe(display_redis_key, display_df, ttl=1800, cache_manager=REDIS_CACHE_MANAGER)
+            print(f"💾 数据已更新到Redis缓存")
+        
+        # Step 8: 触发所有相关组件更新
+        new_refresh = (current_refresh or 0) + 1
+        new_trigger = (current_trigger or 0) + 1
+        
+        print(f"✅ [全局刷新] 刷新完成!")
+        print(f"   数据量: {len(display_df):,}行")
+        print(f"   日期范围: {QUERY_DATE_RANGE['db_min_date']} ~ {QUERY_DATE_RANGE['db_max_date']}")
+        print("="*80 + "\n")
+        
+        # 添加成功Toast
+        cache_info = f"Redis({redis_cleared}项)+本地" if redis_cleared > 0 else "本地"
+        success_msg = f"已清除{cache_info}缓存 | 重新加载 {len(display_df):,} 条数据"
+        toast_success = add_toast(success_msg, "✅ 刷新成功", "success", "success", 5000)
+        current_toast_queue.append(toast_success)
+        
+        # 返回空内容(Toast已添加到队列)
+        return html.Div(), new_refresh, new_trigger, current_toast_queue
+        
+    except Exception as e:
+        print(f"❌ [全局刷新] 刷新失败: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # 添加错误Toast
+        toast_error = add_toast(f"刷新失败: {str(e)}", "❌ 错误", "danger", "danger", 6000)
+        current_toast_queue.append(toast_error)
+        
+        return no_update, current_refresh, current_trigger, current_toast_queue
+
+
 # ==================== 上传新数据到数据库回调函数 ====================
 @app.callback(
     [Output('current-data-label', 'children', allow_duplicate=True),
      Output('data-update-trigger', 'data', allow_duplicate=True),
      Output('upload-status', 'children'),
-     Output('upload-debug-info', 'children')],
+     Output('database-stats', 'children', allow_duplicate=True)],  # ✅ 改为database-stats,与数据库加载保持一致
     Input('upload-data', 'contents'),
     [State('upload-data', 'filename'),
      State('upload-data', 'last_modified')],
@@ -5392,13 +5824,15 @@ def upload_data_to_database(list_of_contents, list_of_names, list_of_dates):
                 
                 print("✅ 数据结构验证通过")
                 
-                # ===== 2. 过滤耗材 =====
-                if '一级分类名' in df.columns:
-                    original_len = len(df)
-                    df = df[~df['一级分类名'].isin(['耗材'])]
-                    filtered_count = original_len - len(df)
-                    if filtered_count > 0:
-                        print(f"🗑️  过滤耗材: 移除 {filtered_count:,} 条")
+                # ❌ 2025-11-18: 禁用耗材过滤,保留真实成本数据
+                # 原因: 耗材(购物袋)是订单成本的一部分,剔除会导致利润虚高
+                # if '一级分类名' in df.columns:
+                #     original_len = len(df)
+                #     df = df[~df['一级分类名'].isin(['耗材'])]
+                #     filtered_count = original_len - len(df)
+                #     if filtered_count > 0:
+                #         print(f"🗑️  过滤耗材: 移除 {filtered_count:,} 条")
+                print("✅ 保留耗材数据 (包含购物袋等成本)")
                 
                 # ===== 3. 检查门店是否已存在 =====
                 store_name = df['门店名称'].iloc[0] if '门店名称' in df.columns else "未知门店"
@@ -5591,9 +6025,11 @@ def upload_data_to_database(list_of_contents, list_of_names, list_of_dates):
         # ===== 5. 清除缓存 =====
         print("\n🗑️  清除缓存...")
         for store in set(uploaded_stores):
+            # 清除本地缓存标记
             QUERY_DATE_RANGE.pop('cache_store', None)
             QUERY_DATE_RANGE.pop('cache_timestamp', None)
             
+            # 清除Redis缓存
             if REDIS_CACHE_MANAGER and REDIS_CACHE_MANAGER.enabled:
                 clear_store_cache(store, REDIS_CACHE_MANAGER)
         
@@ -5604,16 +6040,38 @@ def upload_data_to_database(list_of_contents, list_of_names, list_of_dates):
             first_store = uploaded_stores[0]
             print(f"\n📊 自动加载门店 '{first_store}' 的数据...")
             
-            df_loaded = DATA_SOURCE_MANAGER.load_from_database(store_name=first_store)
-            df_loaded = add_scene_and_timeslot_fields(df_loaded)
-            GLOBAL_DATA = df_loaded
-            GLOBAL_FULL_DATA = df_loaded
+            # ✅ 数据库返回dict,包含完整数据和展示数据
+            loaded_data = DATA_SOURCE_MANAGER.load_from_database(store_name=first_store)
             
-            if not df_loaded.empty and '日期' in df_loaded.columns:
-                date_col = pd.to_datetime(df_loaded['日期'], errors='coerce')
+            # 处理返回值:可能是dict或DataFrame(兼容旧版本)
+            if isinstance(loaded_data, dict):
+                df_full = loaded_data['full'].copy()
+                df_display = loaded_data['display'].copy()
+                print(f"📊 [数据分离] 完整数据: {len(df_full):,}行, 展示数据: {len(df_display):,}行, 耗材: {len(df_full) - len(df_display):,}行")
+            else:
+                # 兼容旧版本:手动分离
+                df_full = loaded_data.copy()
+                df_display = loaded_data[loaded_data['一级分类名'] != '耗材'].copy() if '一级分类名' in loaded_data.columns else loaded_data.copy()
+                print(f"⚠️ [兼容模式] 手动分离耗材, 完整数据: {len(df_full):,}行, 展示数据: {len(df_display):,}行")
+            
+            # 添加场景和时段字段
+            df_full = add_scene_and_timeslot_fields(df_full)
+            df_display = add_scene_and_timeslot_fields(df_display)
+            
+            # 赋值全局变量
+            GLOBAL_FULL_DATA = df_full
+            GLOBAL_DATA = df_display
+            
+            if not df_full.empty and '日期' in df_full.columns:
+                date_col = pd.to_datetime(df_full['日期'], errors='coerce')
                 QUERY_DATE_RANGE['db_min_date'] = date_col.min()
                 QUERY_DATE_RANGE['db_max_date'] = date_col.max()
-                print(f"✅ 数据已加载到看板: {len(df_loaded):,} 行")
+                actual_start = date_col.min().strftime('%Y-%m-%d')
+                actual_end = date_col.max().strftime('%Y-%m-%d')
+                print(f"✅ 数据已加载到看板: 完整数据{len(df_full):,}行, 展示数据{len(df_display):,}行")
+                
+                # ✅ 使用统一的响应格式(包含统计卡片)
+                return _generate_load_success_response(df_display, actual_start, actual_end, cache_source="Upload")
         
         # ===== 7. 生成结果信息 =====
         success_files = [r for r in all_results if r['status'] == 'success']
@@ -10101,10 +10559,29 @@ def calculate_order_metrics(df, calc_mode: Optional[str] = None):
     # 动态添加成本字段
     if cost_field in df.columns:
         agg_dict[cost_field] = 'sum'
+        # 🔍 调试成本聚合前的数据
+        print(f"\n🔍 [成本聚合前检查]")
+        print(f"   成本字段名: '{cost_field}'")
+        print(f"   df['{cost_field}'].dtype: {df[cost_field].dtype}")
+        print(f"   成本总和: ¥{df[cost_field].sum():,.2f}")
+        print(f"   成本非空数量: {df[cost_field].notna().sum()} / {len(df)}")
+        print(f"   成本NaN数量: {df[cost_field].isna().sum()}")
+        print(f"   成本为0数量: {(df[cost_field] == 0).sum()}")
+        print(f"   成本样本(前5个): {df[cost_field].head().tolist()}")
     
     print(f"🔍 [calculate_order_metrics] 准备groupby,聚合字典包含 {len(agg_dict)} 个字段")
     
     order_agg = df.groupby('订单ID').agg(agg_dict).reset_index()
+    
+    # 🔍 调试成本聚合后的数据
+    if cost_field in order_agg.columns:
+        print(f"\n🔍 [成本聚合后检查]")
+        print(f"   order_agg['{cost_field}'].dtype: {order_agg[cost_field].dtype}")
+        print(f"   成本总和: ¥{order_agg[cost_field].sum():,.2f}")
+        print(f"   成本非空数量: {order_agg[cost_field].notna().sum()} / {len(order_agg)}")
+        print(f"   成本NaN数量: {order_agg[cost_field].isna().sum()}")
+        print(f"   成本为0数量: {(order_agg[cost_field] == 0).sum()}")
+        print(f"   成本样本(前5个): {order_agg[cost_field].head().tolist()}")
     
     # ⚠️ 关键修复：将订单总收入重命名为实收价格（现在是总额）
     if '订单总收入' in order_agg.columns:
@@ -10233,30 +10710,46 @@ def calculate_order_metrics(df, calc_mode: Optional[str] = None):
     
     order_agg['订单实际利润'] = _calculate_profit_formula(order_agg, calc_mode)
     
-    # ⚠️ 关键修复: 统一剔除平台服务费=0的订单
-    # 业务规则: 订单实际利润 = 利润额 - 平台服务费 - 物流配送费 + 企客后返
-    # 只有平台服务费>0的订单才是真实的平台订单,需要计入利润
-    if calc_mode == 'service_fee_positive':
-        # 兼容逻辑: 平台服务费>0 或 平台佣金>0
-        # 原因: 历史数据导入时,Excel的'平台服务费'列未正确映射到platform_service_fee字段
-        # 而是映射到了commission字段,因此需要同时检查两个字段
-        filtered = order_agg[
-            (order_agg['平台服务费'] > 0) | (order_agg['平台佣金'] > 0)
-        ].copy()
-    elif calc_mode == 'all_with_fallback':
-        # ✅ 修复: all_with_fallback模式也需要剔除平台服务费=0的订单
-        # 逻辑: 先使用平台服务费,如果<=0则使用平台佣金兜底,但最终必须>0
-        service_fee_col = order_agg.get('平台服务费', pd.Series(0, index=order_agg.index))
-        commission_col = order_agg.get('平台佣金', pd.Series(0, index=order_agg.index))
-        # 计算有效的服务费(使用兜底后的值)
-        effective_fee = service_fee_col.copy()
-        fallback_mask = (effective_fee <= 0)
-        effective_fee = effective_fee.mask(fallback_mask, commission_col)
-        # 只保留有效服务费>0的订单
-        filtered = order_agg[effective_fee > 0].copy()
-    else:
-        # all_no_fallback: 只使用平台服务费,必须>0
+    # ⚠️ 关键修复v2025-11-21: 按渠道类型区分过滤逻辑
+    # 业务规则:
+    # 1. 收费渠道(PLATFORM_FEE_CHANNELS): 必须剔除"平台服务费=0"的订单(异常订单)
+    # 2. 不收费渠道(线下、自有平台等): 保留所有订单,"平台服务费=0"是正常状态
+    # 
+    # 原因:
+    # - 收费渠道如果平台服务费=0,说明是异常订单或测试单
+    # - 不收费渠道本身不收平台服务费,其平台服务费=0是真实订单
+    # - 之前一刀切剔除所有平台服务费=0的订单,导致不收费渠道的真实订单被错误剔除
+    
+    # 确保order_agg包含渠道字段
+    if '渠道' not in order_agg.columns:
+        print(f"⚠️ [过滤逻辑] order_agg缺少'渠道'字段,无法按渠道类型过滤,将采用全局过滤")
+        # 兜底: 如果没有渠道信息,采用原有逻辑(全局过滤)
         filtered = order_agg[order_agg.get('平台服务费', 0) > 0].copy()
+    else:
+        # ✅ 新逻辑: 按渠道类型区分过滤
+        # 方案: 只剔除【收费渠道 且 平台服务费=0】的订单
+        is_fee_channel = order_agg['渠道'].isin(PLATFORM_FEE_CHANNELS)
+        is_zero_fee = order_agg.get('平台服务费', 0) <= 0
+        
+        # 剔除条件: 收费渠道 且 服务费=0
+        invalid_orders = is_fee_channel & is_zero_fee
+        filtered = order_agg[~invalid_orders].copy()
+        
+        # 🔍 [调试] 详细统计
+        print(f"\n📊 [过滤逻辑-按渠道类型] 统计报告:")
+        print(f"  总订单数: {len(order_agg)} 单")
+        print(f"  收费渠道订单数: {is_fee_channel.sum()} 单")
+        print(f"  不收费渠道订单数: {(~is_fee_channel).sum()} 单")
+        print(f"  收费渠道中服务费=0的订单: {(is_fee_channel & is_zero_fee).sum()} 单 (异常订单,已剔除)")
+        print(f"  不收费渠道中服务费=0的订单: {(~is_fee_channel & is_zero_fee).sum()} 单 (正常订单,已保留)")
+        print(f"  最终保留订单数: {len(filtered)} 单")
+        print(f"  利润额: ¥{order_agg['利润额'].sum():,.2f} → ¥{filtered['利润额'].sum():,.2f}")
+    
+    # 🔍 [调试] 打印剔除前后对比
+    print(f"\n💡 [过滤结果]")
+    print(f"  剔除前: {len(order_agg)} 订单, 利润额 ¥{order_agg['利润额'].sum():,.2f}")
+    print(f"  剔除后: {len(filtered)} 订单, 利润额 ¥{filtered['利润额'].sum():,.2f}")
+    print(f"  剔除量: {len(order_agg) - len(filtered)} 订单, 利润差 ¥{order_agg['利润额'].sum() - filtered['利润额'].sum():,.2f}")
     
     filtered['计算口径'] = calc_mode
     
@@ -10306,46 +10799,52 @@ def _calculate_profit_formula(order_agg, calc_mode: Optional[str] = None):
     - Tab2 渠道分析
     - Tab3+ 其他所有使用订单实际利润的地方
     
-    当前使用: 新公式(基于Excel利润额 + 平台服务费)
+    当前使用: 新公式(基于Excel利润额)
     公式: 订单实际利润 = 利润额 - 平台服务费 - 物流配送费 + 企客后返
+    
+    ⚠️ v2025-11-19修复: 移除佣金兜底逻辑
+    - 原因: 佣金兜底会保留利润额=0但有物流费的订单,导致负利润
+    - 示例: 214个订单(服务费=0但佣金>0),利润=-¥519.92
+    - 结论: 统一只使用平台服务费,不使用佣金兜底
     
     参数:
         order_agg: 订单级聚合数据(DataFrame,必须包含以下字段)
             - 利润额: 商品级sum
             - 物流配送费: 订单级first
-            - 平台佣金: 订单级first
-            - 新客减免金额(可选): 订单级first
+            - 平台服务费: 商品级sum
             - 企客后返(可选): 商品级sum
-        calc_mode: 计算口径, 控制平台服务费与兜底逻辑
-            - service_fee_positive/all_no_fallback: 仅使用平台服务费
-            - all_with_fallback: 平台服务费<=0时使用平台佣金兜底
+        calc_mode: 计算口径(当前已统一,此参数保留用于兼容)
     
     返回:
         Series: 订单实际利润
     """
     mode = normalize_calc_mode(calc_mode)
-
+    
     service_fee = order_agg.get('平台服务费')
     if service_fee is None:
         service_fee = pd.Series(0, index=order_agg.index, dtype=float)
     else:
         service_fee = service_fee.fillna(0)
 
-    if mode == 'all_with_fallback':
-        commission = order_agg.get('平台佣金', 0)
-        if not isinstance(commission, pd.Series):
-            commission = pd.Series(commission, index=order_agg.index, dtype=float)
-        else:
-            commission = commission.fillna(0)
-        fallback_mask = (service_fee <= 0)
-        service_fee = service_fee.mask(fallback_mask, commission)
-
-    return (
+    # ✅ v2025-11-19: 移除兜底逻辑,统一只使用平台服务费
+    # 不再检查平台佣金,避免保留负利润订单
+    
+    result = (
         order_agg['利润额'] -
         service_fee -
         order_agg['物流配送费'] +
         order_agg.get('企客后返', 0)
     )
+    
+    # 🔍 [调试] 打印利润计算详情
+    print(f"\n[调试] 利润计算公式:")
+    print(f"  利润额总和: ¥{order_agg['利润额'].sum():,.2f}")
+    print(f"  平台服务费总和: ¥{service_fee.sum():,.2f}")
+    print(f"  物流配送费总和: ¥{order_agg['物流配送费'].sum():,.2f}")
+    print(f"  企客后返总和: ¥{order_agg.get('企客后返', pd.Series(0, index=order_agg.index)).sum():,.2f}")
+    print(f"  订单实际利润总和: ¥{result.sum():,.2f}")
+    
+    return result
 
 
 # ==================== 性能优化: 缓存管理回调 (阶段3) ====================
@@ -10366,23 +10865,43 @@ def invalidate_cache(trigger):
 
 # ==================== Tab 1-7 内容回调 ====================
 
-# Tab 1: 订单数据概览
+# ⚡ 初始化Tab加载状态 (必须是第一个输出tabs-loaded-status的callback)
+@app.callback(
+    Output('tabs-loaded-status', 'data'),
+    Input('url', 'pathname'),
+    prevent_initial_call=False
+)
+def initialize_tabs_status(pathname):
+    """初始化Tab加载状态"""
+    return {}
+
+# Tab 1: 订单数据概览 (⚡ 懒加载优化)
 @app.callback(
     [Output('tab-1-content', 'children'),
      Output('cached-order-agg', 'data'),  # ⚡ 缓存订单聚合数据
-     Output('cached-comparison-data', 'data')],  # ⚡ 缓存环比数据
+     Output('cached-comparison-data', 'data'),  # ⚡ 缓存环比数据
+     Output('tabs-loaded-status', 'data', allow_duplicate=True)],  # ⚡ 更新Tab加载状态
     [Input('main-tabs', 'value'),
      Input('data-update-trigger', 'data')],
     [State('cached-order-agg', 'data'),  # ⚡ 读取缓存
      State('cached-comparison-data', 'data'),
-     State('cache-version', 'data')]
+     State('cache-version', 'data'),
+     State('tabs-loaded-status', 'data')],  # ⚡ Tab加载状态
+    prevent_initial_call=True
 )
-def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cache_version):
-    """渲染Tab 1：订单数据概览（✅ 使用统一计算函数 + ⚡ 缓存优化）"""
+def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cache_version, tabs_status):
+    """渲染Tab 1：订单数据概览（✅ 使用统一计算函数 + ⚡ 缓存优化 + ⚡ 懒加载优化）"""
     global GLOBAL_DATA, GLOBAL_FULL_DATA
     
+    # ⚡ 懒加载: 如果不是当前Tab,不渲染
     if active_tab != 'tab-1':
         raise PreventUpdate
+    
+    # ⚡ 懒加载: 首次加载时先显示骨架屏
+    if tabs_status and not tabs_status.get('tab-1', False):
+        skeleton = create_tab_skeleton() if LOADING_COMPONENTS_AVAILABLE else html.Div("加载中...")
+        tabs_status['tab-1'] = True  # 标记为已加载
+        return skeleton, None, None, tabs_status
     
     # 添加数据信息卡片（通过全局回调更新）
     data_info_placeholder = html.Div(id='tab1-data-info')
@@ -10391,9 +10910,25 @@ def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cach
         return dbc.Container([
             data_info_placeholder,
             dbc.Alert("⚠️ 未找到数据，请检查数据文件", color="warning")
-        ]), None, None  # ⚡ 返回3个值(包括缓存)
+        ]), None, None, tabs_status  # ⚡ 返回4个值(包括tabs_status)
     
-    df = GLOBAL_DATA.copy()
+    # 🔄 2025-11-19: 数据分离策略
+    # - df_full: 完整数据(含耗材) → 用于利润计算
+    # - df_display: 展示数据(不含耗材) → 用于分析图表
+    df_full = GLOBAL_FULL_DATA.copy() if GLOBAL_FULL_DATA is not None else GLOBAL_DATA.copy()
+    df_display = GLOBAL_DATA.copy()
+    
+    # Tab1使用完整数据计算利润(含耗材)
+    df = df_full
+    
+    # 🔍 [调试] 检查df是否包含耗材
+    if '一级分类名' in df.columns:
+        consumable_rows = len(df[df['一级分类名'] == '耗材'])
+        consumable_cost = df[df['一级分类名'] == '耗材']['商品采购成本'].sum() if '商品采购成本' in df.columns else 0
+        print(f"\n🔍 [Tab1数据源检查]")
+        print(f"   df总行数: {len(df):,}")
+        print(f"   耗材行数: {consumable_rows:,}")
+        print(f"   耗材成本: ¥{consumable_cost:,.2f}", flush=True)
     
     # ========== ⚡ 性能优化: 检查缓存有效性 ==========
     cache_valid = (
@@ -10444,12 +10979,12 @@ def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cach
     if not cache_valid:
         try:
             # 🔧 Tab1订单数据概览：使用all_with_fallback模式，保留所有订单（包括闪购小程序）
-            order_agg = calculate_order_metrics(df, calc_mode='all_with_fallback')  # ✅ 调用公共函数
+            order_agg = calculate_order_metrics(df, calc_mode='all_no_fallback')  # ✅ 调用公共函数
         except ValueError as e:
             return dbc.Container([
                 data_info_placeholder,
                 dbc.Alert(f"❌ {str(e)}", color="danger")
-            ]), None, None
+            ]), None, None, tabs_status  # ⚡ 返回4个值
     
     # ========== 步骤2：计算汇总指标 ==========
     print(f"📊 [汇总指标计算] order_agg状态: {len(order_agg)} 行", flush=True)
@@ -10709,7 +11244,15 @@ def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cach
             className="w-100 mb-4"
         ),
         
-        html.Div(id='tab1-detail-content', style={'display': 'none'})
+        # ⚡ 优化: 添加Loading组件包裹详细内容,避免闪屏
+        dcc.Loading(
+            id="loading-detail-analysis",
+            type="cube",  # 使用cube加载动画
+            children=[
+                html.Div(id='tab1-detail-content', style={'display': 'none'}, className="fade-in")
+            ],
+            color="#667eea"
+        )
     ])
     
     # ========== ⚡ 性能优化: 存储计算结果到缓存 ==========
@@ -10747,7 +11290,7 @@ def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cach
         'channel_comparison': channel_comparison
     } if not cache_valid else cached_comparison
     
-    return content, cached_agg_data, cached_comp_data
+    return content, cached_agg_data, cached_comp_data, tabs_status  # ⚡ 返回4个值(包括tabs_status)
 
 
 # ========== ⚡ 阶段4: 异步加载Tab1渠道和客单价分析 ==========
@@ -10795,7 +11338,7 @@ def async_load_tab1_channel_section(tab_content, trigger, cached_agg, cached_com
         print(f"🔄 [缓存失效] 重新计算订单聚合和渠道环比数据", flush=True)
         # 缓存未命中或失效,重新计算
         # 🔧 Tab1渠道分析：使用all_with_fallback模式，保留所有订单（包括闪购小程序）
-        order_agg = calculate_order_metrics(df, calc_mode='all_with_fallback')
+        order_agg = calculate_order_metrics(df, calc_mode='all_no_fallback')
         # ⚠️ 重新计算渠道环比
         channel_comparison = {}
         if '渠道' in df.columns and GLOBAL_FULL_DATA is not None:
@@ -10878,12 +11421,12 @@ def async_load_tab1_aov_section(channel_content, trigger, cached_agg, cache_vers
             print(f"⚠️ 缓存数据缺少关键字段,重新计算...", flush=True)
             print(f"   缺少字段: {[f for f in ['配送净成本', '订单总收入'] if f not in order_agg.columns]}", flush=True)
             # 🔧 Tab1客单价分析：使用all_with_fallback模式，保留所有订单（包括闪购小程序）
-            order_agg = calculate_order_metrics(df, calc_mode='all_with_fallback')
+            order_agg = calculate_order_metrics(df, calc_mode='all_no_fallback')
             print(f"✅ 重新计算后order_agg字段: {order_agg.columns.tolist()}", flush=True)
     else:
         print(f"🔍 [调试] 缓存失效或为空 (cache_valid={cache_valid}),调用calculate_order_metrics", flush=True)
         # 🔧 Tab1客单价分析：使用all_with_fallback模式，保留所有订单（包括闪购小程序）
-        order_agg = calculate_order_metrics(df, calc_mode='all_with_fallback')
+        order_agg = calculate_order_metrics(df, calc_mode='all_no_fallback')
         print(f"✅ calculate_order_metrics返回字段: {order_agg.columns.tolist()}", flush=True)
     
     # 🔧 【CRITICAL】最后的防御: 确保订单总收入字段存在
@@ -10896,7 +11439,13 @@ def async_load_tab1_aov_section(channel_content, trigger, cached_agg, cache_vers
             print(f"❌ '预计订单收入'也不存在! 字段列表: {order_agg.columns.tolist()}", flush=True)
     
     # 渲染客单价分析 (初始为全部渠道)
-    aov_analysis = _create_aov_analysis(df, order_agg, selected_channel='all')
+    # 获取当前门店名称
+    store_name = None
+    if '门店' in df.columns:
+        store_names = df['门店'].dropna().unique()
+        store_name = store_names[0] if len(store_names) > 0 else None
+    
+    aov_analysis = _create_aov_analysis(df, order_agg, selected_channel='all', selected_store=store_name)
     
     # 🆕 获取渠道列表用于下拉菜单
     channel_options = [{'label': '全部渠道', 'value': 'all'}]
@@ -10914,17 +11463,22 @@ def async_load_tab1_aov_section(channel_content, trigger, cached_agg, cache_vers
     return result
 
 
-# Tab 1 详细分析
+# Tab 1 详细分析 (⚡ 优化: 添加渐进式加载,避免闪屏)
 @app.callback(
     [Output('tab1-detail-content', 'children'),
      Output('tab1-detail-content', 'style')],
     Input('btn-show-detail-analysis', 'n_clicks'),
+    State('tab1-detail-content', 'style'),  # ⚡ 读取当前状态
     prevent_initial_call=True
 )
-def show_tab1_detail_analysis(n_clicks):
-    """显示Tab 1详细分析"""
+def show_tab1_detail_analysis(n_clicks, current_style):
+    """显示Tab 1详细分析 (⚡ 优化: 添加平滑过渡)"""
     if not n_clicks:
         raise PreventUpdate
+    
+    # ⚡ 优化: 如果已经展开,则折叠
+    if current_style and current_style.get('display') == 'block':
+        return html.Div(), {'display': 'none'}
     
     if GLOBAL_DATA is None or GLOBAL_DATA.empty:
         return dbc.Alert("⚠️ 数据不可用", color="warning"), {'display': 'block'}
@@ -11437,6 +11991,23 @@ def show_tab1_detail_analysis(n_clicks):
     
     # ==================== 4. 成本结构分析（使用订单级聚合，业务逻辑公式）====================
     
+    # 🔍 [调试] 验证数据源 - 检查df和order_agg的成本数据
+    print("\n" + "="*80)
+    print("🔍 [成本验证] 数据源检查")
+    if '一级分类名' in df.columns and '商品采购成本' in df.columns:
+        df_consumable = df[df['一级分类名'] == '耗材']
+        df_non_consumable = df[df['一级分类名'] != '耗材']
+        print(f"   df(原始数据):")
+        print(f"     总行数: {len(df):,}")
+        print(f"     耗材行数: {len(df_consumable):,}")
+        print(f"     耗材成本: ¥{df_consumable['商品采购成本'].sum():,.2f}")
+        print(f"     非耗材成本: ¥{df_non_consumable['商品采购成本'].sum():,.2f}")
+        print(f"     总成本(df直接求和): ¥{df['商品采购成本'].sum():,.2f}")
+    print(f"   order_agg(订单聚合后):")
+    print(f"     订单数: {len(order_agg):,}")
+    print(f"     商品采购成本总和: ¥{order_agg['商品采购成本'].sum():,.2f}")
+    print("="*80 + "\n", flush=True)
+    
     # ✅ 计算总销售额（用于利润率）
     if '实收价格' in order_agg.columns:
         total_sales_for_rate = order_agg['实收价格'].sum()
@@ -11445,8 +12016,23 @@ def show_tab1_detail_analysis(n_clicks):
     else:
         total_sales_for_rate = order_agg['实收价格'].sum()
     
-    # 使用订单聚合数据计算成本（避免重复）
-    product_cost = order_agg['商品采购成本'].sum()
+    # ⚠️ 成本结构分析：使用原始df数据避免聚合损失
+    # 只计算order_agg中存在的订单ID对应的成本
+    if '订单ID' in df.columns and '商品采购成本' in df.columns:
+        valid_order_ids = order_agg['订单ID'].unique()
+        df_valid_orders = df[df['订单ID'].isin(valid_order_ids)]
+        
+        # 调试: 检查df中的成本数据质量
+        print(f"\n🔍 [成本计算调试]")
+        print(f"   df_valid_orders总行数: {len(df_valid_orders):,}")
+        print(f"   商品采购成本总和(含NaN): ¥{df_valid_orders['商品采购成本'].sum():,.2f}")
+        print(f"   商品采购成本NaN数量: {df_valid_orders['商品采购成本'].isna().sum():,}")
+        print(f"   商品采购成本为0数量: {(df_valid_orders['商品采购成本'] == 0).sum():,}")
+        
+        product_cost = df_valid_orders['商品采购成本'].fillna(0).sum()
+    else:
+        product_cost = order_agg['商品采购成本'].sum()
+    
     delivery_cost = order_agg['配送净成本'].sum()
     marketing_cost = order_agg['商家活动成本'].sum()
     platform_service_fee_total = 0
@@ -11793,7 +12379,8 @@ def show_tab1_detail_analysis(n_clicks):
     
     charts.append(business_logic_explanation)
     
-    return html.Div(charts), {'display': 'block'}
+    # ⚡ 优化: 返回带fade-in动画的容器,避免闪屏
+    return html.Div(charts, className="fade-in"), {'display': 'block', 'opacity': 1}
 
 
 # 🆕 Tab 1: 销售趋势渠道筛选callback
@@ -11816,7 +12403,7 @@ def update_sales_trend_by_channel(selected_channel):
         
         # 使用统一的订单聚合函数
         # 🔧 销售趋势分析：使用all_with_fallback模式，保留所有订单（包括平台费用为0的订单，如闪购小程序）
-        order_agg = calculate_order_metrics(df, calc_mode='all_with_fallback')
+        order_agg = calculate_order_metrics(df, calc_mode='all_no_fallback')
         
         # 🆕 使用新函数计算带利润率的日度数据
         daily_sales, channel_available = calculate_daily_sales_with_channel(
@@ -11923,7 +12510,7 @@ def update_category_trend_by_channel(selected_channel):
             return dbc.Alert("⚠️ 数据中缺少【一级分类名】字段", color="warning")
         
         # 🔧 使用all_with_fallback模式,保留所有订单(包括闪购小程序)
-        order_agg = calculate_order_metrics(df, calc_mode='all_with_fallback')
+        order_agg = calculate_order_metrics(df, calc_mode='all_no_fallback')
         
         # 🔍 调试日志
         print(f"\n🔍 [分类趋势-渠道筛选] 渠道='{selected_channel}', 订单数={len(order_agg)}")
@@ -12017,17 +12604,23 @@ def update_aov_analysis_by_channel(selected_channel, cached_agg, cache_version):
             # 检查缓存是否包含必要字段
             if '配送净成本' not in order_agg.columns or '订单总收入' not in order_agg.columns:
                 print(f"⚠️ [客单价-渠道筛选] 缓存数据缺少关键字段,重新计算...")
-                order_agg = calculate_order_metrics(df, calc_mode='all_with_fallback')
+                order_agg = calculate_order_metrics(df, calc_mode='all_no_fallback')
         else:
-            order_agg = calculate_order_metrics(df, calc_mode='all_with_fallback')
+            order_agg = calculate_order_metrics(df, calc_mode='all_no_fallback')
         
         # 🔍 调试日志
         print(f"\n🔍 [客单价-渠道筛选] 渠道='{selected_channel}', 订单数={len(order_agg)}")
         if '渠道' in order_agg.columns:
             print(f"   渠道分布: {order_agg['渠道'].value_counts().to_dict()}")
         
-        # 调用修改后的分析函数,传入selected_channel参数
-        return _create_aov_analysis(df, order_agg, selected_channel)
+        # 获取当前门店名称
+        store_name = None
+        if '门店' in df.columns:
+            store_names = df['门店'].dropna().unique()
+            store_name = store_names[0] if len(store_names) > 0 else None
+        
+        # 调用修改后的分析函数,传入selected_channel和selected_store参数
+        return _create_aov_analysis(df, order_agg, selected_channel, store_name)
     
     except Exception as e:
         print(f"❌ [update_aov_analysis_by_channel] 错误: {e}")
@@ -13037,15 +13630,24 @@ def generate_trend_analysis_content(df, period='week', alert_level='warning', vi
 
 @app.callback(
     Output('tab-2-content', 'children'),
-    Input('main-tabs', 'value')
+    [Input('main-tabs', 'value'),
+     Input('data-update-trigger', 'data')],  # 🔴 监听数据更新
+    [State('tabs-loaded-status', 'data')],
+    prevent_initial_call=True
 )
-def render_tab2_content(active_tab):
+def render_tab2_content(active_tab, data_trigger, tabs_status):
     """Tab 2: 商品分析 - 商品销售排行、分类分析、库存周转、滞销预警
     
     ✅ 使用统一计算标准（与Tab 1一致）
+    ⚡ 懒加载优化: 首次显示骨架屏
     """
     if active_tab != 'tab-2':
         raise PreventUpdate
+    
+    # ⚡ 懒加载: 首次加载时先显示骨架屏
+    if tabs_status and not tabs_status.get('tab-2', False):
+        skeleton = create_tab_skeleton() if LOADING_COMPONENTS_AVAILABLE else html.Div("加载中...")
+        return skeleton
     
     if GLOBAL_DATA is None:
         return dbc.Alert("⚠️ 未加载数据，请重启应用", color="warning", className="text-center")
@@ -15461,12 +16063,23 @@ def render_marketing_cost_optimization(analysis: Dict):
 
 @app.callback(
     Output('tab-5-content', 'children'),
-    Input('main-tabs', 'value')
+    [Input('main-tabs', 'value'),
+     Input('data-update-trigger', 'data')],  # 🔴 监听数据更新
+    [State('tabs-loaded-status', 'data')],
+    prevent_initial_call=True
 )
-def render_tab5_content(active_tab):
-    """Tab 5: 时段场景分析"""
+def render_tab5_content(active_tab, data_trigger, tabs_status):
+    """Tab 5: 时段场景分析
+    
+    ⚡ 懒加载优化: 首次显示骨架屏
+    """
     if active_tab != 'tab-5':
         raise PreventUpdate
+    
+    # ⚡ 懒加载: 首次加载时先显示骨架屏
+    if tabs_status and not tabs_status.get('tab-5', False):
+        skeleton = create_tab_skeleton() if LOADING_COMPONENTS_AVAILABLE else html.Div("加载中...")
+        return skeleton
     
     try:
         df = GLOBAL_DATA.copy()
@@ -16240,14 +16853,27 @@ def calculate_cost_profit_metrics(df: pd.DataFrame) -> Dict[str, Any]:
     metrics['total_orders'] = df['订单ID'].nunique() if '订单ID' in df.columns else len(df)
     metrics['total_sales'] = df['实收价格'].sum() if '实收价格' in df.columns else 0
     
-    # 成本计算
+    # 成本计算 - 使用正确的字段名
     cost_fields = []
-    if '商品成本' in df.columns:
+    # 商品成本 (优先使用'商品采购成本',兼容'商品成本')
+    if '商品采购成本' in df.columns:
+        cost_fields.append('商品采购成本')
+    elif '商品成本' in df.columns:
         cost_fields.append('商品成本')
-    if '配送费成本' in df.columns:
+    
+    # 配送费成本 (优先使用'物流配送费',兼容'配送费成本')
+    if '物流配送费' in df.columns:
+        cost_fields.append('物流配送费')
+    elif '配送费成本' in df.columns:
         cost_fields.append('配送费成本')
-    if '营销费用' in df.columns:
+    
+    # 营销费用 (优先使用'商家活动费用',兼容'营销费用','营销成本')
+    if '商家活动费用' in df.columns:
+        cost_fields.append('商家活动费用')
+    elif '营销费用' in df.columns:
         cost_fields.append('营销费用')
+    elif '营销成本' in df.columns:
+        cost_fields.append('营销成本')
     
     if cost_fields:
         metrics['total_cost'] = df[cost_fields].sum().sum()
@@ -16277,21 +16903,35 @@ def calculate_cost_profit_metrics(df: pd.DataFrame) -> Dict[str, Any]:
         metrics['avg_order_value'] = 0
         metrics['avg_profit_per_order'] = 0
     
-    # 成本结构
+    # 成本结构 - 使用正确的字段名
     cost_breakdown = {}
-    if '商品成本' in df.columns:
+    
+    # 商品成本 (优先使用'商品采购成本',兼容'商品成本')
+    if '商品采购成本' in df.columns:
+        cost_breakdown['商品成本'] = df['商品采购成本'].sum()
+    elif '商品成本' in df.columns:
         cost_breakdown['商品成本'] = df['商品成本'].sum()
-    if '配送费成本' in df.columns:
+    
+    # 配送费成本 (优先使用'物流配送费',兼容'配送费成本')
+    if '物流配送费' in df.columns:
+        cost_breakdown['配送费成本'] = df['物流配送费'].sum()
+    elif '配送费成本' in df.columns:
         cost_breakdown['配送费成本'] = df['配送费成本'].sum()
-    if '营销费用' in df.columns:
-        cost_breakdown['营销费用'] = df['营销费用'].sum()
+    
+    # 营销费用 (优先使用'商家活动费用',兼容'营销费用','营销成本')
+    if '商家活动费用' in df.columns:
+        cost_breakdown['商家活动'] = df['商家活动费用'].sum()
+    elif '营销费用' in df.columns:
+        cost_breakdown['商家活动'] = df['营销费用'].sum()
+    elif '营销成本' in df.columns:
+        cost_breakdown['商家活动'] = df['营销成本'].sum()
     
     # 如果没有详细成本,创建估算
     if not cost_breakdown:
         cost_breakdown = {
             '商品成本': metrics['total_cost'] * 0.7,
             '配送费成本': metrics['total_cost'] * 0.2,
-            '营销费用': metrics['total_cost'] * 0.1
+            '商家活动': metrics['total_cost'] * 0.1
         }
     
     metrics['cost_breakdown'] = cost_breakdown
@@ -16698,16 +17338,19 @@ def render_tab6_content(active_tab):
     if active_tab != 'tab-6':
         raise PreventUpdate
     
-    global GLOBAL_DATA
+    global GLOBAL_DATA, GLOBAL_FULL_DATA
     
-    if GLOBAL_DATA is None or GLOBAL_DATA.empty:
+    # 🔧 成本分析需要使用完整数据(含耗材成本)
+    df_to_use = GLOBAL_FULL_DATA if GLOBAL_FULL_DATA is not None and not GLOBAL_FULL_DATA.empty else GLOBAL_DATA
+    
+    if df_to_use is None or df_to_use.empty:
         return dbc.Alert([
             html.I(className="bi bi-exclamation-triangle me-2"),
             "暂无数据，请从数据库加载或上传数据文件"
         ], color="warning", className="text-center")
     
     try:
-        df = GLOBAL_DATA.copy()
+        df = df_to_use.copy()
         
         # 计算成本利润指标
         cost_profit_metrics = calculate_cost_profit_metrics(df)
@@ -16839,18 +17482,26 @@ def render_tab6_content(active_tab):
     [Output('global-data-info-card', 'children'),
      Output('data-metadata', 'data')],
     [Input('data-update-trigger', 'data'),
-     Input('main-tabs', 'value')],
+     Input('main-tabs', 'value'),
+     Input('global-refresh-trigger', 'data')],
+    [State('global-data-info-card', 'children')],
     prevent_initial_call=False
 )
-def update_global_data_info(trigger, active_tab):
-    """更新全局数据信息卡片"""
+def update_global_data_info(trigger, active_tab, refresh_trigger, current_children):
+    """更新全局数据信息卡片 - 支持骨架屏渐进加载"""
     global GLOBAL_DATA, QUERY_DATE_RANGE
     
+    # ⚡ 首次加载: 检测是否为骨架屏状态
     if GLOBAL_DATA is None or GLOBAL_DATA.empty:
+        # 如果当前不是骨架屏,显示骨架屏
+        if current_children and not (isinstance(current_children, dict) and current_children.get('type') == 'Div' and 'skeleton-card' in str(current_children)):
+            if LOADING_COMPONENTS_AVAILABLE:
+                return create_skeleton_card(title=False, metrics=0, chart=False), {}
+        # 否则返回警告信息
         return dbc.Alert([
             html.I(className="bi bi-exclamation-triangle me-2"),
             "⚠️ 未加载数据，请从数据库加载或上传数据文件"
-        ], color="warning", className="mb-3"), {}
+        ], color="warning", className="mb-3 fade-in"), {}
     
     try:
         from datetime import datetime
@@ -16908,7 +17559,7 @@ def update_global_data_info(trigger, active_tab):
             'filename': data_filename
         }
         
-        # 创建信息卡片
+        # 创建信息卡片 (添加fade-in动画)
         info_card = dbc.Card([
             dbc.CardBody([
                 dbc.Row([
@@ -16968,10 +17619,11 @@ def update_global_data_info(trigger, active_tab):
                     ], width=2)
                 ], align="center")
             ])
-        ], className="mb-3", style={
+        ], className="mb-3 fade-in", style={
             'borderLeft': '4px solid #28a745',
             'boxShadow': '0 2px 4px rgba(0,0,0,0.05)',
-            'background': '#f8fff9'
+            'background': '#f8fff9',
+            'animation': 'fadeIn 0.5s ease-in-out'  # ⚡ 添加渐进显示动画
         })
         
         return info_card, metadata
@@ -17964,13 +18616,23 @@ app.clientside_callback(
     Output('tab-7-content', 'children'),
     [Input('main-tabs', 'value'),
      Input('data-update-trigger', 'data')],  # 🔴 监听数据更新
-    State('current-store-id', 'data'),
-    State('store-data', 'data')
+    [State('current-store-id', 'data'),
+     State('store-data', 'data'),
+     State('tabs-loaded-status', 'data')],
+    prevent_initial_call=True
 )
-def render_tab7_marketing_content(active_tab, data_trigger, store_id, store_data):
-    """Tab 7: 营销成本异常分析"""
+def render_tab7_marketing_content(active_tab, data_trigger, store_id, store_data, tabs_status):
+    """Tab 7: 营销成本异常分析
+    
+    ⚡ 懒加载优化: 首次显示骨架屏
+    """
     if active_tab != 'tab-7':
         raise PreventUpdate
+    
+    # ⚡ 懒加载: 首次加载时先显示骨架屏
+    if tabs_status and not tabs_status.get('tab-7', False):
+        skeleton = create_tab_skeleton() if LOADING_COMPONENTS_AVAILABLE else html.Div("加载中...")
+        return skeleton
     
     print(f"[Tab7渲染] 门店ID: {store_id}, 数据触发: {data_trigger}, 数据量: {len(store_data) if store_data else 0}")
     
@@ -17995,15 +18657,16 @@ def render_tab7_marketing_content(active_tab, data_trigger, store_id, store_data
             df = GLOBAL_DATA.copy()
         
         if df is None or len(df) == 0:
-            return dbc.Alert("📊 暂无数据，请先加载数据", color="warning", className="text-center")
+            return dbc.Alert("📊 暂无数据，请先加载数据", color="warning", className="text-center"), tabs_status
         
-        # 🔴 剔除耗材数据(购物袋等)
-        if '一级分类名' in df.columns:
-            original_len = len(df)
-            df = df[df['一级分类名'] != '耗材'].copy()
-            removed = original_len - len(df)
-            if removed > 0:
-                print(f"[Tab7] 已剔除耗材数据: {removed} 行", flush=True)
+        # ❌ 2025-11-18: 禁用耗材剔除,保留真实成本数据
+        # if '一级分类名' in df.columns:
+        #     original_len = len(df)
+        #     df = df[df['一级分类名'] != '耗材'].copy()
+        #     removed = original_len - len(df)
+        #     if removed > 0:
+        #         print(f"[Tab7] 已剔除耗材数据: {removed} 行", flush=True)
+        print(f"[Tab7] ✅ 保留耗材数据 (包含购物袋等成本)", flush=True)
         
         # 🔴 按渠道筛选(只排除咖啡渠道)
         if '渠道' in df.columns:
@@ -18338,7 +19001,7 @@ def render_tab7_marketing_content(active_tab, data_trigger, store_id, store_data
         print(f"❌ Tab 7渲染失败: {e}")
         import traceback
         traceback.print_exc()
-        return dbc.Alert(f"渲染失败: {str(e)}", color="danger")
+        return dbc.Alert(f"渲染失败: {str(e)}", color="danger"), tabs_status
 
 
 # Tab 7 子组件回调
@@ -20589,7 +21252,9 @@ def export_aov_segment(n_clicks, store_data, cached_agg, store_id):
 
 
 @app.callback(
-    Output('download-tab1-order-report', 'data'),
+    [Output('download-tab1-order-report', 'data'),
+     Output('export-toast', 'is_open', allow_duplicate=True),
+     Output('export-toast', 'children', allow_duplicate=True)],
     Input('export-tab1-order-report-btn', 'n_clicks'),
     State('store-data', 'data'),
     State('cached-order-agg', 'data'),
@@ -20609,8 +21274,17 @@ def export_tab1_order_report(n_clicks, store_data, cached_agg, cached_comparison
     
     注意：客单价深度分析已移至单独的导出按钮
     """
+    # 添加调试日志
+    print(f"\n🔍 [导出回调触发] n_clicks={n_clicks}, store_data存在={store_data is not None}", flush=True)
+    
+    # 检查是否真的点击了按钮
+    if not n_clicks or n_clicks == 0:
+        print(f"   ⏭️ 跳过:未点击按钮 (n_clicks={n_clicks})", flush=True)
+        raise PreventUpdate
+    
     if not store_data:
-        return None
+        print(f"   ⚠️ 没有数据,返回None", flush=True)
+        return None, False, ""
     
     import io
     from datetime import datetime, timedelta
@@ -20618,7 +21292,7 @@ def export_tab1_order_report(n_clicks, store_data, cached_agg, cached_comparison
     df = pd.DataFrame(store_data)
     
     if len(df) == 0:
-        return None
+        return None, False, ""
     
     # 获取门店名称和日期范围
     store_name = df['门店名称'].iloc[0] if '门店名称' in df.columns else "未知门店"
@@ -20968,7 +21642,8 @@ def export_tab1_order_report(n_clicks, store_data, cached_agg, cached_comparison
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     filename = f"{store_name}_经营分析报告_订单维度_{date_range_str}_{timestamp}.xlsx"
     
-    return dcc.send_bytes(output.getvalue(), filename)
+    # 返回文件和Toast提示
+    return dcc.send_bytes(output.getvalue(), filename), True, "✅ 导出成功!"
 
 
 # ==================== 主程序入口 ====================
@@ -21005,6 +21680,162 @@ app.clientside_callback(
 # except Exception as e:
 #     print(f"⚠️ Tab7回调注册失败: {e}")
 print("✅ Tab7营销分析回调已加载（主文件内置）")
+
+# ==================== Toast队列管理系统 ====================
+
+@app.callback(
+    Output('toast-container', 'children'),
+    [Input('toast-queue', 'data'),
+     Input('toast-cleanup-interval', 'n_intervals')],
+    State('toast-container', 'children'),
+    prevent_initial_call=False
+)
+def manage_toast_queue(toast_queue, n_intervals, current_toasts):
+    """
+    Toast队列管理器 - 自动堆叠显示多个Toast,防止重叠和冲突
+    
+    功能:
+    1. 自动堆叠多个Toast(垂直排列)
+    2. 自动消失管理(可配置duration)
+    3. 防止重复消息
+    4. 限制最多同时显示5个Toast
+    """
+    from datetime import datetime
+    
+    if not toast_queue:
+        return []
+    
+    # 当前时间戳
+    now = datetime.now().timestamp()
+    
+    # 过滤掉已过期的Toast
+    active_toasts = []
+    for toast_item in toast_queue:
+        if isinstance(toast_item, dict):
+            expire_time = toast_item.get('expire_at', 0)
+            if expire_time > now or expire_time == 0:  # 0表示不自动关闭
+                active_toasts.append(toast_item)
+    
+    # 限制最多显示5个Toast
+    active_toasts = active_toasts[-5:]
+    
+    # 生成Toast组件列表
+    toast_components = []
+    for idx, toast_item in enumerate(active_toasts):
+        toast_id = toast_item.get('id', f'toast-{idx}')
+        message = toast_item.get('message', '')
+        header = toast_item.get('header', '提示')
+        color = toast_item.get('color', 'info')
+        icon = toast_item.get('icon', 'info')
+        duration = toast_item.get('duration', 4000)
+        dismissable = toast_item.get('dismissable', True)
+        
+        toast = dbc.Toast(
+            message,
+            id=toast_id,
+            header=header,
+            is_open=True,
+            dismissable=dismissable,
+            icon=icon,
+            duration=duration if duration > 0 else None,
+            style={
+                'marginBottom': '10px',
+                'boxShadow': '0 4px 12px rgba(0,0,0,0.15)',
+                'borderLeft': f'4px solid {get_toast_border_color(color)}'
+            },
+            color=color
+        )
+        toast_components.append(toast)
+    
+    return toast_components
+
+
+def get_toast_border_color(color):
+    """获取Toast边框颜色"""
+    color_map = {
+        'success': '#28a745',
+        'info': '#17a2b8',
+        'warning': '#ffc107',
+        'danger': '#dc3545',
+        'primary': '#007bff'
+    }
+    return color_map.get(color, '#17a2b8')
+
+
+def add_toast(message, header='提示', color='info', icon='info', duration=4000, dismissable=True):
+    """
+    添加Toast消息到队列的辅助函数
+    
+    参数:
+        message: 消息内容
+        header: Toast标题
+        color: 颜色类型 (success/info/warning/danger/primary)
+        icon: 图标类型
+        duration: 显示时长(毫秒), 0表示不自动关闭
+        dismissable: 是否可手动关闭
+    
+    返回:
+        dict: Toast数据项
+    """
+    from datetime import datetime
+    import uuid
+    
+    expire_at = 0 if duration == 0 else datetime.now().timestamp() + (duration / 1000)
+    
+    return {
+        'id': f'toast-{uuid.uuid4().hex[:8]}',
+        'message': message,
+        'header': header,
+        'color': color,
+        'icon': icon,
+        'duration': duration,
+        'dismissable': dismissable,
+        'expire_at': expire_at,
+        'created_at': datetime.now().timestamp()
+    }
+
+
+# ==================== Clientside Callbacks (前端JavaScript) ====================
+
+# ⚡ 回到顶部按钮 - 滚动显示/隐藏 + 点击回到顶部
+app.clientside_callback(
+    """
+    function(n_intervals) {
+        // 监听滚动事件,显示/隐藏按钮
+        const btn = document.querySelector('.back-to-top');
+        if (!btn) return window.dash_clientside.no_update;
+        
+        window.onscroll = function() {
+            if (document.body.scrollTop > 500 || document.documentElement.scrollTop > 500) {
+                btn.classList.add('show');
+            } else {
+                btn.classList.remove('show');
+            }
+        };
+        
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output('back-to-top-btn', 'n_clicks'),
+    Input('url', 'pathname')  # 页面加载时触发
+)
+
+# 回到顶部按钮点击事件
+app.clientside_callback(
+    """
+    function(n_clicks) {
+        if (n_clicks && n_clicks > 0) {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output('back-to-top-btn', 'style'),
+    Input('back-to-top-btn', 'n_clicks')
+)
 
 # ==================== 主程序入口 ====================
 if __name__ == '__main__':

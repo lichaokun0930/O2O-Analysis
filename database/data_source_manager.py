@@ -57,20 +57,35 @@ class DataSourceManager:
     def load_from_database(self, 
                           store_name: str = None,
                           start_date: datetime = None,
-                          end_date: datetime = None) -> pd.DataFrame:
-        """从数据库加载数据"""
+                          end_date: datetime = None,
+                          split_consumables: bool = True) -> dict:
+        """
+        从数据库加载数据
+        
+        Args:
+            store_name: 门店名称
+            start_date: 开始日期
+            end_date: 结束日期
+            split_consumables: 是否分离耗材数据
+            
+        Returns:
+            如果split_consumables=True:
+                {'full': 完整数据(含耗材), 'display': 展示数据(不含耗材)}
+            如果split_consumables=False:
+                {'full': 完整数据(含耗材)}
+        """
         print(f"[Database] 加载数据...")
         print(f"[Database] 参数 - 门店: {store_name}, 开始日期: {start_date}, 结束日期: {end_date}")
         
         db = next(get_db())
         
         try:
-            # 构建查询 - JOIN Product表获取店内码和库存
+            # 构建查询 - JOIN Product表获取店内码和库存(不再JOIN成本,使用Order表自己的cost)
             from database.models import Product
             query = db.query(
                 Order, 
                 Product.store_code,
-                Product.stock  # 🆕 同时获取库存
+                Product.stock  # 🆕 获取库存
             ).outerjoin(
                 Product, Order.barcode == Product.barcode
             )
@@ -121,7 +136,7 @@ class DataSourceManager:
             
             # 转换为DataFrame
             data = []
-            for order, store_code, stock in results:  # 🆕 解包时增加stock
+            for order, store_code, stock in results:  # 🆕 解包时去掉cost,使用Order自己的cost字段
                 data.append({
                     # 基础订单信息
                     '订单ID': order.order_id,
@@ -143,8 +158,8 @@ class DataSourceManager:
                     # 价格成本
                     '商品实售价': order.price,
                     '商品原价': order.original_price if order.original_price else order.price,
-                    '商品采购成本': order.cost if order.cost else 0.0,
-                    '成本': order.cost if order.cost else 0.0,  # 兼容字段
+                    '商品采购成本': order.cost if order.cost is not None else 0.0,  # ✅ 修复:使用Order表自己的cost字段
+                    '成本': order.cost if order.cost is not None else 0.0,  # 兼容字段
                     '实收价格': order.actual_price if order.actual_price else order.price,
                     
                     # 销量金额
@@ -207,20 +222,34 @@ class DataSourceManager:
                 xiaochengxu_count = (df['渠道'] == '闪购小程序').sum()
                 print(f"[Database] 🔍 '闪购小程序'数据: {xiaochengxu_count} 行")
             
-            # ✅ 剔除耗材数据(与Excel加载逻辑保持一致)
-            if '一级分类名' in df.columns:
-                original_len = len(df)
-                df = df[df['一级分类名'] != '耗材'].copy()
-                if len(df) < original_len:
-                    print(f"[Database] 已剔除耗材: {original_len - len(df):,} 行")
-                    
-                # 🔍 剔除耗材后再检查闪购小程序
-                if '渠道' in df.columns:
-                    xiaochengxu_after = (df['渠道'] == '闪购小程序').sum()
-                    print(f"[Database] 🔍 剔除耗材后'闪购小程序': {xiaochengxu_after} 行")
+            # 🔄 2025-11-19: 数据分离策略
+            # - df_full: 完整数据(含耗材) → 用于利润计算
+            # - df_display: 展示数据(不含耗材) → 用于分析图表
+            print(f"[Database] ✅ 保留耗材数据 (包含购物袋等成本)")
             
-            self.current_source = 'database'
-            return df
+            df_full = df.copy()
+            
+            if split_consumables and '一级分类名' in df.columns:
+                df_display = df[df['一级分类名'] != '耗材'].copy()
+                consumable_count = len(df_full) - len(df_display)
+                
+                print(f"[Database] 📊 数据分离完成:")
+                print(f"   - 完整数据(含耗材): {len(df_full):,} 行")
+                print(f"   - 展示数据(不含耗材): {len(df_display):,} 行")
+                print(f"   - 耗材数据: {consumable_count:,} 行")
+                
+                self.current_source = 'database'
+                return {
+                    'full': df_full,
+                    'display': df_display
+                }
+            else:
+                print(f"[Database] 📊 返回完整数据: {len(df_full):,} 行 (不分离)")
+                self.current_source = 'database'
+                return {
+                    'full': df_full,
+                    'display': df_full.copy()
+                }
             
         except Exception as e:
             print(f"[Database] 加载失败: {str(e)}")

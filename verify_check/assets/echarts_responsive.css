@@ -1,0 +1,187 @@
+/* 
+ * ECharts 响应式样式
+ * 配合 echarts_responsive.js 实现完整的响应式布局
+ */
+
+/* ==================== 响应式断点 ==================== */
+
+/* 📱 移动端（< 576px） */
+@media (max-width: 575px) {
+    /* 图表容器 */
+    #chart-slot-distribution,
+    #chart-scene-distribution,
+    #chart-revenue-top10,
+    #chart-period-comparison {
+        min-height: 300px !important;
+        max-height: 400px !important;
+    }
+    
+    /* 卡片间距调整 */
+    .card {
+        margin-bottom: 1rem !important;
+    }
+    
+    /* 标题字体缩小 */
+    .card-body h6 {
+        font-size: 12px !important;
+    }
+    
+    /* 提示信息字体缩小 */
+    .alert {
+        font-size: 11px !important;
+        padding: 6px !important;
+    }
+    
+    /* 统计卡片布局 */
+    .stat-card {
+        padding: 10px !important;
+    }
+    
+    .stat-value {
+        font-size: 24px !important;
+    }
+    
+    .stat-label {
+        font-size: 12px !important;
+    }
+}
+
+/* 📱 平板（576px - 991px） */
+@media (min-width: 576px) and (max-width: 991px) {
+    /* 图表容器 */
+    #chart-slot-distribution,
+    #chart-scene-distribution,
+    #chart-revenue-top10,
+    #chart-period-comparison {
+        min-height: 400px !important;
+        max-height: 500px !important;
+    }
+    
+    /* 卡片间距 */
+    .card {
+        margin-bottom: 1.5rem !important;
+    }
+    
+    /* 标题字体 */
+    .card-body h6 {
+        font-size: 13px !important;
+    }
+    
+    /* 提示信息 */
+    .alert {
+        font-size: 12px !important;
+        padding: 8px !important;
+    }
+    
+    /* 统计卡片 */
+    .stat-value {
+        font-size: 28px !important;
+    }
+    
+    .stat-label {
+        font-size: 13px !important;
+    }
+}
+
+/* 💻 桌面端（≥ 992px） */
+@media (min-width: 992px) {
+    /* 图表容器 - 使用默认高度 */
+    #chart-slot-distribution,
+    #chart-scene-distribution,
+    #chart-revenue-top10 {
+        min-height: 450px !important;
+    }
+    
+    /* 周期对比图由动态高度控制 */
+    #chart-period-comparison {
+        min-height: 350px !important;
+    }
+}
+
+/* ==================== ECharts容器通用样式 ==================== */
+
+/* 所有ECharts容器 */
+[id*="echarts"] {
+    transition: height 0.3s ease; /* 高度变化平滑过渡 */
+}
+
+/* 图表容器加载状态 */
+.chart-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    color: #666;
+}
+
+/* ==================== 动态高度相关 ==================== */
+
+/* 支持动态高度的容器 */
+.dynamic-height-chart {
+    height: auto !important;
+    min-height: 350px;
+    max-height: 800px;
+    overflow: hidden;
+}
+
+/* ==================== 响应式工具类 ==================== */
+
+/* 移动端隐藏 */
+.hide-mobile {
+    @media (max-width: 575px) {
+        display: none !important;
+    }
+}
+
+/* 桌面端隐藏 */
+.hide-desktop {
+    @media (min-width: 992px) {
+        display: none !important;
+    }
+}
+
+/* 响应式文字大小 */
+.text-responsive {
+    font-size: clamp(12px, 2vw, 16px);
+}
+
+/* ==================== 性能优化 ==================== */
+
+/* GPU加速 */
+[id*="echarts"] {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
+/* 防止过度重绘 */
+.chart-container {
+    contain: layout style paint;
+}
+
+/* ==================== 打印样式 ==================== */
+
+@media print {
+    /* 打印时固定高度 */
+    #chart-slot-distribution,
+    #chart-scene-distribution,
+    #chart-revenue-top10,
+    #chart-period-comparison {
+        height: 400px !important;
+        page-break-inside: avoid;
+    }
+    
+    /* 隐藏交互元素 */
+    .alert,
+    button {
+        display: none !important;
+    }
+}
+
+/* ==================== 深色模式支持（可选） ==================== */
+
+@media (prefers-color-scheme: dark) {
+    /* 暗色主题下的图表容器 */
+    [id*="echarts"] {
+        background-color: #1a1a1a;
+    }
+}
