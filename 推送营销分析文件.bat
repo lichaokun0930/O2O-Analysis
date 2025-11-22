@@ -47,6 +47,13 @@ git add "推送到Github.bat"
 git add "推送到Github.ps1"
 git add "推送营销分析文件.bat"
 git add "检查营销分析文件.ps1"
+git add "推送前检查.bat"
+git add "完整推送确认清单.md"
+
+echo 📦 添加数据库相关文件...
+git add "migrations\*.sql"
+git add "verify_check\数据库导出\*.sql"
+git add "database\*.py"
 echo.
 
 echo 📝 检查哪些文件将被提交...
@@ -75,6 +82,11 @@ git commit -m "feat: 添加营销分析模型+管理工具+推送脚本
 + B电脑克隆清单.md (完整部署指南)
 + Github推送文件清单.md (文件清单)
 + 推送脚本 (bat+ps1)
+
+【数据库文件】
++ migrations/pg_ddl_*.sql (数据库表结构)
++ verify_check/数据库导出/o2o_dashboard_full_*.sql (完整数据备份)
++ database模块 (数据库连接和管理)
 
 【verify_check目录】
 + octant_analyzer.py (英文版八象限分析器)
@@ -114,10 +126,16 @@ if %errorlevel%==0 (
     echo   ✓ Github推送文件清单.md
     echo   ✓ 推送脚本 (bat+ps1^)
     echo.
+    echo 【数据库文件】
+    echo   ✓ migrations/pg_ddl_*.sql
+    echo   ✓ verify_check/数据库导出/o2o_dashboard_full_*.sql
+    echo   ✓ database模块
+    echo.
     echo 🎉 B电脑克隆后即可使用:
     echo      Tab7营销分析功能
     echo      数据库字段迁移工具
     echo      Requirements依赖追踪系统
+    echo      完整数据库备份恢复
 ) else (
     echo ========================================
     echo ❌ 推送失败!
