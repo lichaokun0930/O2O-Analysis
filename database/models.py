@@ -39,6 +39,7 @@ class Order(Base):
     
     # 销量和金额
     quantity = Column(Integer, default=1, comment='销量')
+    stock = Column(Integer, default=0, comment='库存')  # ✅ 添加stock字段
     remaining_stock = Column(Float, default=0, comment='剩余库存')
     amount = Column(Float, comment='销售额')
     profit = Column(Float, comment='利润')
@@ -66,9 +67,12 @@ class Order(Base):
     
     # ✅ 配送信息
     delivery_platform = Column(String(100), index=True, comment='配送平台')
+    delivery_distance = Column(Float, default=0, comment='配送距离(公里)')  # ✅ 添加配送距离
     
     # ✅ 门店信息
+    store_id = Column(String(100), index=True, comment='门店ID')  # ✅ 添加门店ID
     store_franchise_type = Column(Integer, index=True, comment='门店加盟类型(1=直营店,2=加盟店,3=托管店,4=买断,NULL=未分类)')
+    city = Column(String(100), index=True, comment='城市')  # ✅ 添加城市
     
     # 场景和时段
     scene = Column(String(50), index=True, comment='消费场景')

@@ -9611,9 +9611,10 @@ def create_category_trend_chart_echarts(df, order_agg, selected_channel='all'):
             required_fields[field] = True
         elif field == '日期' and '下单时间' in df.columns:
             required_fields[field] = True
-        elif field == '库存' and '剩余库存' in df.columns:
-            # 兼容不同的库存字段名
-            required_fields[field] = True
+        elif field == '库存':
+            # 🔧 兼容中英文库存字段名
+            if any(col in df.columns for col in ['剩余库存', 'stock', 'remaining_stock', '库存']):
+                required_fields[field] = True
     
     # 如果缺少一级分类名,无法生成分类分析
     if not required_fields['一级分类名']:
@@ -9749,8 +9750,12 @@ def create_category_trend_chart_echarts(df, order_agg, selected_channel='all'):
         # 如果没有日期字段,设为当前日期
         last_date = pd.Timestamp.now()
     
-    # 统一库存字段名（兼容'库存'和'剩余库存'）
-    stock_col = '库存' if '库存' in df.columns else '剩余库存' if '剩余库存' in df.columns else None
+    # 🔧 统一库存字段名（兼容中英文库存字段）
+    stock_col = None
+    for col in ['库存', '剩余库存', 'stock', 'remaining_stock']:
+        if col in df.columns:
+            stock_col = col
+            break
     
     # ==================== 4. 获取商品最新库存状态 (🔴 双重判断逻辑) ====================
     if stock_col:
@@ -19480,9 +19485,9 @@ def export_category_trend_data(n_clicks, category_data, store_data, store_id):
     
     # ==================== 准备商品级别数据 ====================
     
-    # 检测库存字段
+    # 🔧 检测库存字段(兼容中英文)
     stock_col = None
-    for col in ['剩余库存', '库存', '期末库存']:
+    for col in ['库存', '剩余库存', 'stock', 'remaining_stock', '期末库存']:
         if col in df.columns:
             stock_col = col
             break
