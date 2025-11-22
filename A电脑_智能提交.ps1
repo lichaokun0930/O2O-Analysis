@@ -158,3 +158,4 @@ if (-not $skipMigration) {
 Write-Host "`n现在B电脑可以运行:" -ForegroundColor Yellow
 Write-Host "  .\B电脑_拉取代码.ps1" -ForegroundColor White
 Write-Host "`n来同步这些修改`n" -ForegroundColor Yellow
+
