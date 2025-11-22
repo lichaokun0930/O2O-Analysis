@@ -80,12 +80,11 @@ class DataSourceManager:
         db = next(get_db())
         
         try:
-            # 构建查询 - JOIN Product表获取店内码和库存(不再JOIN成本,使用Order表自己的cost)
+            # 构建查询 - JOIN Product表获取店内码(不再JOIN成本和库存,Order表已有)
             from database.models import Product
             query = db.query(
                 Order, 
-                Product.store_code,
-                Product.stock  # 🆕 获取库存
+                Product.store_code
             ).outerjoin(
                 Product, Order.barcode == Product.barcode
             )
@@ -131,12 +130,12 @@ class DataSourceManager:
             # 🔍 调试: 检查前5条记录的订单ID
             if results:
                 print(f"[Database] 前5条记录的订单ID:")
-                for i, (order, store_code, stock) in enumerate(results[:5]):
+                for i, (order, store_code) in enumerate(results[:5]):
                     print(f"   {i+1}. order_id='{order.order_id}' (type={type(order.order_id).__name__})")
             
             # 转换为DataFrame
             data = []
-            for order, store_code, stock in results:  # 🆕 解包时去掉cost,使用Order自己的cost字段
+            for order, store_code in results:  # 🆕 解包时不再包含stock,直接用order.remaining_stock
                 data.append({
                     # 基础订单信息
                     '订单ID': order.order_id,
@@ -166,8 +165,8 @@ class DataSourceManager:
                     '销量': order.quantity,
                     '销售数量': order.quantity,  # 兼容字段
                     '月售': order.quantity,  # 兼容字段
-                    '库存': stock if stock is not None else 0,  # 🆕 从Product表获取实际库存
-                    '剩余库存': stock if stock is not None else 0,  # 🆕 兼容字段,使用实际库存
+                    '库存': order.remaining_stock if order.remaining_stock is not None else 0,  # ✅ 使用Order表的remaining_stock
+                    '剩余库存': order.remaining_stock if order.remaining_stock is not None else 0,  # ✅ 使用Order表的remaining_stock
                     '订单零售额': order.price * order.quantity,
                     '实收金额': (order.actual_price if order.actual_price else order.price) * order.quantity,
                     '用户支付金额': (order.actual_price if order.actual_price else order.price) * order.quantity,

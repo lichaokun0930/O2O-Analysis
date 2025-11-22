@@ -15,7 +15,10 @@ class Order(Base):
     __tablename__ = 'orders'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    order_id = Column(String(100), nullable=False, unique=True, index=True, comment='订单ID')
+    # ✅ 2025-11-22: 移除order_id的unique约束
+    # 原因: 一个订单可以包含多个商品(多行数据), order_id会重复
+    # 例如: 订单2214952978包含5个商品, 需要5行数据
+    order_id = Column(String(100), nullable=False, index=True, comment='订单ID')
     date = Column(DateTime, nullable=False, index=True, comment='下单时间')
     store_name = Column(String(200), comment='门店名称')
     
@@ -36,6 +39,7 @@ class Order(Base):
     
     # 销量和金额
     quantity = Column(Integer, default=1, comment='销量')
+    remaining_stock = Column(Float, default=0, comment='剩余库存')
     amount = Column(Float, comment='销售额')
     profit = Column(Float, comment='利润')
     profit_margin = Column(Float, comment='利润率')

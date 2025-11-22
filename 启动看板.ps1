@@ -4,8 +4,11 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 Set-Location $scriptDir
 
 Write-Host "===========================================" -ForegroundColor Cyan
-Write-Host "智能门店经营看板 - Dash版" -ForegroundColor Green
+Write-Host "智能门店经营看板 - 生产模式" -ForegroundColor Green
 Write-Host "===========================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "💡 提示: 如需查看详细调试日志，请使用:" -ForegroundColor Gray
+Write-Host "   .\启动看板-调试模式.ps1" -ForegroundColor Cyan
 Write-Host ""
 
 $pythonExe = Join-Path $scriptDir ".venv\\Scripts\\python.exe"

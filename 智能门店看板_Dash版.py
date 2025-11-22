@@ -464,6 +464,7 @@ def build_data_source_card() -> dbc.Card:
                 html.Label("🏪 选择门店:"),
                 dcc.Dropdown(
                     id='db-store-filter',
+                    options=[{'label': opt['label'], 'value': opt['value']} for opt in (INITIAL_STORE_OPTIONS if DATABASE_AVAILABLE else [])],
                     placeholder='全部门店',
                     clearable=True
                 )
@@ -21891,9 +21892,9 @@ if __name__ == '__main__':
     print("", flush=True)
     
     try:
-        # 使用debug=True临时查看详细错误
+        # 生产模式: debug=False (稳定性更好,性能更高)
         app.run(
-            debug=True,  # 暂时启用Debug查看错误
+            debug=False,  # 生产模式
             host='0.0.0.0',
             port=8050,
             use_reloader=False  # 禁用自动重载

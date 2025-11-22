@@ -53,40 +53,55 @@ O2O门店智能经营分析看板，采用前后端分离架构，提供：
 
 ## 🚀 快速开始
 
-### 1. 安装依赖
+### 新电脑首次配置
 
-```bash
-pip install -r requirements.txt
+```powershell
+# 1. 克隆仓库
+git clone https://github.com/lichaokun0930/O2O-Analysis.git
+cd O2O-Analysis
+
+# 2. 自动配置环境
+.\setup_new_pc.ps1
+
+# 3. 安装数据库和Redis (详见配置指南)
+# 4. 初始化数据库
+python database\migrate.py
+
+# 5. 启动看板
+.\启动看板.ps1
 ```
 
-### 2. 配置数据库
+**详细配置**: 参考 `新电脑完整配置指南.md` 或 `新电脑配置状态报告.md`
 
-复制 `.env.example` 为 `.env`，配置数据库连接：
+### 日常开发流程
 
-```env
-DATABASE_URL=postgresql://用户名:密码@localhost:5432/o2o_dashboard
+```powershell
+# 早上开始工作
+.\daily_workflow.ps1 start
+
+# 启动看板
+.\启动看板.ps1
+
+# 晚上下班前
+.\daily_workflow.ps1 end
 ```
 
-### 3. 导入数据
+### Git 操作
 
-```bash
-python database/migrate.py
+```powershell
+# 拉取最新代码
+.\git_pull.ps1
+
+# 推送代码
+.\git_push.ps1 "提交说明"
+
+# 同步代码(推荐)
+.\git_sync.ps1 "提交说明"
 ```
 
-### 4. 启动后端
+**详细说明**: 参考 `Git使用指南.md` 或 `Git快速参考.md`
 
-```bash
-cd backend
-uvicorn main:app --reload --port 8000
-```
-
-### 5. 启动前端
-
-```bash
-python frontend/智能门店看板_Dash版.py
-```
-
-### 6. 访问看板
+### 访问看板
 
 浏览器打开：http://localhost:8050
 
@@ -116,6 +131,22 @@ python frontend/智能门店看板_Dash版.py
 - 场景利润矩阵
 
 ## 🔧 开发指南
+
+### 自动化脚本
+
+项目提供了多个自动化脚本简化日常操作：
+
+| 脚本 | 用途 |
+|------|------|
+| `setup_new_pc.ps1` | 新电脑环境自动配置 |
+| `git_pull.ps1` | 拉取最新代码 |
+| `git_push.ps1` | 推送代码到GitHub |
+| `git_sync.ps1` | 同步代码(拉取+推送) |
+| `git_clone_fresh.ps1` | 克隆到新位置 |
+| `daily_workflow.ps1` | 每日工作流自动化 |
+| `启动看板.ps1` | 启动Dash看板 |
+| `启动数据库.ps1` | 启动PostgreSQL |
+| `启动Redis.ps1` | 启动Redis缓存 |
 
 ### 添加新API接口
 

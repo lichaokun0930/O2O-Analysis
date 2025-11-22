@@ -185,15 +185,18 @@ class SmartImporter:
             if not self.validate_excel_structure(df, os.path.basename(file_path)):
                 return False
             
-            # 3. 过滤耗材
-            if '一级分类名' in df.columns:
-                original_len = len(df)
-                df = df[~df['一级分类名'].isin(['耗材'])]
-                filtered_count = original_len - len(df)
-                if filtered_count > 0:
-                    print(f"\n2️⃣ 过滤数据: 移除 {filtered_count:,} 条耗材记录")
+            # ❌ 2025-11-22: 禁用耗材过滤,保留真实成本数据
+            # 原因: 耗材(购物袋)是订单成本的一部分,剔除会导致利润虚高
+            # 与看板上传逻辑保持一致 (2025-11-18已修改)
+            # if '一级分类名' in df.columns:
+            #     original_len = len(df)
+            #     df = df[~df['一级分类名'].isin(['耗材'])]
+            #     filtered_count = original_len - len(df)
+            #     if filtered_count > 0:
+            #         print(f"\n2️⃣ 过滤数据: 移除 {filtered_count:,} 条耗材记录")
+            print(f"\n2️⃣ ✅ 保留耗材数据 (包含购物袋等成本)")
             
-            # 4. 检查是否已存在该门店数据
+            # 3. 检查是否已存在该门店数据
             if '门店名称' in df.columns:
                 store_name = df['门店名称'].iloc[0]
                 existing = self.session.query(Order).filter(
@@ -214,7 +217,7 @@ class SmartImporter:
                     ).delete()
                     self.session.commit()
             
-            # 5. 导入数据（批量插入优化）
+            # 4. 导入数据（批量插入优化）
             print(f"\n3️⃣ 导入数据（批量模式）...")
             success_count = 0
             error_count = 0
@@ -232,9 +235,25 @@ class SmartImporter:
                     
                     # 每batch_size条批量插入一次
                     if len(batch_orders) >= batch_size:
-                        self.session.bulk_insert_mappings(Order, batch_orders)
-                        self.session.commit()
-                        batch_orders = []
+                        try:
+                            self.session.bulk_insert_mappings(Order, batch_orders)
+                            self.session.commit()
+                            batch_orders = []
+                        except Exception as batch_error:
+                            self.session.rollback()
+                            print(f"\n   ⚠️ 批量插入失败（可能有重复订单ID），尝试逐条插入...")
+                            # 逐条插入，跳过重复的
+                            for order in batch_orders:
+                                try:
+                                    self.session.execute(
+                                        Order.__table__.insert().values(**order)
+                                    )
+                                    self.session.commit()
+                                except:
+                                    self.session.rollback()
+                                    success_count -= 1
+                                    error_count += 1
+                            batch_orders = []
                         
                         # 计算进度和预估时间
                         elapsed = (datetime.now() - start_time).total_seconds()
@@ -255,11 +274,16 @@ class SmartImporter:
             
             # 插入剩余数据
             if batch_orders:
-                self.session.bulk_insert_mappings(Order, batch_orders)
-                self.session.commit()
+                try:
+                    self.session.bulk_insert_mappings(Order, batch_orders)
+                    self.session.commit()
+                except Exception as e:
+                    self.session.rollback()
+                    print(f"\n   ⚠️ 最后一批数据插入失败: {e}")
+                    error_count += len(batch_orders)
             
             total_time = (datetime.now() - start_time).total_seconds()
-            print(f"\n   ⏱️  总耗时: {total_time:.1f}秒 | 平均速度: {success_count/total_time:.0f}行/秒")
+            print(f"\n   ⏱️  总耗时: {total_time:.1f}秒 | 平均速度: {success_count/total_time if total_time > 0 else 0:.0f}行/秒")
             
             print(f"\n\n4️⃣ 导入结果:")
             print(f"   ✅ 成功: {success_count:,}/{len(df):,} ({success_count/len(df)*100:.1f}%)")
@@ -325,7 +349,8 @@ class SmartImporter:
             'category_level1': str(row.get('一级分类名', '')),
             'category_level3': str(row.get('三级分类名', '')),
             'barcode': str(row.get('条码', '')),
-            # ✅ 移除了stock字段(Order模型中不存在,应该在Product表中)
+            # ✅ 添加剩余库存字段映射
+            'remaining_stock': float(row.get('剩余库存', 0)) if pd.notna(row.get('剩余库存')) else 0.0,
             'delivery_fee': float(row.get('物流配送费', 0)) if pd.notna(row.get('物流配送费')) else 0.0,
             'commission': float(row.get('平台佣金', 0)) if pd.notna(row.get('平台佣金')) else 0.0,
             'platform_service_fee': float(row.get('平台服务费', 0)) if pd.notna(row.get('平台服务费')) else 0.0,  # 修复:添加平台服务费字段映射
