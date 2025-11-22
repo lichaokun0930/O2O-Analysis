@@ -58,27 +58,27 @@ git commit -m "feat: 添加营销分析模型+管理工具+推送脚本
 
 主要内容:
 【营销分析模型】
-* 科学八象限分析器.py (品类动态阈值+置信度评估)
-* 评分模型分析器.py (多维度评分+权重计算)
-* Tab7八象限分析使用指南.md
-* 营销分析功能说明.md
++ 科学八象限分析器.py (品类动态阈值+置信度评估)
++ 评分模型分析器.py (多维度评分+权重计算)
++ Tab7八象限分析使用指南.md
++ 营销分析功能说明.md
 
 【管理工具】
-* 启动_门店加盟类型字段迁移.ps1 (数据库字段迁移)
-* 启动_Requirements追踪系统.ps1 (依赖变更追踪)
-* tools/track_requirements_changes.py (依赖追踪核心)
-* 门店加盟类型字段使用指南.md
-* requirements变更追踪使用指南.md
-* requirements_changelog.md (变更日志)
++ 启动_门店加盟类型字段迁移.ps1 (数据库字段迁移)
++ 启动_Requirements追踪系统.ps1 (依赖变更追踪)
++ tools/track_requirements_changes.py (依赖追踪核心)
++ 门店加盟类型字段使用指南.md
++ requirements变更追踪使用指南.md
++ requirements_changelog.md (变更日志)
 
 【推送和部署】
-* B电脑克隆清单.md (完整部署指南)
-* Github推送文件清单.md (文件清单)
-* 推送脚本 (bat+ps1)
++ B电脑克隆清单.md (完整部署指南)
++ Github推送文件清单.md (文件清单)
++ 推送脚本 (bat+ps1)
 
 【verify_check目录】
-* octant_analyzer.py (英文版八象限分析器)
-* scoring_analyzer.py (英文版评分分析器)
++ octant_analyzer.py (英文版八象限分析器)
++ scoring_analyzer.py (英文版评分分析器)
 
 完整功能,开箱即用!"
 echo.
@@ -112,12 +112,12 @@ if %errorlevel%==0 (
     echo 【推送和部署】
     echo   ✓ B电脑克隆清单.md
     echo   ✓ Github推送文件清单.md
-    echo   ✓ 推送脚本 (bat+ps1)
+    echo   ✓ 推送脚本 (bat+ps1^)
     echo.
     echo 🎉 B电脑克隆后即可使用:
-    echo    * Tab7营销分析功能
-    echo    * 数据库字段迁移工具
-    echo    * Requirements依赖追踪系统
+    echo      Tab7营销分析功能
+    echo      数据库字段迁移工具
+    echo      Requirements依赖追踪系统
 ) else (
     echo ========================================
     echo ❌ 推送失败!
