@@ -1,5 +1,5 @@
 # A电脑智能提交 - 自动检测数据库修改并一键推送
-# 自动识别: models.py修改 → 创建迁移 → 应用 → 提交所有到GitHub
+# 自动识别: models.py修改 -> 创建迁移 -> 应用 -> 提交所有到GitHub
 
 param(
     [Parameter(Mandatory=$true)]
@@ -48,7 +48,7 @@ if ($modelsChanged) {
         } | Sort-Object -Descending | Select-Object -First 1
         
         $version = if ($existing) { $existing + 1 } else { 2 }
-        $filename = "v${version}_${description}.sql"
+        $filename = "v$version" + "_$description.sql"
         $filepath = "database\migrations\$filename"
         
         # 复制模板
@@ -57,7 +57,8 @@ if ($modelsChanged) {
         
         # 替换占位符
         $content = Get-Content $filepath -Raw -Encoding UTF8
-        $content = $content -replace "YYYY-MM-DD", (Get-Date -Format "yyyy-MM-dd")
+        $dateStr = Get-Date -Format "yyyy-MM-dd"
+        $content = $content -replace "YYYY-MM-DD", $dateStr
         $content = $content -replace "描述这次迁移的目的", $message
         $content = $content -replace "new_field", $description
         Set-Content $filepath $content -Encoding UTF8
