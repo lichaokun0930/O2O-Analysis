@@ -20,20 +20,36 @@ if (-not (Test-Path $filepath)) {
 }
 
 Write-Host "`n[1/4] 添加文件到Git..." -ForegroundColor Cyan
+
+# 首先添加迁移文件
 git add $filepath
 git add database\models.py
 
-# 检查是否有其他相关文件修改
+# 检查是否有其他修改的文件
 $status = git status --short
 if ($status) {
-    Write-Host "`n当前修改的文件:" -ForegroundColor Yellow
+    Write-Host "`n当前工作区状态:" -ForegroundColor Yellow
     Write-Host $status
+    Write-Host ""
     
-    $addMore = Read-Host "`n是否添加其他文件? (y/n,默认n)"
-    if ($addMore -eq 'y') {
-        Write-Host "请手动运行: git add <文件路径>" -ForegroundColor Cyan
-        Write-Host "然后重新运行此脚本`n" -ForegroundColor Yellow
-        exit 0
+    # 询问是否提交所有修改
+    $choice = Read-Host "提交选项: [1]仅迁移相关 [2]所有修改 (默认1)"
+    
+    if ($choice -eq '2') {
+        Write-Host "`n将提交所有修改文件..." -ForegroundColor Cyan
+        git add -A
+        
+        # 再次显示将要提交的内容
+        Write-Host "`n将要提交的文件:" -ForegroundColor Green
+        git status --short
+        
+        $confirm = Read-Host "`n确认提交这些文件? (y/n)"
+        if ($confirm -ne 'y') {
+            Write-Host "`n✗ 已取消" -ForegroundColor Yellow
+            exit 0
+        }
+    } else {
+        Write-Host "`n仅提交迁移相关文件" -ForegroundColor Cyan
     }
 }
 
