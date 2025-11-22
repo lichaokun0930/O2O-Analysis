@@ -132,10 +132,10 @@ if %errorlevel%==0 (
     echo   ✓ database模块
     echo.
     echo 🎉 B电脑克隆后即可使用:
-    echo      Tab7营销分析功能
-    echo      数据库字段迁移工具
-    echo      Requirements依赖追踪系统
-    echo      完整数据库备份恢复
+    echo      - Tab7营销分析功能
+    echo      - 数据库字段迁移工具
+    echo      - Requirements依赖追踪
+    echo      - 完整数据库备份恢复
 ) else (
     echo ========================================
     echo ❌ 推送失败!
