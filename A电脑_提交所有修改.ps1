@@ -41,7 +41,7 @@ $confirm = Read-Host "是否提交以上所有修改? (y/n)"
 if ($confirm -ne 'y') {
     Write-Host "`n✗ 已取消" -ForegroundColor Yellow
     Write-Host "`n如需选择性提交,请使用:" -ForegroundColor Cyan
-    Write-Host "  git add <文件路径>" -ForegroundColor White
+    Write-Host "  git add [文件路径]" -ForegroundColor White
     Write-Host "  git commit -m `"提交信息`"" -ForegroundColor White
     Write-Host "  git push" -ForegroundColor White
     exit 0
