@@ -107,16 +107,26 @@ class BatchDataImporter:
         updated = 0
         errors = 0
         
-        # ✅ 智能识别日期列
+        # ✅ 日期列检查 (已经过standardize_sales_data处理,应该是"日期"列)
         date_col = None
-        for possible_col in ['日期', '下单时间', '订单时间', '时间', 'date', 'order_date', 'created_at']:
-            if possible_col in df.columns:
-                date_col = possible_col
-                print(f"[日期列] 使用列名: {date_col}")
-                break
+        
+        # 优先使用标准化后的"日期"列
+        if '日期' in df.columns:
+            date_col = '日期'
+            print(f"[日期列] 使用标准化列: {date_col}")
+        else:
+            # 如果没有,尝试其他可能的列名
+            possible_date_cols = ['下单时间', '采集时间', 'collect_time', 'timestamp', '时间', '创建时间', 'date', 'order_date', 'created_at']
+            for possible_col in possible_date_cols:
+                if possible_col in df.columns:
+                    date_col = possible_col
+                    print(f"[日期列] 使用备用列: {date_col}")
+                    break
         
         if not date_col:
-            print(f"[警告] 未找到日期列，可用列: {list(df.columns)}")
+            print(f"[错误] 未找到日期列!")
+            print(f"[可用列] {list(df.columns)[:10]}")
+            raise ValueError("数据缺少日期列,无法导入")
         
         try:
             for idx, row in df.iterrows():
@@ -127,18 +137,26 @@ class BatchDataImporter:
                     
                     existing = db.query(Order).filter(Order.order_id == order_id).first()
                     
-                    # ✅ 修复：使用识别到的日期列
+                    # ✅ 使用识别到的日期列并进行安全转换
                     order_date = None
                     if date_col and pd.notna(row.get(date_col)):
                         try:
                             order_date = pd.to_datetime(row[date_col])
+                            
+                            # 检查日期是否有效
+                            if pd.isna(order_date):
+                                print(f"[警告] 订单 {order_id} 日期为NaT: {row.get(date_col)}")
+                                order_date = None
+                                
                         except Exception as e:
                             print(f"[警告] 订单 {order_id} 日期转换失败: {row.get(date_col)} - {e}")
+                            order_date = None
                     
-                    # ✅ 如果没有日期，使用文件名中的日期或当前时间
+                    # ✅ 如果日期无效,跳过这条记录(不使用当前时间)
                     if order_date is None or pd.isna(order_date):
-                        print(f"[警告] 订单 {order_id} 缺少有效日期，使用当前时间")
-                        order_date = datetime.now()
+                        print(f"[跳过] 订单 {order_id} 缺少有效日期")
+                        errors += 1
+                        continue
                     
                     order_data = {
                         'order_id': order_id,
