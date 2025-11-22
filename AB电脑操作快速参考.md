@@ -58,33 +58,45 @@ git push
 
 ## B电脑: 同步数据库结构
 
-### 一键同步
+### 仅同步数据库(快捷)
 ```powershell
 .\B电脑_同步数据库.ps1
 ```
 
 **自动完成:**
-- ✅ git pull 拉取最新代码
+- ✅ 检查是否需要git pull
 - ✅ 自动检测并应用新迁移
 - ✅ 验证数据库结构一致性
 - ✅ 清理Redis缓存
-- ✅ 重启Dash看板
 
-### 手动同步
+---
+
+## B电脑: 拉取所有代码更新
+
+### 拉取所有代码(推荐)
+```powershell
+.\B电脑_拉取代码.ps1
+```
+
+**智能功能:**
+- ✅ 自动检测本地修改(可暂存或放弃)
+- ✅ git pull 拉取最新代码
+- ✅ 显示更新的文件分类
+- ✅ 自动检测是否需要同步数据库
+- ✅ 清理Redis缓存
+
+### 手动拉取
 ```powershell
 # 1. 拉取代码
 git pull
 
-# 2. 同步迁移
-python database\migrations\sync_migrations.py
+# 2. 如果有数据库修改
+.\B电脑_同步数据库.ps1
 
-# 3. 验证
-python database\migrations\check_structure.py
-
-# 4. 清理缓存
+# 3. 如果只是代码修改
 python 清理Redis缓存.py
 
-# 5. 重启看板
+# 4. 重启看板
 .\启动看板.ps1
 ```
 
@@ -92,7 +104,7 @@ python 清理Redis缓存.py
 
 ## 常见场景示例
 
-### 场景1: 添加单个字段
+### 场景1: A电脑添加字段,B电脑同步
 ```powershell
 # A电脑
 .\A电脑_创建迁移.ps1 -description "delivery_person"
@@ -103,26 +115,40 @@ python 清理Redis缓存.py
 .\B电脑_同步数据库.ps1
 ```
 
-### 场景2: 添加多个相关字段
+### 场景2: A电脑修改看板代码,B电脑同步
 ```powershell
 # A电脑
-.\A电脑_创建迁移.ps1 -description "customer_profile"
-# 编辑SQL添加多个ADD COLUMN
-.\A电脑_提交迁移.ps1 -filename "v3_customer_profile.sql" -message "添加客户档案字段"
+# 修改智能门店看板_Dash版.py等文件
+.\A电脑_提交所有修改.ps1 -message "优化客单价分析功能"
 
 # B电脑
-.\B电脑_同步数据库.ps1
+.\B电脑_拉取代码.ps1
+# 会自动检测没有数据库修改,只清理Redis缓存
 ```
 
-### 场景3: 修改字段类型
+### 场景3: A电脑同时修改代码+数据库,B电脑同步
 ```powershell
 # A电脑
-.\A电脑_创建迁移.ps1 -description "alter_price_precision"
-# 编辑SQL: ALTER COLUMN price TYPE NUMERIC(12,4)
-.\A电脑_提交迁移.ps1 -filename "v4_alter_price_precision.sql" -message "提高价格字段精度"
+# 1. 修改models.py和看板代码
+.\A电脑_创建迁移.ps1 -description "customer_profile"
+# 2. 编辑SQL添加字段
+.\A电脑_提交迁移.ps1 -filename "v3_customer_profile.sql" -message "添加客户档案"
+# 3. 选择 [2]提交所有修改
 
 # B电脑
-.\B电脑_同步数据库.ps1
+.\B电脑_拉取代码.ps1
+# 会自动检测到数据库修改,询问是否同步数据库
+# 选择 y,自动调用 B电脑_同步数据库.ps1
+```
+
+### 场景4: B电脑有本地修改时拉取
+```powershell
+# B电脑
+.\B电脑_拉取代码.ps1
+# 检测到本地修改,提供选项:
+# [1] 暂存本地修改 (git stash)
+# [2] 放弃本地修改 (git reset)
+# [3] 取消
 ```
 
 ---
@@ -149,12 +175,20 @@ psql -U postgres -d o2o_analysis -c "\d orders"
 
 ### B电脑问题
 
-**问题1: git pull失败**
+**问题1: git pull冲突**
 ```powershell
-# 检查网络
-# 确认A电脑已push
-git remote -v
-git fetch
+# 查看冲突文件
+git status
+
+# 选择操作:
+# 方案1: 保留本地修改
+git stash
+git pull
+git stash pop
+
+# 方案2: 放弃本地修改
+git reset --hard HEAD
+git pull
 ```
 
 **问题2: 迁移同步失败**
@@ -175,6 +209,13 @@ python 清理Redis缓存.py
 .\启动看板.ps1
 ```
 
+**问题4: 本地有未提交修改**
+```powershell
+# 使用B电脑_拉取代码.ps1会自动处理
+.\B电脑_拉取代码.ps1
+# 选择[1]暂存或[2]放弃
+```
+
 ---
 
 ## 文件位置速查
@@ -192,9 +233,11 @@ database/
 │   └── v2_xxx.sql                    # 你的新迁移
 
 根目录/
-├── A电脑_创建迁移.ps1                # A电脑快捷脚本1
-├── A电脑_提交迁移.ps1                # A电脑快捷脚本2
-├── B电脑_同步数据库.ps1              # B电脑一键同步
+├── A电脑_创建迁移.ps1                # A电脑快捷脚本1 - 创建并应用迁移
+├── A电脑_提交迁移.ps1                # A电脑快捷脚本2 - 提交迁移到Git
+├── A电脑_提交所有修改.ps1            # A电脑快捷脚本3 - 提交所有代码修改
+├── B电脑_同步数据库.ps1              # B电脑快捷脚本1 - 仅同步数据库
+├── B电脑_拉取代码.ps1                # B电脑快捷脚本2 - 拉取所有代码(智能)
 ├── A电脑操作指南.md                  # A电脑详细文档
 ├── 两台电脑数据库同步方案.md          # 完整设计文档
 ├── 数据库同步快速参考.md              # 命令速查
@@ -205,12 +248,19 @@ database/
 
 ## 最佳实践
 
+### A电脑
 1. **迁移命名**: 使用描述性名称,如`v2_add_delivery_person`而非`v2_change`
 2. **SQL注释**: 在迁移文件中详细注释每个ALTER语句的目的
 3. **验证流程**: 每次迁移后都运行`check_structure.py`验证
 4. **及时提交**: 修改完立即提交Git,避免B电脑长时间滞后
-5. **缓存清理**: B电脑同步后必须清理Redis缓存
-6. **测试验证**: 同步后验证看板功能是否正常
+5. **选择提交**: 数据库修改用`A电脑_提交迁移.ps1`,代码修改用`A电脑_提交所有修改.ps1`
+
+### B电脑
+1. **及时同步**: 每天开始工作前先运行`.\B电脑_拉取代码.ps1`
+2. **缓存清理**: 同步后必须清理Redis缓存
+3. **测试验证**: 同步后验证看板功能是否正常
+4. **本地修改**: 拉取前先处理本地修改(暂存或放弃)
+5. **智能拉取**: 优先使用`B电脑_拉取代码.ps1`,会自动检测数据库修改
 
 ---
 
