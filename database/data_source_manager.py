@@ -108,18 +108,20 @@ class DataSourceManager:
                 query = query.filter(Order.date >= start_date)
             
             if end_date:
-                # 转换为datetime对象，设置为当天23:59:59
+                # ✅ 修复：先转换类型，再设置时间为当天结束
                 from datetime import datetime, timedelta
+                
+                # 第一步：统一转换为datetime对象
                 if isinstance(end_date, str):
                     end_date = datetime.fromisoformat(end_date)
-                if not isinstance(end_date, datetime):
+                elif not isinstance(end_date, datetime):
                     # 如果是date对象，转换为datetime
-                    end_date = datetime.combine(end_date, datetime.max.time())
-                else:
-                    # 如果已是datetime，设置时间为当天结束
-                    end_date = datetime.combine(end_date.date(), datetime.max.time())
+                    end_date = datetime.combine(end_date, datetime.min.time())
                 
-                print(f"[Database] 应用结束日期过滤: {end_date.date()} 23:59:59 (包含当天)")
+                # 第二步：设置时间为当天23:59:59
+                end_date = datetime.combine(end_date.date(), datetime.max.time())
+                
+                print(f"[Database] 应用结束日期过滤: {end_date.date()} 23:59:59 (包含当天)", flush=True)
                 query = query.filter(Order.date <= end_date)
             
             # 执行查询

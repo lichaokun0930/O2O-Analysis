@@ -1,4 +1,4 @@
-# B电脑同步数据库结构
+﻿# B电脑同步数据库结构
 # 仅同步数据库迁移,不拉取其他代码
 
 Write-Host "=" * 60
@@ -15,7 +15,7 @@ $behind = git rev-list HEAD..origin/master --count
 
 if ($behind -gt 0) {
     Write-Host "远程有 $behind 个新提交" -ForegroundColor Yellow
-    $pullFirst = Read-Host "是否先拉取代码? (y/n,默认y)"
+    $pullFirst = Read-Host "是否先拉取代码 (y/n 默认y)"
     
     if ($pullFirst -ne 'n') {
         Write-Host "`n拉取最新代码..." -ForegroundColor Cyan
@@ -49,10 +49,5 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "`n[4/4] 清理Redis缓存..." -ForegroundColor Cyan
 python 清理Redis缓存.py
 
-Write-Host "`n" + "=" * 60
-Write-Host "同步完成!" -ForegroundColor Green
+Write-Host "`n完成!" -ForegroundColor Green
 Write-Host "=" * 60
-
-Write-Host "`n下一步: 重启看板验证功能" -ForegroundColor Yellow
-Write-Host "  .\启动看板.ps1" -ForegroundColor Cyan
-Write-Host ""

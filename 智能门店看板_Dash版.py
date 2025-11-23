@@ -1500,6 +1500,154 @@ def calculate_period_comparison(df: pd.DataFrame, start_date: datetime = None, e
         return {}
 
 
+def calculate_week_on_week_comparison(df: pd.DataFrame, start_date: datetime = None, end_date: datetime = None) -> Dict[str, Dict]:
+    """
+    计算上周同期数据（固定对比7天前的相同日期范围）
+    例如：11月20日对比11月13日，11月18-21日对比11月11-14日
+    与环比的区别：环比是动态周期，上周同期是固定7天差
+    
+    Args:
+        df: 完整数据集
+        start_date: 当前周期开始日期
+        end_date: 当前周期结束日期
+    
+    Returns:
+        上周同期数据字典，包含各指标的对比信息
+    """
+    try:
+        if df is None or len(df) == 0:
+            return {}
+        
+        # 确保日期字段存在且为datetime类型
+        date_col = '日期' if '日期' in df.columns else '下单时间'
+        if date_col not in df.columns:
+            return {}
+        
+        df = df.copy()
+        df[date_col] = pd.to_datetime(df[date_col])
+        
+        # 如果没有传入日期范围，使用数据中的日期范围
+        if start_date is None:
+            start_date = df[date_col].min()
+        if end_date is None:
+            end_date = df[date_col].max()
+        
+        # 确保 start_date 和 end_date 是 datetime 对象
+        if not isinstance(start_date, datetime):
+            start_date = pd.to_datetime(start_date)
+        if not isinstance(end_date, datetime):
+            end_date = pd.to_datetime(end_date)
+        
+        # 计算上周同期的日期范围（往前推7天）
+        last_week_start = start_date - timedelta(days=7)
+        last_week_end = end_date - timedelta(days=7)
+        
+        # 筛选当前周期数据
+        current_data = df[
+            (df[date_col].dt.date >= start_date.date()) & 
+            (df[date_col].dt.date <= end_date.date())
+        ].copy()
+        
+        # 筛选上周同期数据
+        last_week_data = df[
+            (df[date_col].dt.date >= last_week_start.date()) & 
+            (df[date_col].dt.date <= last_week_end.date())
+        ].copy()
+        
+        # 如果上周同期无数据，返回空字典
+        if len(last_week_data) == 0:
+            print(f"⚠️ 上周同期({last_week_start.date()}~{last_week_end.date()})无数据，无法计算对比")
+            return {}
+        
+        print(f"✅ 上周同期计算: 本周期({start_date.date()}~{end_date.date()}, {len(current_data)}条)")
+        print(f"                上周同期({last_week_start.date()}~{last_week_end.date()}, {len(last_week_data)}条)")
+        
+        # 计算当前周期指标
+        current_metrics = {
+            'order_count': len(current_data),
+            'actual_sales': current_data['实收价格'].sum() if '实收价格' in current_data.columns else 0,
+            'total_profit': current_data['实际利润'].sum() if '实际利润' in current_data.columns else 0,
+            'avg_order_value': current_data['实收价格'].mean() if len(current_data) > 0 and '实收价格' in current_data.columns else 0,
+            'product_count': current_data['商品名称'].nunique() if '商品名称' in current_data.columns else 0
+        }
+        
+        # 计算利润率
+        if current_metrics['actual_sales'] > 0:
+            current_metrics['profit_rate'] = (current_metrics['total_profit'] / current_metrics['actual_sales']) * 100
+        else:
+            current_metrics['profit_rate'] = 0
+        
+        # 计算上周同期指标
+        last_week_metrics = {
+            'order_count': len(last_week_data),
+            'actual_sales': last_week_data['实收价格'].sum() if '实收价格' in last_week_data.columns else 0,
+            'total_profit': last_week_data['实际利润'].sum() if '实际利润' in last_week_data.columns else 0,
+            'avg_order_value': last_week_data['实收价格'].mean() if len(last_week_data) > 0 and '实收价格' in last_week_data.columns else 0,
+            'product_count': last_week_data['商品名称'].nunique() if '商品名称' in last_week_data.columns else 0
+        }
+        
+        # 计算利润率
+        if last_week_metrics['actual_sales'] > 0:
+            last_week_metrics['profit_rate'] = (last_week_metrics['total_profit'] / last_week_metrics['actual_sales']) * 100
+        else:
+            last_week_metrics['profit_rate'] = 0
+        
+        # 计算上周同期变化率
+        def calc_change_rate(current, last_week):
+            """计算变化率"""
+            if last_week == 0:
+                return 999.9 if current > 0 else 0
+            return ((current - last_week) / last_week) * 100
+        
+        # 为每个指标生成上周同期对比数据
+        comparison_results = {
+            '订单数': {
+                'current': current_metrics['order_count'],
+                'previous': last_week_metrics['order_count'],
+                'change_rate': calc_change_rate(current_metrics['order_count'], last_week_metrics['order_count']),
+                'metric_type': 'positive'
+            },
+            '商品实收额': {
+                'current': current_metrics['actual_sales'],
+                'previous': last_week_metrics['actual_sales'],
+                'change_rate': calc_change_rate(current_metrics['actual_sales'], last_week_metrics['actual_sales']),
+                'metric_type': 'positive'
+            },
+            '总利润': {
+                'current': current_metrics['total_profit'],
+                'previous': last_week_metrics['total_profit'],
+                'change_rate': calc_change_rate(current_metrics['total_profit'], last_week_metrics['total_profit']),
+                'metric_type': 'positive'
+            },
+            '客单价': {
+                'current': current_metrics['avg_order_value'],
+                'previous': last_week_metrics['avg_order_value'],
+                'change_rate': calc_change_rate(current_metrics['avg_order_value'], last_week_metrics['avg_order_value']),
+                'metric_type': 'positive'
+            },
+            '总利润率': {
+                'current': current_metrics['profit_rate'],
+                'previous': last_week_metrics['profit_rate'],
+                'change_rate': current_metrics['profit_rate'] - last_week_metrics['profit_rate'],  # 利润率用差值
+                'metric_type': 'positive'
+            },
+            '动销商品数': {
+                'current': current_metrics['product_count'],
+                'previous': last_week_metrics['product_count'],
+                'change_rate': calc_change_rate(current_metrics['product_count'], last_week_metrics['product_count']),
+                'metric_type': 'positive'
+            }
+        }
+        
+        return comparison_results
+        
+    except Exception as e:
+        print(f"❌ 上周同期计算失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return {}
+
+
 def create_comparison_badge(comparison_data: Dict) -> html.Div:
     """
     创建环比变化徽章（增强版：支持详细提示、重大变化高亮）
@@ -1596,6 +1744,105 @@ def create_comparison_badge(comparison_data: Dict) -> html.Div:
         ),
         className="d-block mt-1"
     )
+
+
+def create_dual_comparison_badge(period_comparison: Dict, wow_comparison: Dict = None) -> html.Div:
+    """
+    创建环比+上周同期双重显示徽章
+    
+    Args:
+        period_comparison: 环比数据字典
+        wow_comparison: 上周同期数据字典(可选)
+    
+    Returns:
+        环比+上周同期显示组件
+    """
+    components = []
+    
+    # 环比徽章 - 修复：检查是否有有效数据
+    if period_comparison and period_comparison.get('change_rate') is not None:
+        mom_badge = create_comparison_badge(period_comparison)
+        components.append(
+            html.Div([
+                html.Span("环比: ", style={'fontSize': '0.7rem', 'color': '#666', 'marginRight': '3px'}),
+                mom_badge
+            ], style={'display': 'inline-flex', 'alignItems': 'center', 'marginRight': '8px'})
+        )
+    
+    # 上周同期徽章 - 修复：检查是否有有效数据
+    if wow_comparison and wow_comparison.get('change_rate') is not None:
+        change_value = wow_comparison.get('change_rate', 0)
+        if not pd.isna(change_value):
+            is_up = change_value > 0
+            metric_type = wow_comparison.get('metric_type', 'positive')
+            
+            # 根据指标类型确定颜色
+            if metric_type == 'positive':
+                color = 'info' if is_up else 'secondary'  # 上周同期用蓝色/灰色区分
+                icon = '↑' if is_up else '↓'
+            else:
+                color = 'secondary' if is_up else 'info'
+                icon = '↑' if is_up else '↓'
+            
+            # 格式化显示
+            if abs(change_value) >= 999:
+                change_text = f"{icon} >999%"
+            else:
+                sign = '+' if is_up else ''
+                change_text = f"{icon} {sign}{change_value:.1f}%"
+            
+            # 构建详细Tooltip
+            current_value = wow_comparison.get('current', 0)
+            previous_value = wow_comparison.get('previous', 0)
+            
+            if current_value != 0 or previous_value != 0:
+                abs_change = current_value - previous_value
+                abs_change_sign = '+' if abs_change >= 0 else ''
+                
+                if abs(current_value) >= 1000:
+                    current_fmt = f"{current_value:,.0f}"
+                    previous_fmt = f"{previous_value:,.0f}"
+                    abs_change_fmt = f"{abs_change_sign}{abs_change:,.0f}"
+                else:
+                    current_fmt = f"{current_value:.2f}"
+                    previous_fmt = f"{previous_value:.2f}"
+                    abs_change_fmt = f"{abs_change_sign}{abs_change:.2f}"
+                
+                tooltip_text = f"本周期: {current_fmt} | 上周同期(7天前): {previous_fmt} | 变化: {abs_change_fmt}"
+            else:
+                tooltip_text = "上周同期数据"
+            
+            wow_badge = html.Small(
+                dbc.Badge(
+                    change_text, 
+                    color=color, 
+                    pill=True, 
+                    className="ms-1",
+                    id={'type': 'wow-badge', 'index': str(id(wow_comparison))},  # 添加id用于tooltip
+                ),
+                className="d-block mt-1"
+            )
+            
+            # 使用dbc.Tooltip添加悬停提示
+            wow_component = html.Div([
+                html.Span("上周同期: ", style={'fontSize': '0.7rem', 'color': '#666', 'marginRight': '3px'}),
+                wow_badge,
+                dbc.Tooltip(
+                    tooltip_text,
+                    target={'type': 'wow-badge', 'index': str(id(wow_comparison))},
+                    placement='top'
+                )
+            ], style={'display': 'inline-flex', 'alignItems': 'center'})
+            
+            components.append(wow_component)
+    
+    if not components:
+        return html.Small(
+            html.Span("环比/上周同期: 无数据", className="text-muted", style={'fontSize': '0.75rem'}),
+            className="d-block mt-1"
+        )
+    
+    return html.Div(components, style={'display': 'flex', 'flexWrap': 'wrap', 'gap': '4px', 'marginTop': '4px'})
 
 
 def calculate_channel_comparison(df: pd.DataFrame, order_agg: pd.DataFrame, 
@@ -1777,9 +2024,18 @@ def calculate_channel_comparison(df: pd.DataFrame, order_agg: pd.DataFrame,
             prev_row = prev_row.iloc[0]
             
             def calc_rate(curr, prev):
-                if prev == 0:
-                    return 999.9 if curr > 0 else 0
-                return ((curr - prev) / prev) * 100
+                """计算变化率，优化对0值的处理"""
+                if prev == 0 and curr == 0:
+                    return 0  # 都是0，无变化
+                elif prev == 0:
+                    return None  # 上期为0，无法计算环比，返回None表示"新增"
+                else:
+                    return ((curr - prev) / prev) * 100
+            
+            # 只有当所有关键指标的上期数据都不为0时，才添加该渠道的环比
+            if prev_row['订单数'] == 0 or prev_row['销售额'] == 0:
+                print(f"   ⚠️ {channel_name}: 上期数据为0，跳过环比计算", flush=True)
+                continue
             
             comparison_results[channel_name] = {
                 '订单数': {
@@ -5201,6 +5457,86 @@ def update_date_range_from_quick_buttons(yesterday, today, last_week, this_week,
     return start_date, end_date
 
 
+# ==================== 日期范围过滤回调 ====================
+@app.callback(
+    Output('data-update-trigger', 'data', allow_duplicate=True),
+    [Input('db-date-range', 'start_date'),
+     Input('db-date-range', 'end_date')],
+    [State('db-store-select', 'value')],  # 添加门店选择器状态
+    prevent_initial_call=True
+)
+def filter_data_by_date_range(start_date, end_date, current_store):
+    """
+    当用户手动选择日期范围时，过滤GLOBAL_DATA并触发数据更新
+    
+    重要：这个回调让日期选择器能够实时过滤数据，无需重新点击加载按钮
+    
+    ⚠️ 特殊情况：如果是从数据库加载触发的日期变化，不要过滤
+    因为数据库加载回调已经按正确的日期范围查询了数据
+    """
+    global GLOBAL_DATA
+    
+    # 🔍 检查回调触发上下文
+    ctx = dash.callback_context
+    if ctx.triggered:
+        trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        print(f"🔍 [日期过滤] 触发器: {trigger_id}, 当前门店: {current_store}")
+        
+        # 🚫 如果GLOBAL_DATA刚被数据库加载回调更新，跳过本次过滤
+        # 避免覆盖数据库加载的正确结果
+        if hasattr(GLOBAL_DATA, 'attrs') and GLOBAL_DATA.attrs.get('just_loaded'):
+            print(f"⏭️ [日期过滤] 跳过：数据刚从数据库加载，已按正确日期查询")
+            return no_update
+    
+    # 检查是否有有效的数据
+    if GLOBAL_FULL_DATA is None or len(GLOBAL_FULL_DATA) == 0:
+        print(f"⚠️ [日期过滤] 没有数据可过滤")
+        return no_update
+    
+    # 如果两个日期都为空，使用全部数据
+    if not start_date and not end_date:
+        GLOBAL_DATA = GLOBAL_FULL_DATA.copy()
+        print(f"🔍 [日期过滤] 未选择日期，使用全部数据: {len(GLOBAL_DATA)}条")
+        return datetime.now().isoformat()  # 返回字符串时间戳
+    
+    # 转换日期
+    try:
+        date_col = '日期' if '日期' in GLOBAL_FULL_DATA.columns else '下单时间'
+        if date_col not in GLOBAL_FULL_DATA.columns:
+            print(f"⚠️ [日期过滤] 数据中没有日期字段")
+            return no_update
+        
+        df = GLOBAL_FULL_DATA.copy()
+        df[date_col] = pd.to_datetime(df[date_col])
+        
+        # 应用日期过滤
+        if start_date:
+            start_dt = pd.to_datetime(start_date)
+            df = df[df[date_col] >= start_dt]
+        
+        if end_date:
+            end_dt = pd.to_datetime(end_date) + timedelta(days=1)  # 包含结束日期当天
+            df = df[df[date_col] < end_dt]
+        
+        # ✅ 清除"刚加载"标记（如果存在）
+        if hasattr(GLOBAL_DATA, 'attrs'):
+            GLOBAL_DATA.attrs.pop('just_loaded', None)
+        
+        GLOBAL_DATA = df
+        
+        print(f"🔍 [日期过滤] 日期范围: {start_date} ~ {end_date}")
+        print(f"   原始数据: {len(GLOBAL_FULL_DATA)}条 → 过滤后: {len(GLOBAL_DATA)}条")
+        
+        # 触发数据更新，返回字符串时间戳（与其他回调保持一致）
+        return datetime.now().isoformat()
+        
+    except Exception as e:
+        print(f"❌ [日期过滤] 过滤失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return no_update
+
+
 def clear_store_cache(store_name, cache_manager=None):
     """
     清除指定门店的所有Redis缓存
@@ -5365,8 +5701,18 @@ def load_from_database(n_clicks, store_name, start_date, end_date):
                     print(f"   成本总和: ¥{cached_df['商品采购成本'].sum():,.2f}")
                     print(f"   成本NaN: {cached_df['商品采购成本'].isna().sum()}")
                 
+                # ✅ 添加标记：这是从Redis缓存加载的数据，已按正确日期查询
+                cached_df.attrs['just_loaded'] = True
+                
                 # 更新全局数据
                 GLOBAL_DATA = cached_df
+                
+                print(f"\n{'='*60}", flush=True)
+                print(f"✅ [Redis缓存] GLOBAL_DATA已更新:", flush=True)
+                print(f"   行数: {len(GLOBAL_DATA)}", flush=True)
+                print(f"   日期范围: {GLOBAL_DATA['日期'].min()} ~ {GLOBAL_DATA['日期'].max()}", flush=True)
+                print(f"   just_loaded标记: {GLOBAL_DATA.attrs.get('just_loaded', False)}", flush=True)
+                print(f"{'='*60}\n", flush=True)
                 
                 # 更新完整数据缓存
                 if GLOBAL_FULL_DATA is None or QUERY_DATE_RANGE.get('cache_store') != store_name:
@@ -5438,7 +5784,15 @@ def load_from_database(n_clicks, store_name, start_date, end_date):
             print(f"📦 本地缓存剩余时间: {int(300 - (datetime.now() - QUERY_DATE_RANGE['cache_timestamp']).total_seconds())} 秒")
         
         # 从数据库加载(带日期过滤)
-        print(f"📊 从数据库查询指定日期范围数据: {start_date} ~ {end_date}")
+        print(f"\n{'🔍'*40}", flush=True)
+        print(f"📊 [关键调试] 即将查询数据库:", flush=True)
+        print(f"   门店名称: {store_name}", flush=True)
+        print(f"   起始日期(原始): {start_date} (类型: {type(start_date)})", flush=True)
+        print(f"   结束日期(原始): {end_date} (类型: {type(end_date)})", flush=True)
+        print(f"   起始日期(转换后): {start_dt} (类型: {type(start_dt)})", flush=True)
+        print(f"   结束日期(转换后): {end_dt} (类型: {type(end_dt)})", flush=True)
+        print(f"{'🔍'*40}\n", flush=True)
+        
         loaded_data = DATA_SOURCE_MANAGER.load_from_database(
             store_name=store_name,
             start_date=start_dt,
@@ -5508,8 +5862,18 @@ def load_from_database(n_clicks, store_name, start_date, end_date):
             print(f"   成本总和: ¥{df['商品采购成本'].sum():,.2f}")
             print(f"   成本NaN: {df['商品采购成本'].isna().sum()}")
         
+        # ✅ 添加标记：这是从数据库刚加载的数据，已按正确日期查询
+        df.attrs['just_loaded'] = True
+        
         # 更新全局数据(筛选后的)
         GLOBAL_DATA = df
+        print(f"\n{'='*60}", flush=True)
+        print(f"✅ [数据库加载] GLOBAL_DATA已更新:", flush=True)
+        print(f"   行数: {len(GLOBAL_DATA)}", flush=True)
+        print(f"   日期范围: {GLOBAL_DATA['日期'].min()} ~ {GLOBAL_DATA['日期'].max()}", flush=True)
+        print(f"   just_loaded标记: {GLOBAL_DATA.attrs.get('just_loaded', False)}", flush=True)
+        print(f"{'='*60}\n", flush=True)
+        
         # ⚠️ 修复:GLOBAL_FULL_DATA不应该被日期筛选后的数据覆盖
         # 它应该保持完整数据,用于环比计算时查找历史周期
         # GLOBAL_FULL_DATA = df  # ❌ 错误:这会导致环比无法找到上期数据
@@ -5640,12 +6004,16 @@ def handle_global_refresh(n_clicks, store_name, current_refresh, current_trigger
         if not DATABASE_AVAILABLE or DATA_SOURCE_MANAGER is None:
             toast = add_toast("数据库功能未启用,无法刷新", "⚠️ 警告", "warning", "warning", 4000)
             current_toast_queue.append(toast)
-            return no_update, current_refresh, current_trigger, current_toast_queue
+            # 确保trigger为字符串类型
+            safe_trigger = current_trigger if isinstance(current_trigger, str) else str(current_trigger or datetime.now().isoformat())
+            return no_update, current_refresh, safe_trigger, current_toast_queue
         
         if not store_name:
             toast = add_toast("请先选择门店", "ℹ️ 提示", "info", "info", 3000)
             current_toast_queue.append(toast)
-            return no_update, current_refresh, current_trigger, current_toast_queue
+            # 确保trigger为字符串类型
+            safe_trigger = current_trigger if isinstance(current_trigger, str) else str(current_trigger or datetime.now().isoformat())
+            return no_update, current_refresh, safe_trigger, current_toast_queue
         
         # 添加"正在刷新"Toast
         toast_loading = add_toast("正在清除缓存并重新加载数据...", "🔄 刷新中", "primary", "info", 0, False)
@@ -5667,15 +6035,28 @@ def handle_global_refresh(n_clicks, store_name, current_refresh, current_trigger
         if full_df.empty:
             toast = add_toast("数据库中无数据", "⚠️ 警告", "warning", "warning", 4000)
             current_toast_queue.append(toast)
-            return no_update, current_refresh, current_trigger, current_toast_queue
+            # 确保trigger为字符串类型
+            safe_trigger = current_trigger if isinstance(current_trigger, str) else str(current_trigger or datetime.now().isoformat())
+            return no_update, current_refresh, safe_trigger, current_toast_queue
         
         # Step 4: 添加场景和时段字段
         full_df = add_scene_and_timeslot_fields(full_df)
         display_df = add_scene_and_timeslot_fields(display_df)
         
+        # ✅ 添加标记：这是刚刷新的数据，避免被日期过滤回调覆盖
+        display_df.attrs['just_loaded'] = True
+        
         # Step 5: 更新全局数据
         GLOBAL_FULL_DATA = full_df
         GLOBAL_DATA = display_df
+        
+        print(f"\n{'='*60}", flush=True)
+        print(f"✅ [刷新] GLOBAL_DATA已更新:", flush=True)
+        print(f"   行数: {len(GLOBAL_DATA)}", flush=True)
+        if '日期' in GLOBAL_DATA.columns:
+            print(f"   日期范围: {GLOBAL_DATA['日期'].min()} ~ {GLOBAL_DATA['日期'].max()}", flush=True)
+        print(f"   just_loaded标记: {GLOBAL_DATA.attrs.get('just_loaded', False)}", flush=True)
+        print(f"{'='*60}\n", flush=True)
         
         # Step 6: 更新日期范围缓存
         if '日期' in full_df.columns:
@@ -5695,7 +6076,7 @@ def handle_global_refresh(n_clicks, store_name, current_refresh, current_trigger
         
         # Step 8: 触发所有相关组件更新
         new_refresh = (current_refresh or 0) + 1
-        new_trigger = (current_trigger or 0) + 1
+        new_trigger = datetime.now().isoformat()  # 返回字符串时间戳（与其他回调保持一致）
         
         print(f"✅ [全局刷新] 刷新完成!")
         print(f"   数据量: {len(display_df):,}行")
@@ -5703,7 +6084,7 @@ def handle_global_refresh(n_clicks, store_name, current_refresh, current_trigger
         print("="*80 + "\n")
         
         # 添加成功Toast
-        cache_info = f"Redis({redis_cleared}项)+本地" if redis_cleared > 0 else "本地"
+        cache_info = f"Redis({redis_cleared}项)+本地" if redis_cleared and redis_cleared > 0 else "本地"
         success_msg = f"已清除{cache_info}缓存 | 重新加载 {len(display_df):,} 条数据"
         toast_success = add_toast(success_msg, "✅ 刷新成功", "success", "success", 5000)
         current_toast_queue.append(toast_success)
@@ -5720,7 +6101,9 @@ def handle_global_refresh(n_clicks, store_name, current_refresh, current_trigger
         toast_error = add_toast(f"刷新失败: {str(e)}", "❌ 错误", "danger", "danger", 6000)
         current_toast_queue.append(toast_error)
         
-        return no_update, current_refresh, current_trigger, current_toast_queue
+        # 确保trigger为字符串类型
+        safe_trigger = current_trigger if isinstance(current_trigger, str) else str(current_trigger or datetime.now().isoformat())
+        return no_update, current_refresh, safe_trigger, current_toast_queue
 
 
 # ==================== 上传新数据到数据库回调函数 ====================
@@ -6130,7 +6513,8 @@ def upload_data_to_database(list_of_contents, list_of_names, list_of_dates):
         else:
             data_label = no_update
         
-        return data_label, datetime.now().timestamp(), status_alert, debug_info
+        # 返回字符串时间戳（与其他回调保持一致）
+        return data_label, datetime.now().isoformat(), status_alert, debug_info
         
     except Exception as e:
         import traceback
@@ -10924,8 +11308,18 @@ def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cach
     df_full = GLOBAL_FULL_DATA.copy() if GLOBAL_FULL_DATA is not None else GLOBAL_DATA.copy()
     df_display = GLOBAL_DATA.copy()
     
-    # Tab1使用完整数据计算利润(含耗材)
-    df = df_full
+    print(f"\n{'🔍'*30}", flush=True)
+    print(f"[Tab1渲染] GLOBAL_DATA状态检查:", flush=True)
+    print(f"   行数: {len(GLOBAL_DATA)}", flush=True)
+    if '日期' in GLOBAL_DATA.columns:
+        print(f"   日期范围: {GLOBAL_DATA['日期'].min()} ~ {GLOBAL_DATA['日期'].max()}", flush=True)
+    print(f"   just_loaded标记: {GLOBAL_DATA.attrs.get('just_loaded', False)}", flush=True)
+    print(f"   df_display行数: {len(df_display)}", flush=True)
+    print(f"{'🔍'*30}\n", flush=True)
+    
+    # 🔧 修复: Tab1应该使用df_display(当前筛选的数据),而不是df_full(全部数据)
+    # df_display已经根据日期筛选,是当前要展示的数据
+    df = df_display
     
     # 🔍 [调试] 检查df是否包含耗材
     if '一级分类名' in df.columns:
@@ -10937,11 +11331,16 @@ def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cach
         print(f"   耗材成本: ¥{consumable_cost:,.2f}", flush=True)
     
     # ========== ⚡ 性能优化: 检查缓存有效性 ==========
+    just_loaded = df_display.attrs.get('just_loaded', False)
     cache_valid = (
         cached_agg is not None 
         and cached_comparison is not None 
         and cache_version == trigger  # 缓存版本匹配
+        and not just_loaded  # 如果数据刚加载,强制重新计算
     )
+    
+    if just_loaded:
+        print(f"🔄 [检测到just_loaded标记] 强制重新计算order_agg(当前df={len(df)}行)", flush=True)
     
     if cache_valid:
         print(f"⚡ [性能优化] 使用缓存数据,跳过订单聚合和环比计算", flush=True)
@@ -11041,6 +11440,7 @@ def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cach
         # 重要: 卡片显示的是当前筛选数据的指标,环比也应该对比相同口径的数据
         comparison_metrics = {}
         channel_comparison = {}  # 渠道环比数据
+        wow_metrics = {}  # 上周同期数据
         
         if '日期' in df.columns and GLOBAL_FULL_DATA is not None:
             try:
@@ -11121,6 +11521,44 @@ def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cach
                         end_date=actual_end
                     )
                 
+                # ✅ 新增:计算上周同期数据（固定7天前对比）
+                wow_metrics = {}
+                try:
+                    print(f"\n{'='*60}")
+                    print(f"🔍 开始计算上周同期数据...")
+                    wow_metrics = calculate_week_on_week_comparison(
+                        GLOBAL_FULL_DATA,  # 使用完整数据集
+                        start_date=actual_start,
+                        end_date=actual_end
+                    )
+                    
+                    # ✅ 用卡片显示的真实值覆盖current值
+                    if wow_metrics:
+                        if '订单数' in wow_metrics:
+                            wow_metrics['订单数']['current'] = current_total_orders
+                        if '商品实收额' in wow_metrics:
+                            wow_metrics['商品实收额']['current'] = current_actual_sales
+                        if '总利润' in wow_metrics:
+                            wow_metrics['总利润']['current'] = current_total_profit
+                        if '客单价' in wow_metrics:
+                            wow_metrics['客单价']['current'] = current_avg_order_value
+                        if '总利润率' in wow_metrics:
+                            wow_metrics['总利润率']['current'] = current_profit_rate
+                        if '动销商品数' in wow_metrics:
+                            wow_metrics['动销商品数']['current'] = current_products
+                        
+                        print(f"✅ 上周同期计算完成,返回 {len(wow_metrics)} 个指标")
+                        for key, value in wow_metrics.items():
+                            print(f"   - {key}: 当前值={value.get('current', 0):.1f}, 上周同期={value.get('previous', 0):.1f}, 变化率={value.get('change_rate', 0):.1f}%")
+                    else:
+                        print(f"⚠️ 上周同期数据为空")
+                    print(f"{'='*60}\n")
+                except Exception as e:
+                    print(f"❌ 上周同期计算异常: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    wow_metrics = {}
+                
                 print(f"✅ 环比计算完成,返回 {len(comparison_metrics)} 个指标")
                 if comparison_metrics:
                     for key, value in comparison_metrics.items():
@@ -11173,7 +11611,10 @@ def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cach
                         html.H5("📦 订单总数", className="card-title"),
                         html.H2(f"{total_orders:,}", className="text-primary"),
                         html.P("笔", className="text-muted"),
-                        create_comparison_badge(comparison_metrics.get('订单数', {}))
+                        create_dual_comparison_badge(
+                            comparison_metrics.get('订单数', {}),
+                            wow_metrics.get('订单数', {})
+                        )
                     ])
                 ], className="modern-card text-center shadow-sm")
             ], md=2),
@@ -11183,7 +11624,10 @@ def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cach
                         html.H5("💰 商品实收额", className="card-title"),
                         html.H2(f"¥{total_actual_sales:,.0f}", className="text-success"),
                         html.P("实收价格", className="text-muted small"),
-                        create_comparison_badge(comparison_metrics.get('商品实收额', {}))
+                        create_dual_comparison_badge(
+                            comparison_metrics.get('商品实收额', {}),
+                            wow_metrics.get('商品实收额', {})
+                        )
                     ])
                 ], className="modern-card text-center shadow-sm")
             ], md=2),
@@ -11193,7 +11637,10 @@ def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cach
                         html.H5("💎 总利润", className="card-title"),
                         html.H2(f"¥{total_profit:,.0f}", className="text-warning"),
                         html.P("元", className="text-muted"),
-                        create_comparison_badge(comparison_metrics.get('总利润', {}))
+                        create_dual_comparison_badge(
+                            comparison_metrics.get('总利润', {}),
+                            wow_metrics.get('总利润', {})
+                        )
                     ])
                 ], className="modern-card text-center shadow-sm")
             ], md=2),
@@ -11203,7 +11650,10 @@ def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cach
                         html.H5("🛒 平均客单价", className="card-title"),
                         html.H2(f"¥{avg_order_value:.2f}", className="text-danger"),
                         html.P("实收价格/订单数", className="text-muted small"),
-                        create_comparison_badge(comparison_metrics.get('客单价', {}))
+                        create_dual_comparison_badge(
+                            comparison_metrics.get('客单价', {}),
+                            wow_metrics.get('客单价', {})
+                        )
                     ])
                 ], className="modern-card text-center shadow-sm")
             ], md=2),
@@ -11213,7 +11663,10 @@ def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cach
                         html.H5("📈 总利润率", className="card-title"),
                         html.H2(f"{profit_rate:.1f}%", className="text-success"),
                         html.P("利润/实收价格", className="text-muted small"),
-                        create_comparison_badge(comparison_metrics.get('总利润率', {}))
+                        create_dual_comparison_badge(
+                            comparison_metrics.get('总利润率', {}),
+                            wow_metrics.get('总利润率', {})
+                        )
                     ])
                 ], className="modern-card text-center shadow-sm")
             ], md=2),
@@ -11223,7 +11676,10 @@ def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cach
                         html.H5("🏷️ 动销商品数", className="card-title"),
                         html.H2(f"{total_products:,}", className="text-secondary"),
                         html.P("有销量的SKU", className="text-muted small"),
-                        create_comparison_badge(comparison_metrics.get('动销商品数', {}))
+                        create_dual_comparison_badge(
+                            comparison_metrics.get('动销商品数', {}),
+                            wow_metrics.get('动销商品数', {})
+                        )
                     ])
                 ], className="modern-card text-center shadow-sm")
             ], md=2)
@@ -11277,6 +11733,11 @@ def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cach
         comparison_metrics = {}
     if channel_comparison is None:
         channel_comparison = {}
+    # ⚠️ 确保上周同期数据存在
+    if 'wow_metrics' not in locals():
+        wow_metrics = {}
+    if 'wow_metrics' not in locals() or wow_metrics is None:
+        wow_metrics = {}
     
     # ⚠️ 强制日志:显示最终环比数据状态
     print(f"\n{'='*60}", flush=True)
@@ -11293,7 +11754,8 @@ def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cach
     
     cached_comp_data = {
         'comparison_metrics': comparison_metrics,
-        'channel_comparison': channel_comparison
+        'channel_comparison': channel_comparison,
+        'wow_metrics': wow_metrics  # ✅ 新增:上周同期数据
     } if not cache_valid else cached_comparison
     
     return content, cached_agg_data, cached_comp_data, tabs_status  # ⚡ 返回4个值(包括tabs_status)
@@ -11324,12 +11786,26 @@ def async_load_tab1_channel_section(tab_content, trigger, cached_agg, cached_com
     
     df = GLOBAL_DATA.copy()
     
-    # 🔧 修复:检查缓存版本是否匹配
+    print(f"\n{'🔍'*30}", flush=True)
+    print(f"[异步渠道卡片] GLOBAL_DATA状态:", flush=True)
+    print(f"   行数: {len(GLOBAL_DATA)}", flush=True)
+    if '日期' in GLOBAL_DATA.columns:
+        print(f"   日期范围: {GLOBAL_DATA['日期'].min()} ~ {GLOBAL_DATA['日期'].max()}", flush=True)
+    print(f"   just_loaded标记: {GLOBAL_DATA.attrs.get('just_loaded', False)}", flush=True)
+    print(f"   df行数: {len(df)}", flush=True)
+    print(f"{'🔍'*30}\n", flush=True)
+    
+    # 🔧 修复:检查缓存版本是否匹配 + 检查数据是否刚加载
+    just_loaded = df.attrs.get('just_loaded', False)
     cache_valid = (
         cached_agg is not None 
         and cached_comparison is not None
         and cache_version == trigger  # 缓存版本必须匹配
+        and not just_loaded  # 如果数据刚加载,强制重新计算
     )
+    
+    if just_loaded:
+        print(f"🔄 [检测到just_loaded标记] 强制重新计算order_agg(当前df={len(df)}行)", flush=True)
     
     # 从缓存读取数据
     if cache_valid:
@@ -11412,11 +11888,16 @@ def async_load_tab1_aov_section(channel_content, trigger, cached_agg, cache_vers
     
     df = GLOBAL_DATA.copy()
     
-    # 🔧 修复:检查缓存版本是否匹配,不匹配则强制重新计算
+    # 🔧 修复:检查缓存版本是否匹配 + 检查数据是否刚加载
+    just_loaded = df.attrs.get('just_loaded', False)
     cache_valid = (
         cached_agg is not None 
         and cache_version == trigger  # 缓存版本必须匹配
+        and not just_loaded  # 如果数据刚加载,强制重新计算
     )
+    
+    if just_loaded:
+        print(f"🔄 [客单价分析-检测到just_loaded] 强制重新计算order_agg(当前df={len(df)}行)", flush=True)
     
     # 从缓存读取订单聚合数据
     if cache_valid:
