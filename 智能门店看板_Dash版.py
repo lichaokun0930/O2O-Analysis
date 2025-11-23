@@ -31,6 +31,15 @@ from dash import Dash, html, dcc, Input, Output, State, dash_table, callback_con
 from dash.dependencies import ALL, MATCH
 from dash.exceptions import PreventUpdate
 
+# 尝试导入 dash_ag_grid
+try:
+    import dash_ag_grid as dag
+    AG_GRID_AVAILABLE = True
+    print("✅ AG Grid 可用，将使用高级表格组件")
+except ImportError:
+    AG_GRID_AVAILABLE = False
+    print("⚠️ AG Grid 未安装，将使用基础表格")
+
 # 尝试导入 dash_echarts，如果失败则使用 Plotly 作为后备方案
 try:
     from dash_echarts import DashECharts
@@ -1540,6 +1549,12 @@ def calculate_week_on_week_comparison(df: pd.DataFrame, start_date: datetime = N
             start_date = pd.to_datetime(start_date)
         if not isinstance(end_date, datetime):
             end_date = pd.to_datetime(end_date)
+            
+        # ⚠️ 限制: 只有当周期 <= 7天时才计算上周同期
+        period_days = (end_date - start_date).days + 1
+        if period_days > 7:
+            print(f"⚠️ [同比计算] 周期超过7天({period_days}天)，跳过上周同期计算")
+            return {}
         
         # 计算上周同期的日期范围（往前推7天）
         last_week_start = start_date - timedelta(days=7)
@@ -2002,14 +2017,25 @@ def calculate_channel_comparison(df: pd.DataFrame, order_agg: pd.DataFrame,
         
         # 🔄 2. 计算上周同期 (同比)
         # 逻辑: 往前推7天 (例如: 选了周一, 就对比上周一)
-        wow_start_date = start_date - timedelta(days=7)
-        wow_end_date = end_date - timedelta(days=7)
+        # ⚠️ 限制: 只有当周期 <= 7天时才计算上周同期，避免时间段重叠
+        if period_days <= 7:
+            wow_start_date = start_date - timedelta(days=7)
+            wow_end_date = end_date - timedelta(days=7)
+            calc_wow = True
+        else:
+            wow_start_date = None
+            wow_end_date = None
+            calc_wow = False
+            print(f"⚠️ [渠道对比] 周期超过7天({period_days}天)，跳过上周同期计算")
         
         # 🔍 调试: 输出周期计算信息
         print(f"📅 [渠道对比] 双重周期计算:")
         print(f"   当前周期: {start_date.date()} ~ {end_date.date()} ({period_days}天)")
         print(f"   上一周期(环比): {prev_period_start.date()} ~ {prev_period_end.date()}")
-        print(f"   上周同期(同比): {wow_start_date.date()} ~ {wow_end_date.date()}")
+        if calc_wow:
+            print(f"   上周同期(同比): {wow_start_date.date()} ~ {wow_end_date.date()}")
+        else:
+            print(f"   上周同期(同比): 未计算 (周期>7天)")
         print(f"   完整数据集行数: {len(df)}")
         
         # ✅ 关键修复: 直接使用传入的order_agg作为当前周期数据(已应用所有过滤规则)
@@ -2032,18 +2058,78 @@ def calculate_channel_comparison(df: pd.DataFrame, order_agg: pd.DataFrame,
         # ✅ 使用当前订单聚合数据计算当前周期渠道指标(与卡片显示一致)
         # 🔧 修复：不再硬编码排除闪购小程序和收银机订单，只排除咖啡渠道
         excluded_channels = CHANNELS_TO_REMOVE  # 只排除咖啡渠道
-        current_filtered = current_order_agg[~current_order_agg['渠道'].isin(excluded_channels)]
+        current_filtered = current_order_agg[~current_order_agg['渠道'].isin(excluded_channels)].copy()
         
-        # ✅ 修改：使用'实收价格'替代'商品实售价'
-        current_metrics = current_filtered.groupby('渠道').agg({
+        # ✅ 1. 准备当前周期数据 - 补充成本字段
+        # 确保包含所有必要字段
+        required_cols = ['商品采购成本', '商品减免金额', '商家活动成本', '配送净成本', '平台服务费']
+        for col in required_cols:
+            if col not in current_filtered.columns:
+                current_filtered[col] = 0
+        
+        # 计算当前周期耗材成本 (需要从原始df中计算)
+        current_raw_data = df[
+            (df[date_col].dt.date >= start_date.date()) & 
+            (df[date_col].dt.date <= end_date.date())
+        ]
+        
+        consumable_cost_df = pd.DataFrame()
+        if '一级分类名' in current_raw_data.columns and '商品采购成本' in current_raw_data.columns:
+            consumable_df = current_raw_data[current_raw_data['一级分类名'] == '耗材']
+            if not consumable_df.empty:
+                consumable_cost_df = consumable_df.groupby('订单ID')['商品采购成本'].sum().reset_index()
+                consumable_cost_df.columns = ['订单ID', '耗材成本']
+                consumable_cost_df['订单ID'] = consumable_cost_df['订单ID'].astype(str)
+        
+        if not consumable_cost_df.empty:
+            current_filtered = current_filtered.merge(consumable_cost_df, on='订单ID', how='left')
+            current_filtered['耗材成本'] = current_filtered['耗材成本'].fillna(0)
+        else:
+            current_filtered['耗材成本'] = 0
+
+        # ✅ 修改：使用'实收价格'替代'商品实售价'，并聚合成本字段
+        agg_dict = {
             '订单ID': 'count',
             '实收价格': 'sum',
-            '订单实际利润': 'sum'
-        }).reset_index()
-        current_metrics.columns = ['渠道', '订单数', '销售额', '总利润']
+            '订单实际利润': 'sum',
+            '商品采购成本': 'sum',
+            '耗材成本': 'sum',
+            '商品减免金额': 'sum',
+            '商家活动成本': 'sum',
+            '配送净成本': 'sum',
+            '平台服务费': 'sum'
+        }
+        
+        # 确保聚合字段存在
+        for col in agg_dict.keys():
+            if col not in current_filtered.columns and col != '订单ID':
+                current_filtered[col] = 0
+                
+        current_metrics = current_filtered.groupby('渠道').agg(agg_dict).reset_index()
+        
+        # 重命名和计算衍生指标
+        current_metrics = current_metrics.rename(columns={
+            '订单ID': '订单数',
+            '实收价格': '销售额',
+            '订单实际利润': '总利润',
+            '商品采购成本': '商品总成本', # 含耗材
+            '商品减免金额': '商品减免',
+            '配送净成本': '配送成本',
+            '平台服务费': '佣金'
+        })
+        
+        current_metrics['商品成本'] = current_metrics['商品总成本'] - current_metrics['耗材成本']
+        current_metrics['活动补贴'] = current_metrics['商家活动成本'] - current_metrics['商品减免']
+        # 避免负数
+        current_metrics['活动补贴'] = current_metrics['活动补贴'].apply(lambda x: max(0, x))
+        
         current_metrics['客单价'] = current_metrics['销售额'] / current_metrics['订单数']
-        # ✅ 利润率 = 订单实际利润 / 销售额（订单实际利润已正确剔除平台服务费=0的订单）
+        # ✅ 利润率 = 订单实际利润 / 销售额
         current_metrics['利润率'] = (current_metrics['总利润'] / current_metrics['销售额'] * 100).fillna(0)
+        
+        # 计算各项成本率
+        for col in ['商品成本', '耗材成本', '商品减免', '活动补贴', '配送成本', '佣金']:
+            current_metrics[f'{col}率'] = (current_metrics[col] / current_metrics['销售额'] * 100).fillna(0)
         
         print(f"   📊 当前周期渠道指标(基于order_agg,与卡片一致):", flush=True)
         for _, row in current_metrics.iterrows():
@@ -2055,21 +2141,14 @@ def calculate_channel_comparison(df: pd.DataFrame, order_agg: pd.DataFrame,
             (df[date_col].dt.date <= prev_period_end.date())
         ].copy()
         
-        # 计算上周同期数据(从完整数据集)
-        wow_data = df[
-            (df[date_col].dt.date >= wow_start_date.date()) & 
-            (df[date_col].dt.date <= wow_end_date.date())
-        ].copy()
-        
-        print(f"   🔍 数据筛选结果: 环比数据{len(prev_period_data)}行, 同比数据{len(wow_data)}行")
-        
-        if len(prev_period_data) == 0 and len(wow_data) == 0:
-            print(f"⚠️ [渠道环比] 历史数据不足，无法计算对比")
-            return {}
-        
         # 过滤掉不需要的渠道
         prev_period_data = prev_period_data[~prev_period_data['渠道'].isin(excluded_channels)]
-        wow_data = wow_data[~wow_data['渠道'].isin(excluded_channels)]
+        
+        print(f"   🔍 数据筛选结果: 环比数据{len(prev_period_data)}行")
+        
+        if len(prev_period_data) == 0 and not calc_wow:
+            print(f"⚠️ [渠道环比] 历史数据不足，无法计算对比")
+            return {}
         
         # 计算上一周期渠道指标
         def calc_prev_channel_metrics(data):
@@ -2103,30 +2182,90 @@ def calculate_channel_comparison(df: pd.DataFrame, order_agg: pd.DataFrame,
                 # 验证合并是否成功
                 if '渠道' not in order_metrics.columns:
                     print(f"⚠️ 合并后缺少'渠道'字段")
-                    print(f"   order_metrics列: {order_metrics.columns.tolist()}")
-                    print(f"   order_channel列: {order_channel.columns.tolist()}")
                     return None
-            else:
-                # print(f"✅ order_metrics已包含'渠道'字段,跳过merge")
-                pass
             
-            # 按渠道聚合 (✅ 修改：使用'实收价格'替代'商品实售价')
-            channel_metrics = order_metrics.groupby('渠道').agg({
+            # ✅ 计算耗材成本
+            consumable_cost_prev = pd.DataFrame()
+            if '一级分类名' in data.columns and '商品采购成本' in data.columns:
+                consumable_df = data[data['一级分类名'] == '耗材']
+                if not consumable_df.empty:
+                    consumable_cost_prev = consumable_df.groupby('订单ID')['商品采购成本'].sum().reset_index()
+                    consumable_cost_prev.columns = ['订单ID', '耗材成本']
+                    consumable_cost_prev['订单ID'] = consumable_cost_prev['订单ID'].astype(str)
+            
+            if not consumable_cost_prev.empty:
+                order_metrics = order_metrics.merge(consumable_cost_prev, on='订单ID', how='left')
+                order_metrics['耗材成本'] = order_metrics['耗材成本'].fillna(0)
+            else:
+                order_metrics['耗材成本'] = 0
+                
+            # 确保其他字段存在
+            required_cols = ['商品采购成本', '商品减免金额', '商家活动成本', '配送净成本', '平台服务费']
+            for col in required_cols:
+                if col not in order_metrics.columns:
+                    order_metrics[col] = 0
+
+            # ✅ 按渠道聚合 (包含成本字段)
+            agg_dict = {
                 '订单ID': 'count',
                 '实收价格': 'sum',
-                '订单实际利润': 'sum'
-            }).reset_index()
+                '订单实际利润': 'sum',
+                '商品采购成本': 'sum',
+                '耗材成本': 'sum',
+                '商品减免金额': 'sum',
+                '商家活动成本': 'sum',
+                '配送净成本': 'sum',
+                '平台服务费': 'sum'
+            }
             
-            channel_metrics.columns = ['渠道', '订单数', '销售额', '总利润']
+            # 确保聚合字段存在
+            for col in agg_dict.keys():
+                if col not in order_metrics.columns and col != '订单ID':
+                    order_metrics[col] = 0
+            
+            channel_metrics = order_metrics.groupby('渠道').agg(agg_dict).reset_index()
+            
+            # 重命名和计算衍生指标
+            channel_metrics = channel_metrics.rename(columns={
+                '订单ID': '订单数',
+                '实收价格': '销售额',
+                '订单实际利润': '总利润',
+                '商品采购成本': '商品总成本', # 含耗材
+                '商品减免金额': '商品减免',
+                '配送净成本': '配送成本',
+                '平台服务费': '佣金'
+            })
+            
+            channel_metrics['商品成本'] = channel_metrics['商品总成本'] - channel_metrics['耗材成本']
+            channel_metrics['活动补贴'] = channel_metrics['商家活动成本'] - channel_metrics['商品减免']
+            channel_metrics['活动补贴'] = channel_metrics['活动补贴'].apply(lambda x: max(0, x))
+            
             channel_metrics['客单价'] = channel_metrics['销售额'] / channel_metrics['订单数']
-            # ✅ 利润率 = 订单实际利润 / 销售额（订单实际利润已正确剔除平台服务费=0的订单）
             channel_metrics['利润率'] = (channel_metrics['总利润'] / channel_metrics['销售额'] * 100).fillna(0)
+            
+            # 计算各项成本率
+            for col in ['商品成本', '耗材成本', '商品减免', '活动补贴', '配送成本', '佣金']:
+                channel_metrics[f'{col}率'] = (channel_metrics[col] / channel_metrics['销售额'] * 100).fillna(0)
             
             return channel_metrics
         
         # 分别计算两组历史指标
         prev_period_metrics = calc_prev_channel_metrics(prev_period_data)
-        wow_metrics = calc_prev_channel_metrics(wow_data)
+        
+        # 只有当需要计算同比时才计算
+        if calc_wow:
+            # 计算上周同期数据(从完整数据集)
+            wow_data = df[
+                (df[date_col].dt.date >= wow_start_date.date()) & 
+                (df[date_col].dt.date <= wow_end_date.date())
+            ].copy()
+            
+            # 过滤掉不需要的渠道
+            wow_data = wow_data[~wow_data['渠道'].isin(excluded_channels)]
+            
+            wow_metrics = calc_prev_channel_metrics(wow_data)
+        else:
+            wow_metrics = None
         
         if (prev_period_metrics is None or len(prev_period_metrics) == 0) and \
            (wow_metrics is None or len(wow_metrics) == 0):
@@ -2155,21 +2294,32 @@ def calculate_channel_comparison(df: pd.DataFrame, order_agg: pd.DataFrame,
                 
             # 构建指标字典
             metrics_dict = {}
-            for metric in ['订单数', '销售额', '总利润', '客单价', '利润率']:
+            # ✅ 新增成本结构指标对比
+            metrics_to_compare = [
+                '订单数', '销售额', '总利润', '客单价', '利润率',
+                '商品成本', '耗材成本', '商品减免', '活动补贴', '配送成本', '佣金',
+                '商品成本率', '耗材成本率', '商品减免率', '活动补贴率', '配送成本率', '佣金率'
+            ]
+            
+            for metric in metrics_to_compare:
                 # 当前值
-                curr_val = current_row[metric]
+                curr_val = current_row[metric] if metric in current_row else 0
                 
                 # 环比数据
-                prev_val = prev_row[metric] if prev_row is not None else 0
-                # 利润率用差值，其他用百分比
-                if metric == '利润率':
+                prev_val = prev_row[metric] if prev_row is not None and metric in prev_row else 0
+                
+                # 率指标用差值，绝对值指标用百分比
+                is_rate = metric.endswith('率')
+                
+                if is_rate:
                     change_rate = (curr_val - prev_val) if prev_row is not None else None
                 else:
                     change_rate = calc_rate(curr_val, prev_val) if prev_row is not None else None
                 
                 # 同比数据 (上周同期)
-                wow_val = wow_row[metric] if wow_row is not None else 0
-                if metric == '利润率':
+                wow_val = wow_row[metric] if wow_row is not None and metric in wow_row else 0
+                
+                if is_rate:
                     wow_change_rate = (curr_val - wow_val) if wow_row is not None else None
                 else:
                     wow_change_rate = calc_rate(curr_val, wow_val) if wow_row is not None else None
@@ -2178,7 +2328,7 @@ def calculate_channel_comparison(df: pd.DataFrame, order_agg: pd.DataFrame,
                     'current': curr_val,
                     'previous': prev_val, # 兼容旧代码
                     'change_rate': change_rate, # 兼容旧代码(环比)
-                    'metric_type': 'positive',
+                    'metric_type': 'positive', # 暂时统一为positive，前端根据指标类型判断颜色
                     'label': '环比',
                     # 新增双重对比数据
                     'comparison': {
@@ -3106,14 +3256,11 @@ def _create_channel_comparison_cards(df: pd.DataFrame, order_agg: pd.DataFrame,
     Returns:
         渠道对比组件
     """
-    if '渠道' not in df.columns:
-        return html.Div()
-    
     try:
-        # 🔴 统一订单ID类型
-        df['订单ID'] = df['订单ID'].astype(str)
-        order_agg['订单ID'] = order_agg['订单ID'].astype(str)
-        
+        if '渠道' not in df.columns:
+            return html.Div()
+            
+        print("🚀 [渠道对比] 进入主逻辑 (Fixed Indentation)", flush=True)
         # 判断是否为整周（7天）
         is_full_week = False
         if '日期' in df.columns:
@@ -3284,6 +3431,13 @@ def _create_channel_comparison_cards(df: pd.DataFrame, order_agg: pd.DataFrame,
             '美团外卖': 'warning',
             '饿了么外卖': 'info'
         }
+
+        # ---------------------------------------------------------
+        # 🚀 方案二：超级表格 (Super Table) Demo (已备份至 SuperTable_Demo_Code.py)
+        # ---------------------------------------------------------
+        # if True: # FORCE ENABLE
+        #     print("DEBUG: EXECUTING SUPER TABLE LOGIC", flush=True)
+        #     # ... (代码已移除，恢复原有卡片逻辑) ...
         
         # 创建渠道卡片
         channel_cards = []
@@ -3413,6 +3567,7 @@ def _create_channel_comparison_cards(df: pd.DataFrame, order_agg: pd.DataFrame,
                                 html.Span("📦 商品成本", className="small me-2"),
                                 html.Span(f"¥{row['商品成本']:,.0f} ({row['商品成本率']:.1f}%)", className="small fw-bold text-primary")
                             ], className="d-flex justify-content-between mb-1"),
+                            create_comparison_badge(channel_comp.get('商品成本率', {})),
                             dbc.Progress(
                                 value=row['商品成本率'],
                                 max=60,  # 商品成本通常较高，最大值设为60%
@@ -3428,6 +3583,7 @@ def _create_channel_comparison_cards(df: pd.DataFrame, order_agg: pd.DataFrame,
                                 html.Span("🥡 耗材成本", className="small me-2"),
                                 html.Span(f"¥{row['耗材成本']:,.0f} ({row['耗材成本率']:.1f}%)", className="small fw-bold text-dark")
                             ], className="d-flex justify-content-between mb-1"),
+                            create_comparison_badge(channel_comp.get('耗材成本率', {})),
                             dbc.Progress(
                                 value=row['耗材成本率'],
                                 max=10,  # 耗材通常较低
@@ -3443,6 +3599,7 @@ def _create_channel_comparison_cards(df: pd.DataFrame, order_agg: pd.DataFrame,
                                 html.Span("🏷️ 商品减免", className="small me-2"),
                                 html.Span(f"¥{row['商品减免']:,.0f} ({row['商品减免率']:.1f}%)", className="small fw-bold text-danger")
                             ], className="d-flex justify-content-between mb-1"),
+                            create_comparison_badge(channel_comp.get('商品减免率', {})),
                             dbc.Progress(
                                 value=row['商品减免率'],
                                 max=30,
@@ -3458,6 +3615,7 @@ def _create_channel_comparison_cards(df: pd.DataFrame, order_agg: pd.DataFrame,
                                 html.Span("🎉 活动补贴", className="small me-2"),
                                 html.Span(f"¥{row['活动补贴']:,.0f} ({row['活动补贴率']:.1f}%)", className="small fw-bold text-warning")
                             ], className="d-flex justify-content-between mb-1"),
+                            create_comparison_badge(channel_comp.get('活动补贴率', {})),
                             dbc.Progress(
                                 value=row['活动补贴率'],
                                 max=30,
@@ -3473,6 +3631,7 @@ def _create_channel_comparison_cards(df: pd.DataFrame, order_agg: pd.DataFrame,
                                 html.Span("🚚 配送成本", className="small me-2"),
                                 html.Span(f"¥{row['配送成本']:,.0f} ({row['配送成本率']:.1f}%)", className="small fw-bold text-secondary")
                             ], className="d-flex justify-content-between mb-1"),
+                            create_comparison_badge(channel_comp.get('配送成本率', {})),
                             dbc.Progress(
                                 value=row['配送成本率'],
                                 max=30,
@@ -3488,6 +3647,7 @@ def _create_channel_comparison_cards(df: pd.DataFrame, order_agg: pd.DataFrame,
                                 html.Span("📱 平台服务费", className="small me-2"),
                                 html.Span(f"¥{row['平台服务费']:,.0f} ({row['佣金率']:.1f}%)", className="small fw-bold text-info")
                             ], className="d-flex justify-content-between mb-1"),
+                            create_comparison_badge(channel_comp.get('佣金率', {})),
                             dbc.Progress(
                                 value=row['佣金率'],
                                 max=30,
@@ -3601,10 +3761,16 @@ def _create_channel_comparison_cards(df: pd.DataFrame, order_agg: pd.DataFrame,
         ])
         
     except Exception as e:
-        print(f"❌ 渠道对比分析失败: {e}")
         import traceback
+        err_msg = traceback.format_exc()
+        print(f"❌ 渠道对比分析失败: {e}")
         traceback.print_exc()
-        return html.Div()
+        return dbc.Alert([
+            html.H4("❌ 渠道对比组件渲染失败", className="alert-heading"),
+            html.P(f"错误信息: {str(e)}"),
+            html.Hr(),
+            html.Pre(err_msg, style={"max-height": "300px", "overflow-y": "scroll", "font-size": "12px"})
+        ], color="danger", className="m-3")
 
 
 # ==================== 客单价深度分析组件 ====================
