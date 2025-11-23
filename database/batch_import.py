@@ -158,6 +158,22 @@ class BatchDataImporter:
                         errors += 1
                         continue
                     
+                    # 🔧 库存字段兼容性处理(支持多种列名)
+                    stock_value = None
+                    remaining_stock_value = None
+                    
+                    # 尝试读取库存字段(优先级从高到低)
+                    for col in ['库存', 'stock', '期末库存']:
+                        if col in row.index and pd.notna(row.get(col)):
+                            stock_value = float(row[col]) if row[col] != '' else None
+                            break
+                    
+                    # 尝试读取剩余库存字段
+                    for col in ['剩余库存', 'remaining_stock', '当前库存']:
+                        if col in row.index and pd.notna(row.get(col)):
+                            remaining_stock_value = float(row[col]) if row[col] != '' else None
+                            break
+                    
                     order_data = {
                         'order_id': order_id,
                         'date': order_date,
@@ -171,6 +187,8 @@ class BatchDataImporter:
                         'quantity': int(row.get('销售数量', 1)) if pd.notna(row.get('销售数量')) else 1,
                         'amount': float(row.get('实收金额', 0)) if pd.notna(row.get('实收金额')) else 0,
                         'channel': str(row.get('渠道', '')) if pd.notna(row.get('渠道')) else None,
+                        'stock': int(stock_value) if stock_value is not None else 0,  # 🔧 库存
+                        'remaining_stock': float(remaining_stock_value) if remaining_stock_value is not None else 0,  # 🔧 剩余库存
                     }
                     
                     if existing:
