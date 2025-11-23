@@ -1,5 +1,4 @@
-#!/usr/bin/env powershell
-# =============================================================================
+﻿# =============================================================================
 # Requirements变更追踪系统 - 启动脚本
 # =============================================================================
 # 功能: 一键管理requirements.txt变更追踪
@@ -9,6 +8,9 @@
 
 # 设置错误处理
 $ErrorActionPreference = "Stop"
+
+# 切换到脚本所在目录
+Set-Location $PSScriptRoot
 
 # 显示标题
 Write-Host ""
@@ -94,7 +96,7 @@ switch ($choice.ToUpper()) {
                     Write-Host ""
                     Write-Host "📋 最新变更 (前30行):" -ForegroundColor Yellow
                     Write-Host ""
-                    Get-Content "requirements_changelog.md" -TotalCount 30
+                    Get-Content "requirements_changelog.md" -TotalCount 30 -Encoding UTF8
                     Write-Host ""
                     Write-Host "... (完整内容请查看文件)" -ForegroundColor Gray
                     Write-Host ""
@@ -261,7 +263,7 @@ switch ($choice.ToUpper()) {
             Write-Host ""
             Write-Host "📋 最新内容 (前50行):" -ForegroundColor Yellow
             Write-Host ""
-            Get-Content $changelogFile -TotalCount 50
+            Get-Content $changelogFile -TotalCount 50 -Encoding UTF8
             Write-Host ""
             Write-Host "... (更多内容请查看完整文件)" -ForegroundColor Gray
             Write-Host ""
@@ -274,7 +276,7 @@ switch ($choice.ToUpper()) {
             Write-Host ""
         } else {
             Write-Host "ℹ️  变更日志尚未生成" -ForegroundColor Yellow
-            Write-Host "💡 提示: 修改requirements.txt后运行选项1,将自动生成变更日志" -ForegroundColor White
+            Write-Host "Tip: Run option 1 after modifying requirements.txt to generate changelog" -ForegroundColor White
             Write-Host ""
         }
     }
@@ -288,7 +290,7 @@ switch ($choice.ToUpper()) {
     
     default {
         Write-Host ""
-        Write-Host "❌ 无效选项,请重新运行脚本" -ForegroundColor Red
+        Write-Host "Invalid option, please run the script again" -ForegroundColor Red
         Write-Host ""
         exit 1
     }
