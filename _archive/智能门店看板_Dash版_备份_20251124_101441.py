@@ -113,21 +113,6 @@ except ImportError as e:
     print(f"⚠️ 组件样式库加载失败: {e}")
     print("   将使用原始dbc组件")
 
-# 🔍 导入下钻状态管理模块
-try:
-    from components.drill_down_manager import (
-        DrillDownState, get_state_manager,
-        create_breadcrumb_component, create_back_button, create_state_stores,
-        analyze_channel_health, get_drill_down_button_text, get_drill_down_button_color,
-        get_filter_type_label
-    )
-    DRILL_DOWN_AVAILABLE = True
-    print("✅ 下钻状态管理模块已加载")
-except ImportError as e:
-    DRILL_DOWN_AVAILABLE = False
-    print(f"⚠️ 下钻状态管理模块加载失败: {e}")
-    print("   4层金字塔下钻功能将不可用")
-
 # 🎨 导入加载进度组件库
 try:
     from loading_components import (
@@ -389,8 +374,8 @@ CHANNELS_TO_REMOVE = ['饿了么咖啡', '美团咖啡']
 PLATFORM_FEE_CHANNELS = [
     '饿了么',
     '京东到家',
-    '美团闪购',
     '美团共橙',
+    '美团闪购',
     '抖音',
     '抖音直播',
     '淘鲜达',
@@ -3488,232 +3473,203 @@ def _create_channel_comparison_cards(df: pd.DataFrame, order_agg: pd.DataFrame,
             card = dbc.Col([
                 dbc.Card([
                     dbc.CardHeader([
-                        html.Div([
-                            html.H5([
-                                icon, f" {channel_name}",
-                                health_badge
-                            ], className="mb-0 d-inline-block"),
-                        ], className="d-flex justify-content-between align-items-center")
+                        html.H5([
+                            icon, f" {channel_name}",
+                            health_badge
+                        ], className="mb-0")
                     ], className=f"bg-{card_color} text-white"),
                     dbc.CardBody([
-                        # 📊 核心业绩区域
-                        html.Div([
-                            html.Small("📊 核心业绩", className="text-muted fw-bold d-block mb-2"),
-                            
-                            # 第一行:订单/销售/占比
-                            dbc.Row([
-                                dbc.Col([
-                                    html.Div([
-                                        html.Small("订单数", className="text-muted d-block"),
-                                        html.H6(f"{int(row['订单数']):,}单", className="mb-0"),
-                                        create_comparison_badge(channel_comp.get('订单数', {}))
-                                    ])
-                                ], width=4),
-                                dbc.Col([
-                                    html.Div([
-                                        html.Small("销售额", className="text-muted d-block"),
-                                        html.H6(f"¥{row['销售额']:,.0f}", className="mb-0 text-primary fw-bold"),
-                                        create_comparison_badge(channel_comp.get('销售额', {}))
-                                    ])
-                                ], width=4),
-                                dbc.Col([
-                                    html.Div([
-                                        html.Small("占比", className="text-muted d-block"),
-                                        html.H6(f"{row['销售额占比']:.1f}%", className="mb-0")
-                                    ])
-                                ], width=4)
-                            ], className="mb-2"),
-                            
-                            # 第二行:利润额/客单价/利润率(突出显示)
-                            dbc.Row([
-                                dbc.Col([
-                                    html.Div([
-                                        html.Small("利润额", className="text-muted d-block"),
-                                        html.H6(f"¥{row['总利润']:,.0f}", className="mb-0 text-success fw-bold"),
-                                        create_comparison_badge(channel_comp.get('总利润', {}))
-                                    ])
-                                ], width=4),
-                                dbc.Col([
-                                    html.Div([
-                                        html.Small("客单价", className="text-muted d-block"),
-                                        html.H6(f"¥{row['客单价']:.2f}", className="mb-0"),
-                                        create_comparison_badge(channel_comp.get('客单价', {}))
-                                    ])
-                                ], width=4),
-                                dbc.Col([
-                                    html.Div([
-                                        html.Small("利润率", className="text-muted d-block"),
-                                        html.H5(
-                                            f"{row['利润率']:.1f}%",
-                                            className="mb-0 fw-bold " + (
-                                                "text-success" if row['利润率'] >= 10 else
-                                                "text-warning" if row['利润率'] >= 5 else
-                                                "text-danger"
-                                            )
-                                        ),
-                                        create_comparison_badge(channel_comp.get('利润率', {}))
-                                    ])
-                                ], width=4)
-                            ], className="mb-3")
+                        # 核心指标 - 第一行（带环比）
+                        dbc.Row([
+                            dbc.Col([
+                                html.Div([
+                                    html.Small("订单数", className="text-muted d-block"),
+                                    html.H5(f"{int(row['订单数']):,}单", className="mb-0"),
+                                    create_comparison_badge(channel_comp.get('订单数', {}))
+                                ])
+                            ], width=4),
+                            dbc.Col([
+                                html.Div([
+                                    html.Small("销售额", className="text-muted d-block"),
+                                    html.H5(f"¥{row['销售额']:,.0f}", className="mb-0 text-primary"),
+                                    create_comparison_badge(channel_comp.get('销售额', {}))
+                                ])
+                            ], width=4),
+                            dbc.Col([
+                                html.Div([
+                                    html.Small("占比", className="text-muted d-block"),
+                                    html.H5(f"{row['销售额占比']:.1f}%", className="mb-0 text-secondary")
+                                ])
+                            ], width=4)
                         ], className="mb-3"),
                         
-                        # 💰 单均经济区域
+                        # 核心指标 - 第二行 (带环比)
+                        dbc.Row([
+                            dbc.Col([
+                                html.Div([
+                                    html.Small("利润额", className="text-muted d-block"),
+                                    html.H6(f"¥{row['总利润']:,.0f}", className="mb-0 text-success fw-bold"),
+                                    create_comparison_badge(channel_comp.get('总利润', {}))
+                                ])
+                            ], width=4),
+                            dbc.Col([
+                                html.Div([
+                                    html.Small("客单价", className="text-muted d-block"),
+                                    html.H6(f"¥{row['客单价']:.2f}", className="mb-0"),
+                                    create_comparison_badge(channel_comp.get('客单价', {}))
+                                ])
+                            ], width=4),
+                            dbc.Col([
+                                html.Div([
+                                    html.Small("利润率", className="text-muted d-block"),
+                                    html.H6(
+                                        f"{row['利润率']:.1f}%",
+                                        className="mb-0 " + (
+                                            "text-success" if row['利润率'] >= 10 else
+                                            "text-warning" if row['利润率'] >= 5 else
+                                            "text-danger"
+                                        )
+                                    ),
+                                    create_comparison_badge(channel_comp.get('利润率', {}))
+                                ])
+                            ], width=4)
+                        ], className="mb-3"),
+                        
+                        # ✅ 新增：单均指标 - 第三行
+                        dbc.Row([
+                            dbc.Col([
+                                html.Div([
+                                    html.Small("单均利润", className="text-muted d-block"),
+                                    html.H6(f"¥{row['单均利润']:.2f}", className="mb-0 text-success fw-bold")
+                                ])
+                            ], width=4),
+                            dbc.Col([
+                                html.Div([
+                                    html.Small("单均营销费用", className="text-muted d-block"),
+                                    html.H6(f"¥{row['单均营销费用']:.2f}", className="mb-0 text-warning fw-bold")
+                                ])
+                            ], width=4),
+                            dbc.Col([
+                                html.Div([
+                                    html.Small("单均配送费支出", className="text-muted d-block"),
+                                    html.H6(f"¥{row['单均配送费支出']:.2f}", className="mb-0 text-secondary fw-bold")
+                                ])
+                            ], width=4)
+                        ], className="mb-3"),
+                        
+                        # 成本结构 - 优化为可视化进度条
+                        html.Hr(),
+                        html.Small("成本结构分析 (数值 + 占比)：", className="text-muted fw-bold d-block mb-2"),
+                        
+                        # 1. 商品成本 (不含耗材)
                         html.Div([
-                            html.Small("💰 单均经济", className="text-muted fw-bold d-block mb-2"),
-                            dbc.Row([
-                                dbc.Col([
-                                    html.Div([
-                                        html.Small("单均利润", className="text-muted d-block", style={'fontSize': '11px'}),
-                                        html.Span(f"¥{row['单均利润']:.2f}", className="fw-bold text-success")
-                                    ])
-                                ], width=4),
-                                dbc.Col([
-                                    html.Div([
-                                        html.Small("单均营销", className="text-muted d-block", style={'fontSize': '11px'}),
-                                        html.Span(f"¥{row['单均营销费用']:.2f}", className="fw-bold text-warning")
-                                    ])
-                                ], width=4),
-                                dbc.Col([
-                                    html.Div([
-                                        html.Small("单均配送", className="text-muted d-block", style={'fontSize': '11px'}),
-                                        html.Span(f"¥{row['单均配送费支出']:.2f}", className="fw-bold text-secondary")
-                                    ])
-                                ], width=4)
-                            ], className="mb-3")
+                            html.Div([
+                                html.Span("📦 商品成本", className="small me-2"),
+                                html.Span(f"¥{row['商品成本']:,.0f} ({row['商品成本率']:.1f}%)", className="small fw-bold text-primary")
+                            ], className="d-flex justify-content-between mb-1"),
+                            create_comparison_badge(channel_comp.get('商品成本率', {})),
+                            dbc.Progress(
+                                value=row['商品成本率'],
+                                max=60,  # 商品成本通常较高，最大值设为60%
+                                color="primary",
+                                style={'height': '8px'},
+                                className="mb-2"
+                            )
+                        ]),
+
+                        # 2. 耗材成本 (新增)
+                        html.Div([
+                            html.Div([
+                                html.Span("🥡 耗材成本", className="small me-2"),
+                                html.Span(f"¥{row['耗材成本']:,.0f} ({row['耗材成本率']:.1f}%)", className="small fw-bold text-dark")
+                            ], className="d-flex justify-content-between mb-1"),
+                            create_comparison_badge(channel_comp.get('耗材成本率', {})),
+                            dbc.Progress(
+                                value=row['耗材成本率'],
+                                max=10,  # 耗材通常较低
+                                color="dark",
+                                style={'height': '8px'},
+                                className="mb-2"
+                            )
+                        ]),
+
+                        # 3. 商品减免 (直接折扣)
+                        html.Div([
+                            html.Div([
+                                html.Span("🏷️ 商品减免", className="small me-2"),
+                                html.Span(f"¥{row['商品减免']:,.0f} ({row['商品减免率']:.1f}%)", className="small fw-bold text-danger")
+                            ], className="d-flex justify-content-between mb-1"),
+                            create_comparison_badge(channel_comp.get('商品减免率', {})),
+                            dbc.Progress(
+                                value=row['商品减免率'],
+                                max=30,
+                                color="danger",
+                                style={'height': '8px'},
+                                className="mb-2"
+                            )
+                        ]),
+
+                        # 4. 活动补贴 (满减/红包)
+                        html.Div([
+                            html.Div([
+                                html.Span("🎉 活动补贴", className="small me-2"),
+                                html.Span(f"¥{row['活动补贴']:,.0f} ({row['活动补贴率']:.1f}%)", className="small fw-bold text-warning")
+                            ], className="d-flex justify-content-between mb-1"),
+                            create_comparison_badge(channel_comp.get('活动补贴率', {})),
+                            dbc.Progress(
+                                value=row['活动补贴率'],
+                                max=30,
+                                color="warning",
+                                style={'height': '8px'},
+                                className="mb-2"
+                            )
                         ]),
                         
-                        # 📉 成本结构区域(优化进度条显示)
+                        # 5. 配送成本
                         html.Div([
-                            html.Small("📉 成本结构", className="text-muted fw-bold d-block mb-2"),
-                            
-                            # 1. 商品成本 (不含耗材)
                             html.Div([
-                                html.Div([
-                                    html.Span("📦 商品成本", className="small fw-bold me-2"),
-                                    html.Span(f"¥{row['商品成本']:,.0f}", className="small text-primary me-2"),
-                                    html.Span(f"{row['商品成本率']:.1f}%", className="small fw-bold text-primary")
-                                ], className="d-flex justify-content-between align-items-center mb-1"),
-                                dbc.Progress(
-                                    value=row['商品成本率'],
-                                    max=70,
-                                    color="primary",
-                                    style={'height': '12px'},
-                                    className="mb-2"
-                                )
-                            ]),
-
-                            # 2. 耗材成本
-                            html.Div([
-                                html.Div([
-                                    html.Span("🥡 耗材成本", className="small fw-bold me-2"),
-                                    html.Span(f"¥{row['耗材成本']:,.0f}", className="small text-dark me-2"),
-                                    html.Span(f"{row['耗材成本率']:.1f}%", className="small fw-bold text-dark")
-                                ], className="d-flex justify-content-between align-items-center mb-1"),
-                                dbc.Progress(
-                                    value=row['耗材成本率'],
-                                    max=10,
-                                    color="dark",
-                                    style={'height': '12px'},
-                                    className="mb-2"
-                                )
-                            ]),
-
-                            # 3. 商品减免
-                            html.Div([
-                                html.Div([
-                                    html.Span("🏷️ 商品减免", className="small fw-bold me-2"),
-                                    html.Span(f"¥{row['商品减免']:,.0f}", className="small text-danger me-2"),
-                                    html.Span(f"{row['商品减免率']:.1f}%", className="small fw-bold text-danger")
-                                ], className="d-flex justify-content-between align-items-center mb-1"),
-                                dbc.Progress(
-                                    value=row['商品减免率'],
-                                    max=30,
-                                    color="danger",
-                                    style={'height': '12px'},
-                                    className="mb-2"
-                                )
-                            ]),
-
-                            # 4. 活动补贴
-                            html.Div([
-                                html.Div([
-                                    html.Span("🎉 活动补贴", className="small fw-bold me-2"),
-                                    html.Span(f"¥{row['活动补贴']:,.0f}", className="small text-warning me-2"),
-                                    html.Span(f"{row['活动补贴率']:.1f}%", className="small fw-bold text-warning")
-                                ], className="d-flex justify-content-between align-items-center mb-1"),
-                                dbc.Progress(
-                                    value=row['活动补贴率'],
-                                    max=30,
-                                    color="warning",
-                                    style={'height': '12px'},
-                                    className="mb-2"
-                                )
-                            ]),
-                            
-                            # 5. 配送成本
-                            html.Div([
-                                html.Div([
-                                    html.Span("🚚 配送成本", className="small fw-bold me-2"),
-                                    html.Span(f"¥{row['配送成本']:,.0f}", className="small text-secondary me-2"),
-                                    html.Span(f"{row['配送成本率']:.1f}%", className="small fw-bold text-secondary")
-                                ], className="d-flex justify-content-between align-items-center mb-1"),
-                                dbc.Progress(
-                                    value=row['配送成本率'],
-                                    max=30,
-                                    color="secondary",
-                                    style={'height': '12px'},
-                                    className="mb-2"
-                                )
-                            ]),
-
-                            # 6. 平台服务费
-                            html.Div([
-                                html.Div([
-                                    html.Span("📱 平台服务费", className="small fw-bold me-2"),
-                                    html.Span(f"¥{row['平台服务费']:,.0f}", className="small text-info me-2"),
-                                    html.Span(f"{row['佣金率']:.1f}%", className="small fw-bold text-info")
-                                ], className="d-flex justify-content-between align-items-center mb-1"),
-                                dbc.Progress(
-                                    value=row['佣金率'],
-                                    max=30,
-                                    color="info",
-                                    style={'height': '12px'},
-                                    className="mb-2"
-                                )
-                            ]),
-                            
-                            # 总成本率汇总
-                            html.Hr(className="my-2"),
-                            html.Div([
-                                html.Span("📊 总成本率", className="fw-bold"),
-                                html.Span(
-                                    f"{row['商品成本率'] + row['耗材成本率'] + row['营销成本率'] + row['佣金率'] + row['配送成本率']:.1f}%",
-                                    className="fw-bold " + (
-                                        "text-success" if (row['商品成本率'] + row['耗材成本率'] + row['营销成本率'] + row['佣金率'] + row['配送成本率']) < 70 else
-                                        "text-warning" if (row['商品成本率'] + row['耗材成本率'] + row['营销成本率'] + row['佣金率'] + row['配送成本率']) < 85 else
-                                        "text-danger"
-                                    )
-                                )
-                            ], className="d-flex justify-content-between"),
-                            
-                            # 🔍 下钻按钮
-                            html.Hr(className="my-3"),
-                            dbc.Button(
-                                [
-                                    html.I(className="bi bi-search me-2"),
-                                    get_drill_down_button_text(
-                                        analyze_channel_health(profit_rate)[0]
-                                    ) if DRILL_DOWN_AVAILABLE else "深入分析 →"
-                                ],
-                                id={'type': 'drill-to-channel-btn', 'channel': channel_name},
-                                color=get_drill_down_button_color(
-                                    analyze_channel_health(profit_rate)[0]
-                                ) if DRILL_DOWN_AVAILABLE else 'primary',
-                                outline=True,
-                                size="sm",
-                                className="w-100"
+                                html.Span("🚚 配送成本", className="small me-2"),
+                                html.Span(f"¥{row['配送成本']:,.0f} ({row['配送成本率']:.1f}%)", className="small fw-bold text-secondary")
+                            ], className="d-flex justify-content-between mb-1"),
+                            create_comparison_badge(channel_comp.get('配送成本率', {})),
+                            dbc.Progress(
+                                value=row['配送成本率'],
+                                max=30,
+                                color="secondary",
+                                style={'height': '8px'},
+                                className="mb-2"
                             )
-                        ])
+                        ]),
+
+                        # 6. 平台服务费
+                        html.Div([
+                            html.Div([
+                                html.Span("📱 平台服务费", className="small me-2"),
+                                html.Span(f"¥{row['平台服务费']:,.0f} ({row['佣金率']:.1f}%)", className="small fw-bold text-info")
+                            ], className="d-flex justify-content-between mb-1"),
+                            create_comparison_badge(channel_comp.get('佣金率', {})),
+                            dbc.Progress(
+                                value=row['佣金率'],
+                                max=30,
+                                color="info",
+                                style={'height': '8px'},
+                                className="mb-1"
+                            )
+                        ]),
+                        
+                        # 总成本率
+                        html.Hr(className="my-2"),
+                        html.Div([
+                            html.Span("📊 总成本率", className="small fw-bold"),
+                            html.Span(
+                                f"{row['商品成本率'] + row['耗材成本率'] + row['营销成本率'] + row['佣金率'] + row['配送成本率']:.1f}%",
+                                className="small fw-bold " + (
+                                    "text-success" if (row['商品成本率'] + row['耗材成本率'] + row['营销成本率'] + row['佣金率'] + row['配送成本率']) < 70 else
+                                    "text-warning" if (row['商品成本率'] + row['耗材成本率'] + row['营销成本率'] + row['佣金率'] + row['配送成本率']) < 85 else
+                                    "text-danger"
+                                )
+                            )
+                        ], className="d-flex justify-content-between")
                     ])
                 ], className="h-100 shadow-sm")
             ], md=4, className="mb-3")
@@ -5633,14 +5589,6 @@ if MANTINE_AVAILABLE:
                 'tab-1': False, 'tab-2': False, 'tab-5': False, 'tab-7': False
             }),  # ⚡ 跟踪每个Tab是否已加载过
             
-            # ========== 下钻状态管理(4层金字塔架构) ==========
-            dcc.Store(id='drill-down-current-layer', data='overview'),  # 当前层级
-            dcc.Store(id='drill-down-current-channel', data=None),  # 当前选中渠道
-            dcc.Store(id='drill-down-current-product', data=None),  # 当前选中商品
-            dcc.Store(id='drill-down-filter-type', data=None),  # 当前筛选类型
-            dcc.Store(id='drill-down-navigation-history', data=[]),  # 导航历史栈
-            dcc.Store(id='drill-down-full-state', data={}),  # 完整状态(调试用)
-            
             # ========== 全局刷新触发器 ==========
             dcc.Store(id='global-refresh-trigger', data=0),  # 全局刷新触发计数器
             
@@ -5876,14 +5824,6 @@ else:
         dcc.Store(id='tabs-loaded-status', data={
             'tab-1': False, 'tab-2': False, 'tab-5': False, 'tab-7': False
         }),  # ⚡ 跟踪每个Tab是否已加载过
-        
-        # ========== 下钻状态管理(4层金字塔架构) ==========
-        dcc.Store(id='drill-down-current-layer', data='overview'),  # 当前层级
-        dcc.Store(id='drill-down-current-channel', data=None),  # 当前选中渠道
-        dcc.Store(id='drill-down-current-product', data=None),  # 当前选中商品
-        dcc.Store(id='drill-down-filter-type', data=None),  # 当前筛选类型
-        dcc.Store(id='drill-down-navigation-history', data=[]),  # 导航历史栈
-        dcc.Store(id='drill-down-full-state', data={}),  # 完整状态(调试用)
         
         # ========== 全局刷新触发器 ==========
         dcc.Store(id='global-refresh-trigger', data=0),  # 全局刷新触发计数器
@@ -12502,30 +12442,11 @@ def render_tab1_content(active_tab, trigger, cached_agg, cached_comparison, cach
         ], className="mb-4"),
         
         # ========== ⚡ 阶段4: 渐进式加载区域 ==========
-        # 渠道表现对比区域(包含下钻容器的相对定位容器)
-        html.Div([
-            # 渠道表现对比(异步加载,显示占位符)
-            html.Div(id='tab1-channel-section', children=[
-                html.H4("📡 渠道表现对比", className="mb-3"),
-                create_skeleton_placeholder(height="150px", count=1)
-            ]),
-            
-            # 🔍 下钻分析容器(初始隐藏,使用绝对定位覆盖渠道卡片)
-            html.Div(
-                id='drill-down-analysis-container',
-                className="d-none",  # 初始隐藏
-                style={
-                    'position': 'absolute',  # 绝对定位
-                    'top': '0',
-                    'left': '0',
-                    'right': '0',
-                    'backgroundColor': 'white',
-                    'zIndex': 1000,  # 确保在最上层
-                    'minHeight': '100vh',  # 至少占满整个视口高度
-                    'padding': '20px'
-                }
-            )
-        ], style={'position': 'relative', 'minHeight': '400px'}),  # 相对定位容器
+        # 渠道表现对比(异步加载,显示占位符)
+        html.Div(id='tab1-channel-section', children=[
+            html.H4("📡 渠道表现对比", className="mb-3"),
+            create_skeleton_placeholder(height="150px", count=1)
+        ]),
         
         # 客单价深度分析(异步加载,显示占位符)
         html.Div(id='tab1-aov-section', children=[
@@ -23162,15 +23083,6 @@ app.clientside_callback(
 # ==================== 主程序入口 ====================
 if __name__ == '__main__':
     import sys
-    
-    # ========== 注册下钻回调函数 ==========
-    if DRILL_DOWN_AVAILABLE:
-        try:
-            from components.drill_down_callbacks import register_drill_down_callbacks
-            register_drill_down_callbacks(app)
-            print("✅ 下钻回调函数已注册 (4层金字塔架构)")
-        except Exception as e:
-            print(f"⚠️ 下钻回调函数注册失败: {e}")
     
     # 强制刷新输出，确保日志实时显示
     sys.stdout.flush()

@@ -447,3 +447,32 @@ body {
         opacity: 1;
     }
 }
+
+/* ==================== 下钻分析覆盖层 ==================== */
+.drill-down-overlay {
+    position: relative;
+    background-color: white;
+    z-index: 999;
+    min-height: 500px;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    animation: slideInFromRight 0.3s ease-out;
+}
+
+@keyframes slideInFromRight {
+    from {
+        transform: translateX(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* 确保下钻容器在overview层时完全隐藏 */
+#drill-down-analysis-container.d-none {
+    display: none !important;
+}
+

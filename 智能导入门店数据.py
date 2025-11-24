@@ -19,7 +19,7 @@ from pathlib import Path
 project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, project_root)
 
-from database.connection import SessionLocal
+from database.connection import SessionLocal, init_database
 from database.models import Order
 
 # 导入历史记录文件
@@ -29,6 +29,8 @@ class SmartImporter:
     """智能数据导入器"""
     
     def __init__(self):
+        # ✅ 确保数据库表已创建
+        init_database()
         self.session = SessionLocal()
         self.import_history = self.load_import_history()
         self.validation_report = {
@@ -205,13 +207,9 @@ class SmartImporter:
                 
                 if existing:
                     print(f"\n⚠️  检测到门店 '{store_name}' 已存在数据")
-                    confirm = input("   是否覆盖? (yes/no): ").strip().lower()
-                    if confirm != 'yes':
-                        print("   ⏭️  跳过此文件")
-                        return False
+                    print("   🔄 自动覆盖模式: 正在删除旧数据...")
                     
                     # 删除旧数据
-                    print(f"   🗑️  删除旧数据...")
                     self.session.query(Order).filter(
                         Order.store_name == store_name
                     ).delete()
@@ -504,10 +502,7 @@ class SmartImporter:
             
             # 2. 确认导入
             print(f"\n准备导入 {len(new_files)} 个文件")
-            confirm = input("是否继续? (yes/no): ").strip().lower()
-            if confirm != 'yes':
-                print("操作已取消")
-                return
+            print("🚀 自动开始导入...")
             
             # 3. 逐个导入
             success_files = []
