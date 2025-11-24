@@ -1,9 +1,10 @@
 # B电脑拉取所有代码更新
 # 用于同步A电脑的非数据库代码修改(看板、分析引擎、工具脚本等)
 
-Write-Host "=" * 60
+$separator = "=" * 60
+Write-Host $separator
 Write-Host "B电脑: 拉取所有代码更新"
-Write-Host "=" * 60
+Write-Host $separator
 
 # 检查当前状态
 Write-Host "`n检查本地修改..." -ForegroundColor Cyan
@@ -79,7 +80,7 @@ if ($changedFiles) {
 }
 
 # 检查是否需要同步数据库
-$hasMigrations = $changedFiles | Where-Object { $_ -match "migrations|models\.py" }
+$hasMigrations = $changedFiles | Where-Object { $_ -match "migrations|models.py" }
 
 if ($hasMigrations) {
     Write-Host "`n[3/3] 检测到数据库相关修改..." -ForegroundColor Yellow
@@ -96,9 +97,9 @@ if ($hasMigrations) {
     python 清理Redis缓存.py
 }
 
-Write-Host "`n" + "=" * 60
+Write-Host "`n$separator"
 Write-Host "代码更新完成!" -ForegroundColor Green
-Write-Host "=" * 60
+Write-Host $separator
 
 Write-Host "`n下一步: 重启看板验证功能" -ForegroundColor Yellow
 Write-Host "  .\启动看板.ps1" -ForegroundColor Cyan
