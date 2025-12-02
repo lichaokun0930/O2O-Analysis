@@ -46,8 +46,8 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # 4. 清理缓存
-Write-Host "`n[4/4] 清理Redis缓存..." -ForegroundColor Cyan
-python 清理Redis缓存.py
+Write-Host "`n[4/4] 数据库同步完成" -ForegroundColor Cyan
+Write-Host "如需清理缓存，请重启看板" -ForegroundColor Gray
 
 Write-Host "`n完成!" -ForegroundColor Green
 Write-Host "=" * 60

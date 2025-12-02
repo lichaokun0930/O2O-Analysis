@@ -38,8 +38,11 @@ def apply_migration(migration_file: str):
     print(f"{'='*60}")
     
     # 读取SQL
-    with open(migration_path, 'r', encoding='utf-8') as f:
+    with open(migration_path, 'r', encoding='utf-8-sig') as f:  # utf-8-sig 自动去除BOM
         sql = f.read()
+    
+    # 额外保险：手动去除可能的BOM字符
+    sql = sql.lstrip('\ufeff')
     
     # 执行迁移
     db = next(get_db())
