@@ -11,25 +11,111 @@ $modelsChanged = $allChanges | Where-Object { $_ -match "models\.py" }
 if ($modelsChanged) {
     Write-Host "`n检测到database/models.py已修改!" -ForegroundColor Magenta
     Write-Host "=" * 60
-    Write-Host "`n需要创建数据库迁移" -ForegroundColor Yellow
-    $description = Read-Host "请输入迁移描述(如: add_delivery_person)"
-    if (-not $description) { Write-Host "未输入描述,跳过迁移创建" -ForegroundColor Yellow; $skipMigration = $true }
-    else {
-        $skipMigration = $false
+    
+    # 🔧 智能识别新增字段及其类型
+    $modelsDiff = git diff database/models.py
+    $newFields = @()
+    $fieldDetails = @{}  # 存储字段名 -> 类型映射
+    
+    foreach ($line in $modelsDiff -split "`n") {
+        # 匹配新增的 Column 定义行，提取字段名和类型
+        # 例如: +    store_code = Column(String(100), index=True, comment='店内码')
+        if ($line -match '^\+\s+(\w+)\s*=\s*Column\((\w+)(\((\d+)\))?') {
+            $fieldName = $matches[1]
+            $fieldType = $matches[2]
+            $fieldLength = $matches[4]
+            
+            # 排除非字段的行
+            if ($fieldName -and $fieldName -notmatch '^#|^_') {
+                $newFields += $fieldName
+                
+                # 转换Python类型到SQL类型
+                $sqlType = switch ($fieldType) {
+                    'String' { if ($fieldLength) { "VARCHAR($fieldLength)" } else { "VARCHAR(255)" } }
+                    'Integer' { "INTEGER" }
+                    'Float' { "REAL" }
+                    'Boolean' { "BOOLEAN" }
+                    'Text' { "TEXT" }
+                    'DateTime' { "TIMESTAMP" }
+                    'Date' { "DATE" }
+                    'Numeric' { "NUMERIC" }
+                    default { "VARCHAR(255)" }
+                }
+                $fieldDetails[$fieldName] = $sqlType
+            }
+        }
+    }
+    
+    if ($newFields.Count -gt 0) {
+        # 自动生成迁移描述
+        $autoDescription = "add_" + ($newFields -join "_")
+        Write-Host "`n🔍 智能识别到新增字段: $($newFields -join ', ')" -ForegroundColor Green
+        Write-Host "   建议迁移描述: $autoDescription" -ForegroundColor Cyan
+        $useAuto = Read-Host "使用此描述? (Y=使用 / N=手动输入 / S=跳过迁移)"
+        
+        if ($useAuto -eq 'S' -or $useAuto -eq 's') {
+            Write-Host "跳过迁移创建" -ForegroundColor Yellow
+            $skipMigration = $true
+            $description = $null
+        } elseif ($useAuto -eq 'N' -or $useAuto -eq 'n') {
+            $description = Read-Host "请输入迁移描述"
+            if (-not $description) { $skipMigration = $true } else { $skipMigration = $false }
+        } else {
+            # 默认使用自动识别的描述
+            $description = $autoDescription
+            $skipMigration = $false
+            Write-Host "使用自动识别的描述: $description" -ForegroundColor Green
+        }
+    } else {
+        # 无法自动识别，回退到手动输入
+        Write-Host "`n未能自动识别新增字段，请手动输入" -ForegroundColor Yellow
+        $description = Read-Host "请输入迁移描述(如: add_delivery_person)，留空跳过"
+        if (-not $description) { $skipMigration = $true } else { $skipMigration = $false }
+    }
+    
+    if (-not $skipMigration -and $description) {
         $existing = Get-ChildItem "database\migrations\v*.sql" -Name | ForEach-Object { if ($_ -match "^v(\d+)_") { [int]$matches[1] } } | Sort-Object -Descending | Select-Object -First 1
         $version = if ($existing) { $existing + 1 } else { 2 }
         $filename = "v$version" + "_$description.sql"
-        $filepath = "database\migrations\$filename"
+        $filepath = Join-Path $PSScriptRoot "database\migrations\$filename"
         Write-Host "`n[1/5] 创建迁移文件: $filename" -ForegroundColor Cyan
-        Copy-Item "database\migrations\migration_template.sql" $filepath
-        $content = Get-Content $filepath -Raw -Encoding UTF8
+        
+        # 🔧 自动生成SQL语句
         $dateStr = Get-Date -Format "yyyy-MM-dd"
-        $content = $content.Replace("YYYY-MM-DD", $dateStr).Replace("描述这次迁移的目的", $message).Replace("new_field", $description)
-        Set-Content $filepath $content -Encoding UTF8
-        Write-Host "请编辑迁移文件,添加ALTER TABLE语句..." -ForegroundColor Yellow
-        notepad $filepath
-        Write-Host "`n编辑完成后,按Enter键继续..." -ForegroundColor Yellow
-        Read-Host
+        $sqlStatements = @()
+        $sqlStatements += "-- 迁移: $description"
+        $sqlStatements += "-- 日期: $dateStr"
+        $sqlStatements += "-- 描述: $message"
+        $sqlStatements += ""
+        
+        foreach ($field in $newFields) {
+            $sqlType = $fieldDetails[$field]
+            if (-not $sqlType) { $sqlType = "VARCHAR(255)" }
+            $sqlStatements += "-- 添加 $field 字段"
+            $sqlStatements += "ALTER TABLE orders ADD COLUMN IF NOT EXISTS $field $sqlType;"
+            # 如果原始代码包含 index=True，添加索引
+            $indexMatch = $modelsDiff | Select-String -Pattern "\+\s+$field\s*=.*index\s*=\s*True"
+            if ($indexMatch) {
+                $sqlStatements += "CREATE INDEX IF NOT EXISTS idx_orders_$field ON orders($field);"
+            }
+            $sqlStatements += ""
+        }
+        
+        # 写入文件（使用无BOM的UTF-8编码）
+        $sqlContent = $sqlStatements -join "`n"
+        [System.IO.File]::WriteAllText($filepath, $sqlContent, [System.Text.UTF8Encoding]::new($false))
+        
+        Write-Host "`n📝 自动生成的SQL语句:" -ForegroundColor Green
+        Write-Host $sqlContent -ForegroundColor Gray
+        Write-Host ""
+        
+        $editSql = Read-Host "是否需要手动编辑? (Y=编辑 / Enter=直接使用)"
+        if ($editSql -eq 'Y' -or $editSql -eq 'y') {
+            notepad $filepath
+            Write-Host "`n编辑完成后,按Enter键继续..." -ForegroundColor Yellow
+            Read-Host
+        }
+        
         Write-Host "`n[2/5] 应用迁移到A电脑数据库..." -ForegroundColor Cyan
         python database\migrations\apply_migration.py $filename
         if ($LASTEXITCODE -ne 0) { Write-Host "迁移应用失败!" -ForegroundColor Red; exit 1 }
@@ -58,8 +144,12 @@ git commit -m $message
 if ($LASTEXITCODE -ne 0) { Write-Host "提交失败!" -ForegroundColor Red; exit 1 }
 $step++
 Write-Host "`n[$step/$totalSteps] 推送到GitHub..." -ForegroundColor Cyan
-git push
-if ($LASTEXITCODE -ne 0) { Write-Host "推送失败!" -ForegroundColor Red; exit 1 }
+git push origin master
+if ($LASTEXITCODE -ne 0) { 
+    Write-Host "推送失败! 尝试设置上游分支后重试..." -ForegroundColor Yellow
+    git push -u origin master
+    if ($LASTEXITCODE -ne 0) { Write-Host "推送失败! 请检查网络连接或GitHub权限" -ForegroundColor Red; exit 1 }
+}
 Write-Host "`n" + "=" * 60
 Write-Host "成功推送到GitHub!" -ForegroundColor Green
 Write-Host "=" * 60

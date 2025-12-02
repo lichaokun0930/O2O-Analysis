@@ -80,7 +80,7 @@ if ECHARTS_AVAILABLE:
             COMMON_COLORS, COMMON_ANIMATION, COMMON_TOOLTIP, COMMON_LEGEND,
             COMMON_GRID, COMMON_TITLE, COMMON_AXIS_LABEL, COMMON_SPLIT_LINE,
             format_number,
-            create_metric_bar_card, create_gauge_card  # 🎨 卡片工厂函数
+            create_metric_bar_card, create_gauge_card, create_pie_chart  # 🎨 卡片工厂函数
         )
         print("✅ ECharts统一配置已加载（8种配色×5级梯度）")
         print("✅ ECharts卡片工厂函数已加载")
@@ -203,6 +203,17 @@ except ImportError as e:
     cache_dataframe = None
     print(f"⚠️ Redis模块未找到: {e}")
     print("   提示: 运行 'pip install redis flask-caching' 安装依赖")
+
+# ✨ 导入通义千问AI智能洞察服务（Tab 7营销分析）
+try:
+    from ai_qwen_service import QwenAIService
+    AI_QWEN_AVAILABLE = True
+    print("✅ 通义千问AI服务已加载 - 智能洞察模式")
+except ImportError as e:
+    AI_QWEN_AVAILABLE = False
+    QwenAIService = None
+    print(f"⚠️ AI服务模块未找到: {e}")
+    print("   智能洞察功能将不可用")
 
 # ✨ 导入数据源管理器（支持Excel/数据库双数据源）
 try:
@@ -399,42 +410,27 @@ PLATFORM_FEE_CHANNELS = [
     '饿了么咖啡店'
 ]
 
-# 统一利润/配送计算口径配置
-CALCULATION_MODES = {
-    'service_fee_positive': {
-        'label': '仅平台服务费>0',
-        'description': '仅统计平台服务费>0的订单（剔除平台服务费=0的订单）'
-    },
-    'all_no_fallback': {
-        'label': '全量（仅平台服务费）',
-        'description': '仅使用平台服务费字段，剔除平台服务费=0的订单'
-    },
-    'all_with_fallback': {
-        'label': '全量（服务费+佣金兜底）（默认）',
-        'description': '平台服务费<=0时使用平台佣金兜底，但最终必须>0才计入'
-    }
-}
-
-DEFAULT_CALCULATION_MODE = 'all_with_fallback'  # ✅ 全量模式(兜底逻辑): 平台服务费<=0时使用平台佣金,但最终必须>0才计入
+# ✅ 2025-12-02: 计算口径已固定，不再需要UI选择器
+# 利润公式: 订单实际利润 = 利润额 - 平台服务费 - 物流配送费 + 企客后返
+# 过滤逻辑: 收费渠道剔除平台服务费=0的异常订单，不收费渠道保留所有订单
+DEFAULT_CALCULATION_MODE = 'fixed'  # 固定模式，不再支持切换
 
 
 def normalize_calc_mode(mode: Optional[str]) -> str:
-    """将外部传入的计算口径值规范化为受支持的枚举。"""
-    if not mode:
-        return DEFAULT_CALCULATION_MODE
-    return mode if mode in CALCULATION_MODES else DEFAULT_CALCULATION_MODE
+    """计算口径已固定，保留此函数用于兼容。"""
+    return DEFAULT_CALCULATION_MODE
 
 
-def serialize_order_agg_cache(df: pd.DataFrame, calc_mode: str) -> Dict[str, Any]:
-    """序列化订单聚合数据并附带计算口径，便于缓存复用。"""
+def serialize_order_agg_cache(df: pd.DataFrame, calc_mode: str = None) -> Dict[str, Any]:
+    """序列化订单聚合数据，便于缓存复用。"""
     return {
-        'mode': normalize_calc_mode(calc_mode),
+        'mode': DEFAULT_CALCULATION_MODE,
         'data': df.to_dict('records')
     }
 
 
 def deserialize_order_agg_cache(payload: Any) -> (Optional[pd.DataFrame], Optional[str]):
-    """从缓存结构中还原DataFrame与计算口径。兼容旧版本列表结构。"""
+    """从缓存结构中还原DataFrame。兼容旧版本列表结构。"""
     if not payload:
         return None, None
     if isinstance(payload, dict) and 'data' in payload:
@@ -442,36 +438,6 @@ def deserialize_order_agg_cache(payload: Any) -> (Optional[pd.DataFrame], Option
     if isinstance(payload, list):
         return pd.DataFrame(payload), None
     return None, None
-
-
-def build_calc_mode_selector() -> dbc.Card:
-    """构建全局计算口径选择器组件。"""
-    options = [
-        {'label': info['label'], 'value': mode_key}
-        for mode_key, info in CALCULATION_MODES.items()
-    ]
-    descriptions = html.Ul([
-        html.Li(f"{info['label']}：{info['description']}")
-        for info in CALCULATION_MODES.values()
-    ], className="text-muted small mb-0")
-
-    return dbc.Card([
-        dbc.CardHeader([
-            html.Span("📐 计算口径", className="fw-bold me-2"),
-            html.Small("影响利润额与配送净成本的统计范围")
-        ]),
-        dbc.CardBody([
-            dcc.Dropdown(
-                id='calc-mode-dropdown',
-                options=options,
-                value=DEFAULT_CALCULATION_MODE,
-                clearable=False,
-                persistence=True,
-                style={'width': '100%'}
-            ),
-            html.Div(descriptions, className="mt-3")
-        ])
-    ], className="mb-3 shadow-sm")
 
 
 def build_data_source_card() -> dbc.Card:
@@ -1424,7 +1390,7 @@ def calculate_period_comparison(df: pd.DataFrame, start_date: datetime = None, e
                     '利润额': 'sum',  # 商品级字段
                     '物流配送费': 'first',  # 订单级字段
                     '平台佣金': 'first',
-                    '平台服务费': 'first',
+                    '平台服务费': 'sum',  # 🔧 修复: 商品级字段用sum
                 }
                 
                 if '预计订单收入' in data.columns:
@@ -2719,6 +2685,16 @@ def create_data_info_badge(sampling_info):
 
 # ==================== 订单指标计算（统一函数）====================
 
+# ========== 全局数据访问接口 ==========
+def get_global_data():
+    """获取当前的全局展示数据(GLOBAL_DATA)"""
+    global GLOBAL_DATA
+    return GLOBAL_DATA
+
+def get_global_full_data():
+    """获取当前的全局完整数据(GLOBAL_FULL_DATA)"""
+    global GLOBAL_FULL_DATA
+    return GLOBAL_FULL_DATA
 
 # 初始化数据
 initialize_data()
@@ -4255,109 +4231,21 @@ def _create_aov_analysis(df: pd.DataFrame, order_agg: pd.DataFrame, selected_cha
         high_delivery_rate = (high_aov_orders['配送净成本'].sum() / high_aov_orders['实收价格'].sum() * 100) if len(high_aov_orders) > 0 and high_aov_orders['实收价格'].sum() > 0 else 0
         low_delivery_rate = (low_aov_orders['配送净成本'].sum() / low_aov_orders['实收价格'].sum() * 100) if len(low_aov_orders) > 0 and low_aov_orders['实收价格'].sum() > 0 else 0
         
-        # ========== 3. 数据健康度检测 ==========
-        # 计算数据覆盖天数
-        if '日期' in df.columns:
-            date_range = pd.to_datetime(df['日期'])
-            min_date = date_range.min()
-            max_date = date_range.max()
-            total_days = (max_date - min_date).days + 1
-            unique_days = date_range.dt.date.nunique()
-            missing_days = total_days - unique_days
-        else:
-            total_days = 0
-            unique_days = 0
-            missing_days = 0
-        
-        # 检查关键字段完整性
-        field_completeness = {}
-        critical_fields = ['商品名称', '商品实售价', '订单ID', '销量']
-        for field in critical_fields:
-            if field in df.columns:
-                non_null_count = df[field].notna().sum()
-                field_completeness[field] = (non_null_count / len(df) * 100) if len(df) > 0 else 0
-            else:
-                field_completeness[field] = 0
-        
-        avg_completeness = sum(field_completeness.values()) / len(field_completeness) if field_completeness else 0
-        
-        # 检测数据异常
-        anomaly_count = 0
-        anomaly_details = []
-        
-        # 1. 价格异常(实售价 > 原价)
-        if '实收价格' in df.columns and '商品原价' in df.columns:
-            price_anomaly = df[df['实收价格'] > df['商品原价']]
-            if len(price_anomaly) > 0:
-                anomaly_count += len(price_anomaly)
-                anomaly_details.append(f"价格异常: {len(price_anomaly)}条(实售价>原价)")
-        
-        # 2. 负利润订单
-        if '净利润' in order_agg.columns:
-            negative_profit = order_agg[order_agg['净利润'] < 0]
-            if len(negative_profit) > 0:
-                anomaly_count += len(negative_profit)
-                anomaly_details.append(f"负利润订单: {len(negative_profit)}单")
-        
-        # 3. 超高客单价(>500)
-        ultra_high_aov = order_agg[order_agg['客单价'] > 500]
-        if len(ultra_high_aov) > 0:
-            anomaly_count += len(ultra_high_aov)
-            anomaly_details.append(f"超高客单价: {len(ultra_high_aov)}单(>¥500)")
-        
-        # 4. 零销量异常
-        if '销量' in df.columns:
-            zero_sales = df[(df['销量'] == 0) | (df['销量'].isna())]
-            if len(zero_sales) > 0:
-                anomaly_count += len(zero_sales)
-                anomaly_details.append(f"零销量记录: {len(zero_sales)}条")
-        
-        # 环比可用性检查
-        can_calculate_wow = week_on_week_data.get('has_data', False)
-        
-        # 数据健康度评分
-        health_score = 0
-        if avg_completeness >= 95:
-            health_score += 40
-        elif avg_completeness >= 80:
-            health_score += 25
-        
-        if missing_days == 0:
-            health_score += 30
-        elif missing_days <= 3:
-            health_score += 15
-        
-        if anomaly_count == 0:
-            health_score += 30
-        elif anomaly_count <= 10:
-            health_score += 15
-        
-        if health_score >= 85:
-            health_level = "优秀"
-            health_color = "success"
-        elif health_score >= 70:
-            health_level = "良好"
-            health_color = "info"
-        elif health_score >= 50:
-            health_level = "一般"
-            health_color = "warning"
-        else:
-            health_level = "需改进"
-            health_color = "danger"
-        
-        # ========== 4. 准备7天趋势数据 ==========
+        # ========== 3. 准备7天趋势数据 ==========
         trend_data = []
         if '日期' in df.columns and len(df) > 0:
             # 获取最近7天的数据
             df_with_date = df.copy()
             df_with_date['日期'] = pd.to_datetime(df_with_date['日期'])
-            last_date = df_with_date['日期'].max()
+            # 🔧 修复: 统一使用日期部分进行比较，避免时间部分导致的筛选问题
+            last_date = df_with_date['日期'].dt.normalize().max()  # 去除时间部分
             first_date = last_date - pd.Timedelta(days=6)
-            recent_7days = df_with_date[df_with_date['日期'] >= first_date].copy()
+            # 🔧 修复: 使用日期进行比较，而不是完整时间戳
+            recent_7days = df_with_date[df_with_date['日期'].dt.normalize() >= first_date].copy()
             
             # 计算每天的指标
             for single_date in pd.date_range(first_date, last_date, freq='D'):
-                day_data = recent_7days[recent_7days['日期'].dt.date == single_date.date()]
+                day_data = recent_7days[recent_7days['日期'].dt.normalize() == single_date]
                 if len(day_data) > 0:
                     # 聚合订单（使用实收价格计算客单价）
                     agg_dict = {'商品名称': 'nunique', '实收价格': 'sum'}
@@ -4553,76 +4441,6 @@ def _create_aov_analysis(df: pd.DataFrame, order_agg: pd.DataFrame, selected_cha
 
         # ========== 6. 构建UI组件 ==========
         return html.Div([
-            # 数据健康度卡片 - 重新设计
-            dbc.Card([
-                dbc.CardBody([
-                    # 标题行
-                    dbc.Row([
-                        dbc.Col([
-                            html.Div([
-                                html.I(className="bi bi-clipboard-data-fill me-2", style={'fontSize': '1.5rem', 'color': '#667eea'}),
-                                html.H5("数据健康度", className="d-inline mb-0", style={'fontWeight': '600'})
-                            ], className="mb-3")
-                        ], md=12)
-                    ]),
-                    # 指标行
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Card([
-                                dbc.CardBody([
-                                    html.Div([
-                                        html.P("健康评级", className="text-muted mb-1", style={'fontSize': '0.85rem'}),
-                                        html.H4(health_level, className=f"text-{health_color} mb-1", style={'fontWeight': '700'}),
-                                        html.Small(f"{health_score}分", className="text-muted")
-                                    ], className="text-center")
-                                ], className="p-2")
-                            ], className="border-0 shadow-sm", style={'background': '#f8f9fa'})
-                        ], md=2),
-                        dbc.Col([
-                            html.Div([
-                                html.P("数据覆盖", className="text-muted mb-1", style={'fontSize': '0.85rem'}),
-                                html.H5(f"{unique_days}/{total_days}天", className="mb-1", style={'fontWeight': '600'}),
-                                html.Small(f"缺失{missing_days}天" if missing_days > 0 else "✓ 完整", 
-                                         className=f"badge bg-{'warning' if missing_days > 0 else 'success'}")
-                            ])
-                        ], md=2),
-                        dbc.Col([
-                            html.Div([
-                                html.P("字段完整率", className="text-muted mb-1", style={'fontSize': '0.85rem'}),
-                                html.H5(f"{avg_completeness:.1f}%", className="mb-1", style={'fontWeight': '600'}),
-                                html.Small(f"{'✓ 优秀' if avg_completeness >= 95 else '⚠ 需关注' if avg_completeness >= 80 else '✗ 较差'}", 
-                                         className=f"badge bg-{'success' if avg_completeness >= 95 else 'warning' if avg_completeness >= 80 else 'danger'}")
-                            ])
-                        ], md=2),
-                        dbc.Col([
-                            html.Div([
-                                html.P("数据异常", className="text-muted mb-1", style={'fontSize': '0.85rem'}),
-                                html.H5(f"{anomaly_count}项", className="mb-1", style={'fontWeight': '600'}),
-                                html.Small(f"{'✓ 无异常' if anomaly_count == 0 else '⚠ 需检查'}", 
-                                         className=f"badge bg-{'success' if anomaly_count == 0 else 'warning'}")
-                            ])
-                        ], md=2),
-                        dbc.Col([
-                            html.Div([
-                                html.P("环比计算", className="text-muted mb-1", style={'fontSize': '0.85rem'}),
-                                html.H5(f"{'可用' if can_calculate_wow else '不可用'}", className="mb-1", style={'fontWeight': '600'}),
-                                html.Small(f"{'✓ 数据充足' if can_calculate_wow else '需≥14天'}", 
-                                         className=f"badge bg-{'success' if can_calculate_wow else 'secondary'}")
-                            ])
-                        ], md=2),
-                        dbc.Col([
-                            html.Div([
-                                html.P("异常明细", className="text-muted mb-1", style={'fontSize': '0.85rem'}),
-                                html.Div([
-                                    html.Small(detail, className="d-block", style={'fontSize': '0.75rem'})
-                                    for detail in anomaly_details[:2]
-                                ]) if anomaly_details else html.Small("✓ 无异常", className="text-success")
-                            ])
-                        ], md=2)
-                    ], className="g-3")
-                ], className="p-4")
-            ], className="shadow-sm mb-4", style={'border': '1px solid #e0e0e0', 'borderRadius': '8px'}),
-            
             # 标题和导出按钮
             dbc.Row([
                 dbc.Col([
@@ -5095,7 +4913,7 @@ def _create_aov_analysis(df: pd.DataFrame, order_agg: pd.DataFrame, selected_cha
                                             {'name': '高价区≥¥50', 'value': high_price_count, 'itemStyle': {'color': '#f093fb'}}
                                         ],
                                         'itemStyle': {'borderRadius': 10, 'borderColor': '#fff', 'borderWidth': 2},
-                                        'label': {'show': True, 'formatter': '{b}\\n{d}%', 'fontSize': 11, 'fontWeight': 'bold'},
+                                        'label': {'show': True, 'formatter': '{b}\n{d}%', 'fontSize': 11, 'fontWeight': 'bold'},
                                         'emphasis': {'itemStyle': {'shadowBlur': 20, 'shadowColor': 'rgba(0, 0, 0, 0.5)'}, 'label': {'show': True, 'fontSize': 14}},
                                         'animationType': 'scale',
                                         'animationEasing': 'cubicOut'
@@ -5353,242 +5171,6 @@ def _create_health_warnings(total_sales: float, total_profit: float, order_agg: 
     return warning_cards
 
 
-# ==================== 成本优化分析核心函数 ====================
-def analyze_cost_optimization(df_raw: pd.DataFrame, order_agg: pd.DataFrame) -> Dict[str, Any]:
-    """
-    成本优化分析：针对3项成本预警提供深度分析
-    
-    Args:
-        df_raw: 原始订单数据（包含商品名称等字段）
-        order_agg: 订单聚合数据（用于计算总体指标）
-        
-    Returns:
-        包含成本分析结果的字典
-    """
-    if df_raw is None or len(df_raw) == 0:
-        return {
-            'product_cost_analysis': None,
-            'logistics_cost_analysis': None,
-            'marketing_cost_analysis': None
-        }
-    
-    df = df_raw.copy()
-    
-    # ========== 1. 商品成本分析 ==========
-    product_cost_analysis = {}
-    
-    # 统一使用实收价格
-    price_col = '实收价格'
-    cost_col = '商品采购成本'
-    
-    if price_col not in df.columns or cost_col not in df.columns:
-        return {
-            'product_cost_analysis': None,
-            'logistics_cost_analysis': None,
-            'marketing_cost_analysis': None
-        }
-    
-    # 按商品聚合
-    agg_dict = {
-        price_col: 'sum',
-        cost_col: 'sum'
-    }
-    if '月售' in df.columns:
-        agg_dict['月售'] = 'sum'
-        
-    product_stats = df.groupby('商品名称').agg(agg_dict).reset_index()
-    
-    # 计算毛利率和成本占比
-    product_stats['毛利率'] = (
-        (product_stats[price_col] - product_stats[cost_col]) / 
-        product_stats[price_col] * 100
-    )
-    product_stats['成本占比'] = (
-        product_stats[cost_col] / product_stats[price_col] * 100
-    )
-    
-    # 识别高成本低毛利商品（成本占比>70%且销量较高）
-    if '月售' in product_stats.columns:
-        high_cost_products = product_stats[
-            (product_stats['成本占比'] > 70) & 
-            (product_stats['月售'] > product_stats['月售'].quantile(0.5))
-        ].sort_values(price_col, ascending=False).head(20)
-    else:
-        high_cost_products = product_stats[
-            product_stats['成本占比'] > 70
-        ].sort_values(price_col, ascending=False).head(20)
-    
-    product_cost_analysis['high_cost_products'] = high_cost_products
-    product_cost_analysis['avg_cost_rate'] = product_stats['成本占比'].mean()
-    product_cost_analysis['total_products'] = len(product_stats)
-    product_cost_analysis['problem_products'] = len(high_cost_products)
-    
-    # ========== 2. 履约成本分析 ==========
-    logistics_cost_analysis = {}
-    
-    # 计算履约成本相关指标
-    total_sales = df[price_col].sum()
-    
-    # 🔄 计算履约净成本: 实际物流配送费 - 配送费减免 + 用户支付配送费
-    # 注意: 需要先根据配送平台调整物流配送费
-    has_full_data = all(field in df.columns for field in ['用户支付配送费', '配送费减免金额', '物流配送费'])
-    
-    if has_full_data:
-        # 🔄 根据配送平台调整物流配送费
-        平台扣减列表 = ['eleck', '美团跑腿-平台扣减', '京东平台配送-平台扣减']
-        if '配送平台' in df.columns:
-            df['实际物流配送费'] = df.apply(
-                lambda row: 0 if row.get('配送平台', '') in 平台扣减列表 else row['物流配送费'],
-                axis=1
-            )
-        else:
-            df['实际物流配送费'] = df['物流配送费']
-        
-        # 完整公式: 配送净成本 = 实际物流配送费 - 配送费减免金额 + 用户支付配送费
-        total_logistics = (
-            df['实际物流配送费'].sum() - 
-            df['配送费减免金额'].sum() + 
-            df['用户支付配送费'].sum()
-        )
-        logistics_cost_field = '实际物流配送费'  # 用于后续分组分析
-    else:
-        # 降级: 仅使用物流配送费
-        logistics_cost_field = None
-        for field in ['物流配送费', '配送成本', '物流成本']:
-            if field in df.columns:
-                logistics_cost_field = field
-                break
-        total_logistics = df[logistics_cost_field].sum() if logistics_cost_field else 0
-    
-    # 按配送距离分析
-    if '配送距离' in df.columns and logistics_cost_field:
-        df['距离分组'] = pd.cut(
-            df['配送距离'], 
-            bins=[0, 1, 3, 5, 10, 100],
-            labels=['<1km', '1-3km', '3-5km', '5-10km', '>10km']
-        )
-        
-        # 计算每个距离段的配送净成本
-        if has_full_data:
-            # 使用完整公式
-            agg_dict = {
-                '用户支付配送费': 'sum',
-                '配送费减免金额': 'sum',
-                '实际物流配送费': 'sum',  # 🔄 使用实际物流配送费
-                price_col: 'sum',
-                '订单ID': 'count'
-            }
-            distance_stats = df.groupby('距离分组').agg(agg_dict).reset_index()
-            # 计算净成本 (修正公式)
-            distance_stats['配送成本'] = (
-                distance_stats['实际物流配送费'] - 
-                distance_stats['配送费减免金额'] + 
-                distance_stats['用户支付配送费']
-            )
-            distance_stats['销售额'] = distance_stats[price_col]
-            distance_stats['订单数'] = distance_stats['订单ID']
-        else:
-            # 降级: 仅使用物流配送费
-            distance_stats = df.groupby('距离分组').agg({
-                logistics_cost_field: 'sum',
-                price_col: 'sum',
-                '订单ID': 'count'
-            }).reset_index()
-            distance_stats.columns = ['距离分组', '配送成本', '销售额', '订单数']
-        
-        distance_stats['成本占比'] = (
-            distance_stats['配送成本'] / distance_stats['销售额'] * 100
-        )
-        distance_stats['平均客单价'] = distance_stats['销售额'] / distance_stats['订单数']
-        
-        logistics_cost_analysis['distance_stats'] = distance_stats[
-            ['距离分组', '配送成本', '销售额', '订单数', '成本占比', '平均客单价']
-        ]
-    else:
-        logistics_cost_analysis['distance_stats'] = None
-    
-    logistics_cost_analysis['total_logistics_cost'] = total_logistics
-    logistics_cost_analysis['logistics_cost_rate'] = (total_logistics / total_sales * 100) if total_sales > 0 else 0
-    logistics_cost_analysis['has_logistics_data'] = logistics_cost_field is not None
-    logistics_cost_analysis['use_full_formula'] = has_full_data  # 标识是否使用完整公式
-    
-    # ========== 3. 营销成本分析 ==========
-    marketing_cost_analysis = {}
-    
-    # 计算各类营销成本
-    total_marketing = 0
-    marketing_breakdown = {}
-    
-    if '满减' in df.columns:
-        manjian = df['满减'].sum()
-        total_marketing += manjian
-        marketing_breakdown['满减'] = manjian
-    
-    if '商品减免' in df.columns:
-        goods_discount = df['商品减免'].sum()
-        total_marketing += goods_discount
-        marketing_breakdown['商品减免'] = goods_discount
-    
-    if '代金券' in df.columns:
-        voucher = df['代金券'].sum()
-        total_marketing += voucher
-        marketing_breakdown['代金券'] = voucher
-    
-    if '配送费减免' in df.columns:
-        delivery_discount = df['配送费减免'].sum()
-        total_marketing += delivery_discount
-        marketing_breakdown['配送费减免'] = delivery_discount
-    
-    # 计算营销ROI（销售额 / 营销成本）
-    marketing_roi = (total_sales / total_marketing) if total_marketing > 0 else 0
-    
-    marketing_cost_analysis['total_marketing_cost'] = total_marketing
-    marketing_cost_analysis['marketing_cost_rate'] = (total_marketing / total_sales * 100) if total_sales > 0 else 0
-    marketing_cost_analysis['marketing_roi'] = marketing_roi
-    marketing_cost_analysis['marketing_breakdown'] = marketing_breakdown
-    
-    # 按渠道分析营销效率
-    if '渠道' in df.columns:
-        # 构建聚合字典,只包含存在的字段
-        agg_dict = {price_col: 'sum', '订单ID': 'count'}
-        
-        # 添加存在的营销字段
-        marketing_fields = []
-        if '满减' in df.columns:
-            agg_dict['满减'] = 'sum'
-            marketing_fields.append('满减')
-        if '商品减免' in df.columns:
-            agg_dict['商品减免'] = 'sum'
-            marketing_fields.append('商品减免')
-        if '代金券' in df.columns:
-            agg_dict['代金券'] = 'sum'
-            marketing_fields.append('代金券')
-        
-        if marketing_fields:  # 只有有营销字段时才分析
-            channel_stats = df.groupby('渠道').agg(agg_dict).reset_index()
-            
-            # 计算营销成本总和
-            channel_stats['营销成本'] = channel_stats[marketing_fields].sum(axis=1)
-            channel_stats['营销成本占比'] = (
-                channel_stats['营销成本'] / channel_stats[price_col] * 100
-            )
-            channel_stats['营销ROI'] = (
-                channel_stats[price_col] / channel_stats['营销成本']
-            ).replace([np.inf, -np.inf], 0)
-            
-            marketing_cost_analysis['channel_stats'] = channel_stats
-        else:
-            marketing_cost_analysis['channel_stats'] = None
-    else:
-        marketing_cost_analysis['channel_stats'] = None
-    
-    return {
-        'product_cost_analysis': product_cost_analysis,
-        'logistics_cost_analysis': logistics_cost_analysis,
-        'marketing_cost_analysis': marketing_cost_analysis
-    }
-
-
 # ==================== 页面布局 ====================
 # 🎨 Mantine布局包裹器
 if MANTINE_AVAILABLE:
@@ -5630,7 +5212,7 @@ if MANTINE_AVAILABLE:
             
             # ========== 性能优化: Tab懒加载状态跟踪 ==========
             dcc.Store(id='tabs-loaded-status', data={
-                'tab-1': False, 'tab-2': False, 'tab-5': False, 'tab-7': False
+                'tab-1': False, 'tab-2': False, 'tab-3': False, 'tab-4': False
             }),  # ⚡ 跟踪每个Tab是否已加载过
             
             # ========== 下钻状态管理(4层金字塔架构) ==========
@@ -5654,9 +5236,24 @@ if MANTINE_AVAILABLE:
             dcc.Store(id='raw-orders-store', storage_type='memory'),  # 原始订单数据
             dcc.Store(id='worker-aggregated-data', storage_type='memory'),  # Worker聚合结果
             
+            # ========== 数据库连接状态监控 ==========
+            dcc.Store(id='db-connection-status', data={'connected': True, 'message': '检测中...'}),
+            dcc.Interval(id='db-connection-check-interval', interval=30000, n_intervals=0),  # 每30秒检测一次
+            
             # 头部
             html.Div([
-                html.H1("🏪 门店诊断看板(订单数据)", style={'margin': 0, 'fontSize': '2.5rem'})
+                html.Div([
+                    html.H1("🏪 门店诊断看板(订单数据)", style={'margin': 0, 'fontSize': '2.5rem'}),
+                    # 数据库状态指示器
+                    html.Div(
+                        id='db-status-indicator',
+                        children=[
+                            html.Span("🟢", id='db-status-icon', style={'marginRight': '5px'}),
+                            html.Span("数据库: 连接正常", id='db-status-text', style={'fontSize': '12px', 'color': '#28a745'})
+                        ],
+                        style={'display': 'flex', 'alignItems': 'center', 'marginTop': '5px'}
+                    )
+                ])
             ], className='main-header'),
             
             # ========== 全局数据信息卡片 + 刷新按钮 ==========
@@ -5697,9 +5294,6 @@ if MANTINE_AVAILABLE:
             
             # 刷新状态提示
             html.Div(id='global-refresh-status', className="mb-3"),
-
-            # 计算口径选择
-            build_calc_mode_selector(),
             
             # ========== 数据源选择区域 ==========
             build_data_source_card(),
@@ -5714,7 +5308,24 @@ if MANTINE_AVAILABLE:
                     ], color="info", className="mb-4"),
                     
                     # 顶层功能Tabs
-                    dcc.Tabs(id='main-tabs', value='tab-1', children=[
+                    dcc.Tabs(id='main-tabs', value='tab-today-must-do', children=[
+                
+                # ========== Tab 0: 今日必做 ==========
+                dcc.Tab(label='✅ 今日必做', value='tab-today-must-do', children=[
+                    dcc.Loading(
+                        id="loading-today-must-do",
+                        type="cube",
+                        color="#667eea",
+                        parent_className="loading-wrapper",
+                        parent_style={'minHeight': '400px', 'position': 'relative'},
+                        fullscreen=False,
+                        children=[html.Div(
+                            id='today-must-do-content',
+                            className="p-3 fade-in",
+                            children=html.Div()  # ⚡ 懒加载优化: 初始为空,切换时才渲染
+                        )]
+                    )
+                ]),
                 
                 # ========== Tab 1: 订单数据概览 ==========
                 dcc.Tab(label='📊 订单数据概览', value='tab-1', children=[
@@ -5733,43 +5344,43 @@ if MANTINE_AVAILABLE:
                     )
                 ]),
                 
-                # ========== Tab 7: 营销成本分析 ==========
-                dcc.Tab(label='💰 营销分析', value='tab-7', children=[
+                # ========== Tab 2: 营销成本分析 ==========
+                dcc.Tab(label='💰 营销分析', value='tab-2', children=[
                     dcc.Loading(
-                        id="loading-tab7",
+                        id="loading-tab2-marketing",
                         type="cube",
                         color="#667eea",
                         parent_className="loading-wrapper",
                         parent_style={'minHeight': '400px', 'position': 'relative'},
                         fullscreen=False,
                         children=[html.Div(
-                            id='tab-7-content',
+                            id='tab-2-content',
                             className="p-3 fade-in",
                             children=html.Div()  # ⚡ 懒加载优化: 初始为空
                         )]
                     )
                 ]),
                 
-                # ========== Tab 2: 商品分析 ==========
-                dcc.Tab(label='📦 商品分析(开发中)', value='tab-2', children=[
+                # ========== Tab 3: 商品分析 ==========
+                dcc.Tab(label='📦 商品分析(开发中)', value='tab-3', children=[
                     dcc.Loading(
-                        id="loading-tab2",
+                        id="loading-tab3",
                         type="default",
                         children=[html.Div(
-                            id='tab-2-content',
+                            id='tab-3-content',
                             className="p-3",
                             children=html.Div()  # ⚡ 懒加载优化: 初始为空
                         )]
                     )
                 ]),
                 
-                # ========== Tab 5: 时段场景分析 ==========
-                dcc.Tab(label='⏰ 时段场景(开发中)', value='tab-5', children=[
+                # ========== Tab 4: 时段场景分析 ==========
+                dcc.Tab(label='⏰ 时段场景(开发中)', value='tab-4', children=[
                     dcc.Loading(
-                        id="loading-tab5",
+                        id="loading-tab4",
                         type="default",
                         children=[html.Div(
-                            id='tab-5-content',
+                            id='tab-4-content',
                             className="p-3",
                             children=html.Div()  # ⚡ 懒加载优化: 初始为空
                         )]
@@ -5874,7 +5485,7 @@ else:
         
         # ========== 性能优化: Tab懒加载状态跟踪 ==========
         dcc.Store(id='tabs-loaded-status', data={
-            'tab-1': False, 'tab-2': False, 'tab-5': False, 'tab-7': False
+            'tab-1': False, 'tab-2': False, 'tab-3': False, 'tab-4': False
         }),  # ⚡ 跟踪每个Tab是否已加载过
         
         # ========== 下钻状态管理(4层金字塔架构) ==========
@@ -5898,9 +5509,24 @@ else:
         dcc.Store(id='raw-orders-store', storage_type='memory'),  # 原始订单数据
         dcc.Store(id='worker-aggregated-data', storage_type='memory'),  # Worker聚合结果
         
+        # ========== 数据库连接状态监控 ==========
+        dcc.Store(id='db-connection-status', data={'connected': True, 'message': '检测中...'}),
+        dcc.Interval(id='db-connection-check-interval', interval=30000, n_intervals=0),  # 每30秒检测一次
+        
         # 头部
         html.Div([
-            html.H1("🏪 门店诊断看板(订单数据)", style={'margin': 0, 'fontSize': '2.5rem'})
+            html.Div([
+                html.H1("🏪 门店诊断看板(订单数据)", style={'margin': 0, 'fontSize': '2.5rem'}),
+                # 数据库状态指示器
+                html.Div(
+                    id='db-status-indicator',
+                    children=[
+                        html.Span("🟢", id='db-status-icon', style={'marginRight': '5px'}),
+                        html.Span("数据库: 连接正常", id='db-status-text', style={'fontSize': '12px', 'color': '#28a745'})
+                    ],
+                    style={'display': 'flex', 'alignItems': 'center', 'marginTop': '5px'}
+                )
+            ])
         ], className='main-header'),
         
         # ========== 全局数据信息卡片 + 刷新按钮 ==========
@@ -5941,8 +5567,6 @@ else:
         # 刷新状态提示
         html.Div(id='global-refresh-status', className="mb-3"),
         
-        build_calc_mode_selector(),
-        
         # ========== 数据源选择区域 ==========
         build_data_source_card(),
 
@@ -5954,7 +5578,22 @@ else:
                     html.P("👇 选择功能模块开始数据分析", className="mb-0")
                 ], color="info", className="mb-4"),
 
-                dcc.Tabs(id='main-tabs', value='tab-1', children=[
+                dcc.Tabs(id='main-tabs', value='tab-today-must-do', children=[
+                    # ========== Tab 0: 今日必做 ==========
+                    dcc.Tab(label='✅ 今日必做', value='tab-today-must-do', children=[
+                        dcc.Loading(
+                            id="loading-today-must-do",
+                            type="cube",
+                            color="#667eea",
+                            parent_className="loading-wrapper",
+                            parent_style={'minHeight': '400px', 'position': 'relative'},
+                            children=[html.Div(
+                                id='today-must-do-content',
+                                className="p-3 fade-in",
+                                children=html.Div()
+                            )]
+                        )
+                    ]),
                     dcc.Tab(label='📊 订单数据概览', value='tab-1', children=[
                         dcc.Loading(
                             id="loading-tab1",
@@ -5969,23 +5608,9 @@ else:
                             )]
                         )
                     ]),
-                    dcc.Tab(label='💰 营销分析', value='tab-7', children=[
+                    dcc.Tab(label='💰 成本与营销分析', value='tab-2', children=[
                         dcc.Loading(
-                            id="loading-tab7",
-                            type="cube",
-                            color="#667eea",
-                            parent_className="loading-wrapper",
-                            parent_style={'minHeight': '400px', 'position': 'relative'},
-                            children=[html.Div(
-                                id='tab-7-content',
-                                className="p-3 fade-in",
-                                children=create_tab_skeleton() if LOADING_COMPONENTS_AVAILABLE else html.Div()
-                            )]
-                        )
-                    ]),
-                    dcc.Tab(label='📦 商品分析(开发中)', value='tab-2', children=[
-                        dcc.Loading(
-                            id="loading-tab2",
+                            id="loading-tab2-marketing",
                             type="cube",
                             color="#667eea",
                             parent_className="loading-wrapper",
@@ -5997,15 +5622,29 @@ else:
                             )]
                         )
                     ]),
-                    dcc.Tab(label='⏰ 时段场景(开发中)', value='tab-5', children=[
+                    dcc.Tab(label='📦 商品分析(开发中)', value='tab-3', children=[
                         dcc.Loading(
-                            id="loading-tab5",
+                            id="loading-tab3",
                             type="cube",
                             color="#667eea",
                             parent_className="loading-wrapper",
                             parent_style={'minHeight': '400px', 'position': 'relative'},
                             children=[html.Div(
-                                id='tab-5-content',
+                                id='tab-3-content',
+                                className="p-3 fade-in",
+                                children=create_tab_skeleton() if LOADING_COMPONENTS_AVAILABLE else html.Div()
+                            )]
+                        )
+                    ]),
+                    dcc.Tab(label='⏰ 时段场景(开发中)', value='tab-4', children=[
+                        dcc.Loading(
+                            id="loading-tab4",
+                            type="cube",
+                            color="#667eea",
+                            parent_className="loading-wrapper",
+                            parent_style={'minHeight': '400px', 'position': 'relative'},
+                            children=[html.Div(
+                                id='tab-4-content',
                                 className="p-3 fade-in",
                                 children=create_tab_skeleton() if LOADING_COMPONENTS_AVAILABLE else html.Div()
                             )]
@@ -6060,6 +5699,40 @@ def get_available_months(df):
 # 旧Tab 4的动态周期选择器回调已删除（引用已删除的UI组件）
 # 新Tab 4采用智能驱动模式，不需要手动选择周期
 # ============================================================================
+
+# ==================== 数据库连接状态监控回调 ====================
+
+@app.callback(
+    [Output('db-status-icon', 'children'),
+     Output('db-status-text', 'children'),
+     Output('db-status-text', 'style'),
+     Output('db-connection-status', 'data')],
+    [Input('db-connection-check-interval', 'n_intervals'),
+     Input('url', 'pathname')],  # 页面加载时也检测
+    prevent_initial_call=False
+)
+def check_database_connection(n_intervals, pathname):
+    """定期检测数据库连接状态"""
+    try:
+        from database.connection import check_connection
+        status = check_connection()
+        
+        if status['connected']:
+            icon = '🟢'
+            text = f"数据库: 连接正常 ({status['details'].get('latency_ms', 0)}ms)"
+            style = {'fontSize': '12px', 'color': '#28a745'}
+        else:
+            icon = '🔴'
+            text = f"数据库: {status['message']}"
+            style = {'fontSize': '12px', 'color': '#dc3545', 'fontWeight': 'bold'}
+        
+        return icon, text, style, status
+    except Exception as e:
+        return '🟡', f"数据库: 检测失败", {'fontSize': '12px', 'color': '#ffc107'}, {
+            'connected': False, 
+            'message': str(e)
+        }
+
 
 # ==================== 数据库数据源回调函数 ====================
 
@@ -6291,6 +5964,13 @@ def filter_data_by_date_range(start_date, end_date, current_store):
         
         print(f"🔍 [日期过滤] 日期范围: {start_date} ~ {end_date}")
         print(f"   原始数据: {len(GLOBAL_FULL_DATA)}条 → 过滤后: {len(GLOBAL_DATA)}条")
+        
+        # ✅ 同步更新Redis缓存 (确保下钻功能使用的是当前过滤后的数据)
+        if REDIS_CACHE_MANAGER and REDIS_CACHE_MANAGER.enabled and current_store:
+            display_redis_key = f"store_data:{current_store}:display"
+            # 缓存有效期30分钟
+            cache_dataframe(display_redis_key, GLOBAL_DATA, ttl=1800, cache_manager=REDIS_CACHE_MANAGER)
+            print(f"💾 [日期过滤] 已同步更新Redis缓存: {display_redis_key}")
         
         # 触发数据更新，返回字符串时间戳（与其他回调保持一致）
         return datetime.now().isoformat()
@@ -6963,9 +6643,29 @@ def upload_data_to_database(list_of_contents, list_of_names, list_of_dates):
                 df = pd.read_excel(io.BytesIO(decoded))
                 print(f"✅ 读取成功: {len(df):,} 行")
                 
-                # ===== 1. 验证数据结构 =====
-                required_fields = ['订单ID', '门店名称', '商品名称', '商品实售价', '销量', '下单时间']
-                missing_fields = [f for f in required_fields if f not in df.columns]
+                # ===== 1. 数据标准化（与智能导入门店数据.py保持一致）=====
+                try:
+                    from 真实数据处理器 import RealDataProcessor
+                    processor = RealDataProcessor()
+                    df = processor.standardize_sales_data(df)
+                    print("✅ 数据字段已标准化")
+                except Exception as std_err:
+                    print(f"⚠️  数据标准化失败: {std_err}，使用原始字段名")
+                
+                # ===== 2. 验证数据结构（支持多种字段名）=====
+                required_checks = [
+                    ('订单ID', ['订单ID']),
+                    ('门店名称', ['门店名称']),
+                    ('商品名称', ['商品名称']),
+                    ('商品实售价', ['商品实售价']),
+                    ('销量', ['销量', '月售']),  # 兼容标准化后的'月售'
+                    ('下单时间', ['下单时间', '日期'])  # 兼容标准化后的'日期'
+                ]
+                
+                missing_fields = []
+                for label, candidates in required_checks:
+                    if not any(field in df.columns for field in candidates):
+                        missing_fields.append(label)
                 
                 if missing_fields:
                     all_results.append({
@@ -7025,18 +6725,24 @@ def upload_data_to_database(list_of_contents, list_of_names, list_of_dates):
 
                         order_data = {
                             'order_id': str(row.get('订单ID', '')),
-                            'date': pd.to_datetime(row.get('下单时间')) if pd.notna(row.get('下单时间')) else None,
+                            'date': pd.to_datetime(row.get('下单时间', row.get('日期'))) if pd.notna(row.get('下单时间', row.get('日期'))) else None,
                             'store_name': str(row.get('门店名称', '')),
                             'product_name': str(row.get('商品名称', '')),
+                            'barcode': str(row.get('条码', '')),
+                            # ✅ 添加店内码字段
+                            'store_code': str(row.get('店内码', '')) if pd.notna(row.get('店内码')) else '',
                             'price': float(row.get('商品实售价', 0)),
                             'original_price': float(row.get('商品原价', 0)),
-                            'quantity': int(row.get('销量', 0)),
-                            'cost': float(row.get('成本', 0)) if pd.notna(row.get('成本')) else 0.0,
+                            # ✅ 兼容销量/月售
+                            'quantity': int(row.get('销量', row.get('月售', 0))),
+                            # ✅ 兼容成本/商品采购成本
+                            'cost': float(row.get('成本', row.get('商品采购成本', 0))) if pd.notna(row.get('成本', row.get('商品采购成本'))) else 0.0,
                             # ✅ 修复:从Excel读取利润额(优先使用'利润额',备选'实际利润')
                             'profit': float(row.get('利润额', row.get('实际利润', 0))) if pd.notna(row.get('利润额', row.get('实际利润', 0))) else 0.0,
                             'category_level1': str(row.get('一级分类名', '')),
                             'category_level3': str(row.get('三级分类名', '')),
-                            'barcode': str(row.get('条码', '')),
+                            # ✅ 添加剩余库存字段
+                            'remaining_stock': float(row.get('剩余库存', row.get('库存', 0))) if pd.notna(row.get('剩余库存', row.get('库存'))) else 0.0,
                             'delivery_fee': float(row.get('物流配送费', 0)) if pd.notna(row.get('物流配送费')) else 0.0,
                             'commission': float(commission_value) if pd.notna(commission_value) else 0.0,
                             'platform_service_fee': float(platform_service_fee_value) if pd.notna(platform_service_fee_value) else 0.0,
@@ -7053,8 +6759,13 @@ def upload_data_to_database(list_of_contents, list_of_names, list_of_dates):
                             'new_customer_discount': float(row.get('新客减免金额', 0)) if pd.notna(row.get('新客减免金额')) else 0.0,
                             # ✅ 新增利润维度字段
                             'corporate_rebate': float(row.get('企客后返', 0)) if pd.notna(row.get('企客后返')) else 0.0,
-                            # ✅ 新增配送平台字段
+                            # ✅ 配送信息
                             'delivery_platform': str(row.get('配送平台', '')) if pd.notna(row.get('配送平台')) else '',
+                            'delivery_distance': float(row.get('配送距离', row.get('distance', 0))) if pd.notna(row.get('配送距离', row.get('distance'))) else 0.0,
+                            # ✅ 门店信息
+                            'store_id': str(row.get('门店ID', '')) if pd.notna(row.get('门店ID')) else '',
+                            'store_franchise_type': int(row.get('门店加盟类型', 0)) if pd.notna(row.get('门店加盟类型')) else None,
+                            'city': str(row.get('城市', '')) if pd.notna(row.get('城市')) else '',
                             # 其他字段
                             'address': str(row.get('收货地址', '')),
                             'channel': str(row.get('渠道', '')),
@@ -10268,7 +9979,7 @@ def analyze_daily_anomalies(df, daily_sales):
             '用户支付配送费': 'first',
             '配送费减免金额': 'first',
             '平台佣金': 'first',
-            '平台服务费': 'first',
+            '平台服务费': 'sum',  # 🔧 修复: 商品级字段用sum
             '满减金额': 'first',
             '商品减免金额': 'first',
             '商家代金券': 'first',
@@ -13592,19 +13303,14 @@ def show_tab1_detail_analysis(n_clicks, current_style):
     business_logic_explanation = dbc.Card([
         dbc.CardHeader(html.H5("📄 Tab1 核心业务逻辑说明", className="mb-0")),
         dbc.CardBody([
-            html.H6("📐 计算口径配置", className="text-primary mb-2"),
+            html.H6("📐 计算口径（已固定）", className="text-primary mb-2"),
             html.P([
-                "系统支持三种计算口径，影响利润额与配送净成本的统计范围：",
-                html.Br(),
                 html.Small([
-                    html.Strong("• 仅平台服务费>0（默认）："), 
-                    "只统计已上报平台服务费的订单，会过滤闪购小程序等",
+                    html.Strong("利润公式："), 
+                    "订单实际利润 = 利润额 - 平台服务费 - 物流配送费 + 企客后返",
                     html.Br(),
-                    html.Strong("• 全量（仅平台服务费）："), 
-                    "保留所有订单，但不使用佣金兜底",
-                    html.Br(),
-                    html.Strong("• 全量（服务费+佣金兜底）："), 
-                    "保留所有订单，服务费≤0时用佣金替代（环比计算使用）"
+                    html.Strong("过滤规则："), 
+                    "收费渠道（美团/饿了么/京东等）剔除平台服务费=0的异常订单，不收费渠道保留所有订单"
                 ], className="text-muted")
             ], className="mb-3"),
             
@@ -13618,7 +13324,7 @@ def show_tab1_detail_analysis(n_clicks, current_style):
                     html.Small([
                         "• 利润额：来自Excel数据，已包含商品成本扣减",
                         html.Br(),
-                        "• 平台服务费：根据计算口径可能用佣金兜底",
+                        "• 平台服务费：统一使用平台服务费字段",
                         html.Br(),
                         "• 物流配送费：订单级原始值，不剔除任何配送平台"
                     ], className="text-muted")
@@ -13656,11 +13362,11 @@ def show_tab1_detail_analysis(n_clicks, current_style):
             html.P([
                 html.Strong("订单级字段（使用first）："),
                 html.Br(),
-                html.Small("用户支付配送费、配送费减免金额、物流配送费、平台佣金、满减金额、渠道等", className="text-muted"),
+                html.Small("用户支付配送费、配送费减免金额、物流配送费、满减金额、渠道等", className="text-muted"),
                 html.Br(),
                 html.Strong("商品级字段（使用sum）："),
                 html.Br(),
-                html.Small("商品实售价、预计订单收入、实收价格、利润额、企客后返、商品采购成本等", className="text-muted")
+                html.Small("商品实售价、预计订单收入、实收价格、利润额、企客后返、商品采购成本、平台服务费", className="text-muted")
             ], className="mb-3"),
             
             html.Hr(),
@@ -13669,10 +13375,6 @@ def show_tab1_detail_analysis(n_clicks, current_style):
                 "• 单日查询：对比前一天数据",
                 html.Br(),
                 "• 多日查询：对比相同天数的前一周期",
-                html.Br(),
-                "• ",
-                html.Strong("强制使用全量（服务费+佣金兜底）模式", className="text-danger"),
-                "，确保包含闪购小程序等所有订单",
                 html.Br(),
                 html.Small("环比指标：订单数、销售额、总利润、客单价、利润率（百分点差值）", className="text-muted")
             ], className="mb-3"),
@@ -13683,10 +13385,11 @@ def show_tab1_detail_analysis(n_clicks, current_style):
                 html.Strong("自动排除渠道："),
                 " 饿了么咖啡、美团咖啡",
                 html.Br(),
-                html.Strong("包含渠道："),
-                " 美团闪购、饿了么、京东到家、闪购小程序",
+                html.Strong("收费渠道："),
+                " 美团闪购、饿了么、京东到家、抖音等（剔除平台服务费=0的异常订单）",
                 html.Br(),
-                html.Small("注：闪购小程序平台服务费=0，需使用全量模式才能包含", className="text-muted")
+                html.Strong("不收费渠道："),
+                " 闪购小程序、线下等（保留所有订单，平台服务费=0是正常状态）"
             ], className="mb-3"),
             
             html.Hr(),
@@ -14951,23 +14654,23 @@ def generate_trend_analysis_content(df, period='week', alert_level='warning', vi
 
 
 @app.callback(
-    Output('tab-2-content', 'children'),
+    Output('tab-3-content', 'children'),
     [Input('main-tabs', 'value'),
      Input('data-update-trigger', 'data')],  # 🔴 监听数据更新
     [State('tabs-loaded-status', 'data')],
     prevent_initial_call=True
 )
-def render_tab2_content(active_tab, data_trigger, tabs_status):
-    """Tab 2: 商品分析 - 商品销售排行、分类分析、库存周转、滞销预警
+def render_tab3_content(active_tab, data_trigger, tabs_status):
+    """Tab 3: 商品分析 - 商品销售排行、分类分析、库存周转、滞销预警
     
     ✅ 使用统一计算标准（与Tab 1一致）
     ⚡ 懒加载优化: 首次显示骨架屏
     """
-    if active_tab != 'tab-2':
+    if active_tab != 'tab-3':
         raise PreventUpdate
     
     # ⚡ 懒加载: 首次加载时先显示骨架屏
-    if tabs_status and not tabs_status.get('tab-2', False):
+    if tabs_status and not tabs_status.get('tab-3', False):
         skeleton = create_tab_skeleton() if LOADING_COMPONENTS_AVAILABLE else html.Div("加载中...")
         return skeleton
     
@@ -15055,6 +14758,10 @@ def render_tab2_content(active_tab, data_trigger, tabs_status):
         ).fillna(0)
         
         # ===== Step 5: 商品维度聚合 =====
+        # 📊 商品四象限分析：分析商品本身的盈利能力
+        # ✅ 使用原始利润额(N列)：商品毛利，不包含配送费等订单级成本
+        # ⚠️ 注意：这里不使用订单实际利润，因为配送费是订单级的，无法精确分配到商品
+        
         # 检查是否存在实收价格字段
         has_actual_price = '实收价格' in df.columns
         if not has_actual_price:
@@ -15065,7 +14772,7 @@ def render_tab2_content(active_tab, data_trigger, tabs_status):
         agg_dict = {
             '预计订单收入': 'sum',         # ✅ 销售额（使用Y列预计订单收入，更真实）
             '商品采购成本': 'sum',         # 成本
-            '利润额': 'sum',               # ✅ 实际利润（直接使用N列利润额，商品级已计算好）
+            '利润额': 'sum',               # ✅ 商品毛利（N列，分析商品本身盈利能力）
             '月售': 'sum',                 # 销量（整个周期累计）
             '库存': 'last',                # ✅ 库存（取最后一天的库存，反映当前状态）
             '订单ID': 'nunique',            # 订单数
@@ -15086,17 +14793,20 @@ def render_tab2_content(active_tab, data_trigger, tabs_status):
         else:
             product_agg.columns = ['商品名称', '销售额', '成本', '实际利润', '总销量', '库存', '订单数', '店内码', '一级分类名', '三级分类名']
         
+        print(f"✅ [商品聚合] 使用'利润额'(N列商品毛利)，总利润: ¥{product_agg['实际利润'].sum():,.2f}")
+        
         # 计算衍生指标
         product_agg['平均售价'] = (product_agg['销售额'] / product_agg['总销量']).fillna(0)
         product_agg['平均成本'] = (product_agg['成本'] / product_agg['总销量']).fillna(0)
         
-        # ✅ 修复利润率计算：优先使用实收价格（W列），避免除以0产生inf
+        # ✅ 利润率计算：商品毛利率 = 利润额 / 实收价格
+        # 这是商品本身的盈利能力，不包含配送费等订单级成本
         if has_actual_price:
-            # 使用实收价格计算实收利润率（排除补贴/折扣影响）
+            # 使用实收价格计算商品毛利率（排除补贴/折扣影响）
             product_agg['利润率'] = (
                 product_agg['实际利润'] / product_agg['实收价格'].replace(0, np.nan) * 100
             ).fillna(0).replace([np.inf, -np.inf], 0)
-            print(f"✅ [利润率计算] 使用'实收价格'计算，平均实收利润率: {product_agg['利润率'].mean():.2f}%")
+            print(f"✅ [利润率计算] 商品毛利率 = 利润额/实收价格，平均: {product_agg['利润率'].mean():.2f}%")
         else:
             # 回退方案：使用预计订单收入
             product_agg['利润率'] = (
@@ -15274,11 +14984,12 @@ def render_tab2_content(active_tab, data_trigger, tabs_status):
         
         # ===== Step 8: 分类分析（如果有分类字段）=====
         if '一级分类名' in df.columns:
-            # ✅ 直接基于源数据聚合（与商品聚合保持一致）
+            # 📊 分类分析：分析各分类商品的盈利能力
+            # ✅ 使用原始利润额(N列)：商品毛利，与商品聚合保持一致
             category_sales = df.groupby('一级分类名').agg({
                 '预计订单收入': 'sum',      # ✅ Y列：销售额
                 '月售': 'sum',              # 销量
-                '利润额': 'sum',            # ✅ N列：实际利润
+                '利润额': 'sum',            # ✅ N列：商品毛利
                 '订单ID': 'nunique'         # 订单数
             }).reset_index()
             
@@ -17070,336 +16781,23 @@ def calculate_scenario_metrics(df: pd.DataFrame) -> pd.DataFrame:
     return scenario_metrics.sort_values('销售额', ascending=False)
 
 
-# ==================== Tab 3-7 占位符 ====================
-
-
 @app.callback(
-    Output('tab-3-content', 'children'),
-    Input('main-tabs', 'value')
-)
-def render_tab3_content(active_tab):
-    if active_tab != 'tab-3':
-        raise PreventUpdate
-    return dbc.Alert("💰 价格对比分析功能开发中...", color="info", className="text-center")
-
-
-# Tab 3.5: 成本优化分析
-@app.callback(
-    Output('tab-cost-content', 'children'),
-    [Input('main-tabs', 'value'),
-     Input('data-update-trigger', 'data')]
-)
-def render_cost_optimization_tab(active_tab, trigger):
-    """渲染成本优化分析Tab"""
-    if active_tab != 'tab-cost-optimization':
-        raise PreventUpdate
-    
-    if GLOBAL_DATA is None or GLOBAL_DATA.empty:
-        return dbc.Container([
-            dbc.Alert("⚠️ 未找到数据，请检查数据文件", color="warning")
-        ])
-    
-    df = GLOBAL_DATA.copy()
-    
-    # 计算订单指标
-    try:
-        order_agg = calculate_order_metrics(df)
-    except ValueError as e:
-        return dbc.Container([
-            dbc.Alert(f"❌ {str(e)}", color="danger")
-        ])
-    
-    # 执行成本优化分析
-    cost_analysis = analyze_cost_optimization(df, order_agg)
-    
-    # 计算总体成本占比
-    total_sales = order_agg['实收价格'].sum()
-    total_profit = order_agg['订单实际利润'].sum()
-    profit_rate = (total_profit / total_sales * 100) if total_sales > 0 else 0
-    
-    product_cost_rate = cost_analysis['product_cost_analysis']['avg_cost_rate']
-    logistics_cost_rate = cost_analysis['logistics_cost_analysis']['logistics_cost_rate']
-    marketing_cost_rate = cost_analysis['marketing_cost_analysis']['marketing_cost_rate']
-    
-    return html.Div([
-        html.H3("💡 成本优化分析", className="mb-4"),
-        html.P("深度分析成本结构,识别优化机会,提升盈利能力", className="text-muted mb-4"),
-        
-        # 成本结构概览
-        dbc.Row([
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        html.H6("📊 综合利润率", className="card-title"),
-                        html.H3(f"{profit_rate:.2f}%", className="text-primary mb-2"),
-                        html.P("利润 / 商品销售额", className="text-muted small")
-                    ])
-                ], className="modern-card text-center shadow-sm")  # 🎨 添加modern-card
-            ], md=3),
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        html.H6("📦 商品成本占比", className="card-title"),
-                        html.H3(f"{product_cost_rate:.2f}%", 
-                               className="text-danger" if product_cost_rate > 70 else "text-success"),
-                        html.P(f"基准: ≤70%", className="text-muted small")
-                    ])
-                ], className="modern-card text-center shadow-sm")  # 🎨 添加modern-card
-            ], md=3),
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        html.H6("🚚 履约成本占比", className="card-title"),
-                        html.H3(f"{logistics_cost_rate:.2f}%", 
-                               className="text-danger" if logistics_cost_rate > 15 else "text-success"),
-                        html.P(f"基准: ≤15%", className="text-muted small")
-                    ])
-                ], className="modern-card text-center shadow-sm")  # 🎨 添加modern-card
-            ], md=3),
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        html.H6("📢 营销成本占比", className="card-title"),
-                        html.H3(f"{marketing_cost_rate:.2f}%", 
-                               className="text-danger" if marketing_cost_rate > 10 else "text-success"),
-                        html.P(f"基准: ≤10%", className="text-muted small")
-                    ])
-                ], className="modern-card text-center shadow-sm")  # 🎨 添加modern-card
-            ], md=3),
-        ], className="mb-4"),
-        
-        # 三个优化分析子模块
-        dbc.Tabs([
-            # 1. 商品成本优化
-            dbc.Tab(label="📦 商品成本优化", children=[
-                html.Div([
-                    render_product_cost_optimization(cost_analysis['product_cost_analysis'])
-                ], className="p-3")
-            ]),
-            
-            # 2. 履约成本优化
-            dbc.Tab(label="🚚 履约成本优化", children=[
-                html.Div([
-                    render_logistics_cost_optimization(cost_analysis['logistics_cost_analysis'])
-                ], className="p-3")
-            ]),
-            
-            # 3. 营销成本优化
-            dbc.Tab(label="📢 营销成本优化", children=[
-                html.Div([
-                    render_marketing_cost_optimization(cost_analysis['marketing_cost_analysis'])
-                ], className="p-3")
-            ]),
-        ])
-    ])
-
-
-def render_product_cost_optimization(analysis: Dict):
-    """渲染商品成本优化分析"""
-    if analysis is None:
-        return dbc.Alert("暂无商品成本数据", color="info")
-    
-    high_cost_products = analysis['high_cost_products']
-    avg_cost_rate = analysis['avg_cost_rate']
-    problem_products = analysis['problem_products']
-    
-    return html.Div([
-        html.H5("📦 商品成本优化分析", className="mb-3"),
-        
-        # 问题概述
-        dbc.Alert([
-            html.H6("🎯 优化目标", className="alert-heading"),
-            html.Hr(),
-            html.P(f"平均商品成本占比: {avg_cost_rate:.2f}%", className="mb-1"),
-            html.P(f"发现 {problem_products} 个高成本商品（成本占比>70%且销量较高）", className="mb-1"),
-            html.P("建议: 优化采购价格、调整售价或替换供应商", className="mb-0 fw-bold text-danger")
-        ], color="warning" if avg_cost_rate > 70 else "success"),
-        
-        # 高成本商品列表
-        html.H6("🔍 高成本商品明细（Top 20）", className="mt-4 mb-3"),
-        
-        dbc.Table.from_dataframe(
-            high_cost_products[[
-                '商品名称', '商品实售价', '商品采购成本', '成本占比', '毛利率', '月售'
-            ]].round(2),
-            striped=True,
-            bordered=True,
-            hover=True,
-            responsive=True,
-            size='sm'
-        ) if not high_cost_products.empty else dbc.Alert("✅ 暂无高成本商品", color="success"),
-        
-        # 优化建议
-        dbc.Card([
-            dbc.CardHeader("💡 优化建议"),
-            dbc.CardBody([
-                html.Ul([
-                    html.Li("优先优化销量高、成本占比高的商品"),
-                    html.Li("与供应商协商批量采购折扣"),
-                    html.Li("考虑提高售价（基于竞品定价）"),
-                    html.Li("寻找替代供应商或商品"),
-                    html.Li("适当减少高成本低毛利商品的备货")
-                ])
-            ])
-        ], className="mt-3")
-    ])
-
-
-def render_logistics_cost_optimization(analysis: Dict):
-    """渲染履约成本优化分析"""
-    if analysis is None:
-        return dbc.Alert("暂无履约成本数据", color="info")
-    
-    # 检查是否有履约数据
-    if not analysis.get('has_logistics_data', False):
-        return dbc.Alert([
-            html.H6("📊 履约成本数据缺失", className="alert-heading"),
-            html.Hr(),
-            html.P("当前数据中未找到履约成本相关字段（配送费成本/物流配送费等）", className="mb-0"),
-            html.P("建议: 上传包含完整配送费用数据的订单明细", className="mb-0 mt-2")
-        ], color="warning")
-    
-    logistics_cost_rate = analysis['logistics_cost_rate']
-    total_logistics_cost = analysis['total_logistics_cost']
-    distance_stats = analysis['distance_stats']
-    use_full_formula = analysis.get('use_full_formula', False)
-    
-    return html.Div([
-        html.H5("🚚 履约成本优化分析", className="mb-3"),
-        
-        # 成本概况
-        dbc.Alert([
-            html.H6("📊 履约成本概况", className="alert-heading"),
-            html.Hr(),
-            html.P(f"履约净成本: ¥{total_logistics_cost:,.2f}", className="mb-1"),
-            html.P(f"履约成本占比: {logistics_cost_rate:.2f}%", className="mb-1"),
-            html.P(f"健康基准: ≤15%", className="mb-1"),
-            html.Hr(),
-            html.Small([
-                "📐 计算公式: ",
-                html.Code("用户支付配送费 - 配送费减免 - 物流配送费" if use_full_formula else "物流配送费"),
-                html.Br(),
-                html.I("(反映商家在配送环节的实际收支)" if use_full_formula else "(仅统计配送支出,未扣除用户支付)")
-            ], className="text-muted"),
-            html.P("建议: 提高起送金额、优化配送范围、减少低客单价订单", 
-                  className="mb-0 fw-bold text-danger mt-2") if logistics_cost_rate > 15 else None
-        ], color="warning" if logistics_cost_rate > 15 else "success"),
-        
-        # 配送距离分析
-        html.H6("📍 按配送距离分析", className="mt-4 mb-3"),
-        
-        dbc.Table.from_dataframe(
-            distance_stats[[
-                '距离分组', '订单数', '销售额', '配送成本', '成本占比', '平均客单价'
-            ]].round(2),
-            striped=True,
-            bordered=True,
-            hover=True,
-            responsive=True,
-            size='sm'
-        ) if distance_stats is not None and not distance_stats.empty else dbc.Alert("暂无配送距离数据", color="info"),
-        
-        # 优化建议
-        dbc.Card([
-            dbc.CardHeader("💡 优化建议"),
-            dbc.CardBody([
-                html.Ul([
-                    html.Li("提高起送金额（建议≥30元），减少低客单价订单"),
-                    html.Li("优化配送范围，限制远距离低客单价订单"),
-                    html.Li("设置配送费阶梯（距离越远配送费越高）"),
-                    html.Li("引导用户自提或合并订单"),
-                    html.Li("与第三方配送平台协商降低配送费")
-                ])
-            ])
-        ], className="mt-3")
-    ])
-
-
-def render_marketing_cost_optimization(analysis: Dict):
-    """渲染营销成本优化分析"""
-    if analysis is None:
-        return dbc.Alert("暂无营销成本数据", color="info")
-    
-    marketing_cost_rate = analysis['marketing_cost_rate']
-    marketing_roi = analysis['marketing_roi']
-    marketing_breakdown = analysis['marketing_breakdown']
-    channel_stats = analysis['channel_stats']
-    
-    return html.Div([
-        html.H5("📢 营销成本优化分析", className="mb-3"),
-        
-        # 营销成本概况
-        dbc.Alert([
-            html.H6("📊 营销成本概况", className="alert-heading"),
-            html.Hr(),
-            html.P(f"营销成本占比: {marketing_cost_rate:.2f}%", className="mb-1"),
-            html.P(f"营销ROI: {marketing_roi:.2f}x (每投入1元产生{marketing_roi:.2f}元销售额)", className="mb-1"),
-            html.P(f"健康基准: ≤10%, ROI≥10x", className="mb-0"),
-            html.P("建议: 停止低ROI活动、提高活动门槛、精准投放", 
-                  className="mb-0 fw-bold text-danger mt-2") if marketing_cost_rate > 10 or marketing_roi < 10 else None
-        ], color="warning" if marketing_cost_rate > 10 else "success"),
-        
-        # 营销成本构成
-        html.H6("💰 营销成本构成", className="mt-4 mb-3"),
-        dbc.Row([
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardBody([
-                        html.H6(key, className="card-title"),
-                        html.H4(f"¥{value:,.2f}", className="text-primary")
-                    ])
-                ], className="modern-card text-center shadow-sm mb-2")  # 🎨 添加modern-card
-            ], md=3) for key, value in marketing_breakdown.items()
-        ]),
-        
-        # 按渠道分析
-        html.H6("📱 按渠道营销效率分析", className="mt-4 mb-3"),
-        
-        dbc.Table.from_dataframe(
-            channel_stats[[
-                '渠道', '销售额', '营销成本', '营销成本占比', '营销ROI', '订单数'
-            ]].round(2),
-            striped=True,
-            bordered=True,
-            hover=True,
-            responsive=True,
-            size='sm'
-        ) if channel_stats is not None and not channel_stats.empty else dbc.Alert("暂无渠道数据", color="info"),
-        
-        # 优化建议
-        dbc.Card([
-            dbc.CardHeader("💡 优化建议"),
-            dbc.CardBody([
-                html.Ul([
-                    html.Li("立即停止ROI<10的营销活动"),
-                    html.Li("提高满减门槛（建议满50减5，而非满30减5）"),
-                    html.Li("减少商品折扣，改为赠品或积分"),
-                    html.Li("代金券设置使用门槛（如满80可用）"),
-                    html.Li("精准投放：针对高价值客户发券"),
-                    html.Li("A/B测试不同营销策略的效果")
-                ])
-            ])
-        ], className="mt-3")
-    ])
-
-
-@app.callback(
-    Output('tab-5-content', 'children'),
+    Output('tab-4-content', 'children'),
     [Input('main-tabs', 'value'),
      Input('data-update-trigger', 'data')],  # 🔴 监听数据更新
     [State('tabs-loaded-status', 'data')],
     prevent_initial_call=True
 )
-def render_tab5_content(active_tab, data_trigger, tabs_status):
-    """Tab 5: 时段场景分析
+def render_tab4_content(active_tab, data_trigger, tabs_status):
+    """Tab 4: 时段场景分析
     
     ⚡ 懒加载优化: 首次显示骨架屏
     """
-    if active_tab != 'tab-5':
+    if active_tab != 'tab-4':
         raise PreventUpdate
     
     # ⚡ 懒加载: 首次加载时先显示骨架屏
-    if tabs_status and not tabs_status.get('tab-5', False):
+    if tabs_status and not tabs_status.get('tab-4', False):
         skeleton = create_tab_skeleton() if LOADING_COMPONENTS_AVAILABLE else html.Div("加载中...")
         return skeleton
     
@@ -17486,9 +16884,9 @@ def render_tab5_content(active_tab, data_trigger, tabs_status):
     Input('tab5-subtabs', 'active_tab'),
     Input('main-tabs', 'value')
 )
-def render_tab5_subtab_content(active_subtab, main_tab):
-    """渲染Tab 5的子Tab内容"""
-    if main_tab != 'tab-5':
+def render_tab4_subtab_content(active_subtab, main_tab):
+    """渲染Tab 4的子Tab内容"""
+    if main_tab != 'tab-4':
         raise PreventUpdate
     
     try:
@@ -18163,636 +17561,6 @@ def run_ai_scenario_analysis(n_clicks):
         import traceback
         traceback.print_exc()
         return dbc.Alert(f"分析失败: {str(e)}", color="danger")
-
-
-# ==================== Tab 6: 成本利润分析辅助函数 ====================
-
-def calculate_cost_profit_metrics(df: pd.DataFrame) -> Dict[str, Any]:
-    """计算成本利润指标"""
-    metrics = {}
-    
-    # 基础指标
-    metrics['total_orders'] = df['订单ID'].nunique() if '订单ID' in df.columns else len(df)
-    metrics['total_sales'] = df['实收价格'].sum() if '实收价格' in df.columns else 0
-    
-    # 成本计算 - 使用正确的字段名
-    cost_fields = []
-    # 商品成本 (优先使用'商品采购成本',兼容'商品成本')
-    if '商品采购成本' in df.columns:
-        cost_fields.append('商品采购成本')
-    elif '商品成本' in df.columns:
-        cost_fields.append('商品成本')
-    
-    # 配送费成本 (优先使用'物流配送费',兼容'配送费成本')
-    if '物流配送费' in df.columns:
-        cost_fields.append('物流配送费')
-    elif '配送费成本' in df.columns:
-        cost_fields.append('配送费成本')
-    
-    # 营销费用 (优先使用'商家活动费用',兼容'营销费用','营销成本')
-    if '商家活动费用' in df.columns:
-        cost_fields.append('商家活动费用')
-    elif '营销费用' in df.columns:
-        cost_fields.append('营销费用')
-    elif '营销成本' in df.columns:
-        cost_fields.append('营销成本')
-    
-    if cost_fields:
-        metrics['total_cost'] = df[cost_fields].sum().sum()
-    else:
-        # 如果没有成本字段,估算为销售额的60%
-        metrics['total_cost'] = metrics['total_sales'] * 0.6
-    
-    # 利润计算
-    if '利润额' in df.columns:
-        metrics['total_profit'] = df['利润额'].sum()
-    else:
-        metrics['total_profit'] = metrics['total_sales'] - metrics['total_cost']
-    
-    # 比率计算
-    if metrics['total_sales'] > 0:
-        metrics['cost_rate'] = (metrics['total_cost'] / metrics['total_sales']) * 100
-        metrics['profit_rate'] = (metrics['total_profit'] / metrics['total_sales']) * 100
-    else:
-        metrics['cost_rate'] = 0
-        metrics['profit_rate'] = 0
-    
-    # 平均值
-    if metrics['total_orders'] > 0:
-        metrics['avg_order_value'] = metrics['total_sales'] / metrics['total_orders']
-        metrics['avg_profit_per_order'] = metrics['total_profit'] / metrics['total_orders']
-    else:
-        metrics['avg_order_value'] = 0
-        metrics['avg_profit_per_order'] = 0
-    
-    # 成本结构 - 使用正确的字段名
-    cost_breakdown = {}
-    
-    # 商品成本 (优先使用'商品采购成本',兼容'商品成本')
-    if '商品采购成本' in df.columns:
-        cost_breakdown['商品成本'] = df['商品采购成本'].sum()
-    elif '商品成本' in df.columns:
-        cost_breakdown['商品成本'] = df['商品成本'].sum()
-    
-    # 配送费成本 (优先使用'物流配送费',兼容'配送费成本')
-    if '物流配送费' in df.columns:
-        cost_breakdown['配送费成本'] = df['物流配送费'].sum()
-    elif '配送费成本' in df.columns:
-        cost_breakdown['配送费成本'] = df['配送费成本'].sum()
-    
-    # 营销费用 (优先使用'商家活动费用',兼容'营销费用','营销成本')
-    if '商家活动费用' in df.columns:
-        cost_breakdown['商家活动'] = df['商家活动费用'].sum()
-    elif '营销费用' in df.columns:
-        cost_breakdown['商家活动'] = df['营销费用'].sum()
-    elif '营销成本' in df.columns:
-        cost_breakdown['商家活动'] = df['营销成本'].sum()
-    
-    # 如果没有详细成本,创建估算
-    if not cost_breakdown:
-        cost_breakdown = {
-            '商品成本': metrics['total_cost'] * 0.7,
-            '配送费成本': metrics['total_cost'] * 0.2,
-            '商家活动': metrics['total_cost'] * 0.1
-        }
-    
-    metrics['cost_breakdown'] = cost_breakdown
-    
-    return metrics
-
-
-def render_cost_structure_chart(metrics: Dict[str, Any]):
-    """渲染成本结构饼图 - ECharts版本"""
-    cost_breakdown = metrics['cost_breakdown']
-    
-    option = {
-        'title': {
-            'text': '成本结构',
-            'left': 'center',
-            'top': 10,
-            'textStyle': {'fontSize': 14, 'fontWeight': 'normal'}
-        },
-        'tooltip': {
-            'trigger': 'item',
-            'formatter': '{b}: ¥{c}<br/>占比: {d}%'
-        },
-        'legend': {
-            'orient': 'vertical',
-            'left': 'left',
-            'top': 'middle'
-        },
-        'series': [{
-            'name': '成本结构',
-            'type': 'pie',
-            'radius': ['40%', '70%'],
-            'center': ['60%', '55%'],
-            'avoidLabelOverlap': True,
-            'itemStyle': {
-                'borderRadius': 10,
-                'borderColor': '#fff',
-                'borderWidth': 2
-            },
-            'label': {
-                'show': True,
-                'formatter': '{b}\n¥{c}\n{d}%'
-            },
-            'emphasis': {
-                'label': {'show': True, 'fontSize': 16, 'fontWeight': 'bold'}
-            },
-            'data': [
-                {'value': v, 'name': k, 'itemStyle': {'color': color}}
-                for (k, v), color in zip(cost_breakdown.items(), 
-                                        ['#FF6B6B', '#4ECDC4', '#FFE66D'])
-            ]
-        }]
-    }
-    
-    return DashECharts(
-        option=option,
-        id='cost-structure-chart',
-        style={'height': '400px'}
-    )
-
-
-def render_cost_structure_chart_plotly(metrics: Dict[str, Any]):
-    """渲染成本结构饼图 - Plotly版本(后备)"""
-    cost_breakdown = metrics['cost_breakdown']
-    
-    fig = go.Figure(data=[go.Pie(
-        labels=list(cost_breakdown.keys()),
-        values=list(cost_breakdown.values()),
-        hole=0.4,
-        marker_colors=['#FF6B6B', '#4ECDC4', '#FFE66D'],
-        textinfo='label+value+percent',
-        hovertemplate='<b>%{label}</b><br>金额: ¥%{value:,.2f}<br>占比: %{percent}<extra></extra>'
-    )])
-    
-    fig.update_layout(
-        height=400,
-        showlegend=True,
-        margin=dict(t=30, b=30, l=30, r=30)
-    )
-    
-    return dcc.Graph(figure=fig, config={'displayModeBar': False})
-
-
-def render_profit_source_chart(metrics: Dict[str, Any]):
-    """渲染利润来源柱状图 - ECharts版本"""
-    total_sales = metrics['total_sales']
-    total_cost = metrics['total_cost']
-    total_profit = metrics['total_profit']
-    
-    option = {
-        'title': {
-            'text': '销售额与成本利润对比',
-            'left': 'center',
-            'top': 10,
-            'textStyle': {'fontSize': 14, 'fontWeight': 'normal'}
-        },
-        'tooltip': {
-            'trigger': 'axis',
-            'axisPointer': {'type': 'shadow'}
-        },
-        'legend': {
-            'data': ['销售额', '成本', '利润'],
-            'top': 40
-        },
-        'grid': {
-            'left': '3%',
-            'right': '4%',
-            'bottom': '3%',
-            'top': 80,
-            'containLabel': True
-        },
-        'xAxis': {
-            'type': 'category',
-            'data': ['总体']
-        },
-        'yAxis': {
-            'type': 'value',
-            'name': '金额(元)',
-            'axisLabel': {'formatter': '¥{value}'}
-        },
-        'series': [
-            {
-                'name': '销售额',
-                'type': 'bar',
-                'data': [total_sales],
-                'itemStyle': {'color': '#5470C6'},
-                'label': {
-                    'show': True,
-                    'position': 'top',
-                    'formatter': f'¥{total_sales:,.0f}'
-                }
-            },
-            {
-                'name': '成本',
-                'type': 'bar',
-                'data': [total_cost],
-                'itemStyle': {'color': '#EE6666'},
-                'label': {
-                    'show': True,
-                    'position': 'top',
-                    'formatter': f'¥{total_cost:,.0f}'
-                }
-            },
-            {
-                'name': '利润',
-                'type': 'bar',
-                'data': [total_profit],
-                'itemStyle': {'color': '#91CC75'},
-                'label': {
-                    'show': True,
-                    'position': 'top',
-                    'formatter': f'¥{total_profit:,.0f}'
-                }
-            }
-        ]
-    }
-    
-    return DashECharts(
-        option=option,
-        id='profit-source-chart',
-        style={'height': '400px'}
-    )
-
-
-def render_profit_source_chart_plotly(metrics: Dict[str, Any]):
-    """渲染利润来源柱状图 - Plotly版本(后备)"""
-    total_sales = metrics['total_sales']
-    total_cost = metrics['total_cost']
-    total_profit = metrics['total_profit']
-    
-    fig = go.Figure(data=[
-        go.Bar(name='销售额', x=['总体'], y=[total_sales], marker_color='#5470C6',
-               text=[f'¥{total_sales:,.0f}'], textposition='auto'),
-        go.Bar(name='成本', x=['总体'], y=[total_cost], marker_color='#EE6666',
-               text=[f'¥{total_cost:,.0f}'], textposition='auto'),
-        go.Bar(name='利润', x=['总体'], y=[total_profit], marker_color='#91CC75',
-               text=[f'¥{total_profit:,.0f}'], textposition='auto')
-    ])
-    
-    fig.update_layout(
-        height=400,
-        barmode='group',
-        yaxis_title='金额(元)',
-        showlegend=True,
-        margin=dict(t=30, b=30, l=50, r=30)
-    )
-    
-    return dcc.Graph(figure=fig, config={'displayModeBar': False})
-
-
-def render_product_profit_chart(df: pd.DataFrame):
-    """渲染商品利润率分析 - ECharts版本"""
-    # 按商品汇总
-    product_metrics = df.groupby('商品名称').agg({
-        '商品实售价': 'sum',
-        '利润额': 'sum' if '利润额' in df.columns else lambda x: 0
-    }).reset_index()
-    
-    # 如果没有利润额,估算
-    if '利润额' not in df.columns:
-        product_metrics['利润额'] = product_metrics['实收价格'] * 0.3
-    
-    # 计算利润率
-    product_metrics['利润率'] = (product_metrics['利润额'] / product_metrics['实收价格'] * 100).round(1)
-    
-    # 取Top 20
-    product_metrics = product_metrics.nlargest(20, '实收价格')
-    product_metrics = product_metrics.sort_values('利润率')
-    
-    # 颜色映射
-    colors = ['#91CC75' if r >= 30 else '#FAC858' if r >= 20 else '#EE6666' 
-              for r in product_metrics['利润率']]
-    
-    option = {
-        'title': {
-            'text': 'Top 20 商品利润率',
-            'left': 'center',
-            'top': 10,
-            'textStyle': {'fontSize': 14, 'fontWeight': 'normal'}
-        },
-        'tooltip': {
-            'trigger': 'axis',
-            'axisPointer': {'type': 'shadow'}
-        },
-        'grid': {
-            'left': '3%',
-            'right': '10%',
-            'bottom': '3%',
-            'top': 50,
-            'containLabel': True
-        },
-        'xAxis': {
-            'type': 'value',
-            'name': '销售额(元)'
-        },
-        'yAxis': {
-            'type': 'category',
-            'data': product_metrics['商品名称'].tolist(),
-            'axisLabel': {
-                'interval': 0,
-                'fontSize': 11
-            }
-        },
-        'series': [
-            {
-                'name': '销售额',
-                'type': 'bar',
-                'data': [
-                    {'value': row['实收价格'], 'itemStyle': {'color': color}}
-                    for (_, row), color in zip(product_metrics.iterrows(), colors)
-                ],
-                'label': {
-                    'show': True,
-                    'position': 'right',
-                    'formatter': '{c}%'
-                }
-            }
-        ]
-    }
-    
-    return DashECharts(
-        option=option,
-        id='product-profit-chart',
-        style={'height': '600px'}
-    )
-
-
-def render_product_profit_chart_plotly(df: pd.DataFrame):
-    """渲染商品利润率分析 - Plotly版本(后备)"""
-    # 按商品汇总
-    product_metrics = df.groupby('商品名称').agg({
-        '商品实售价': 'sum',
-        '利润额': 'sum' if '利润额' in df.columns else lambda x: 0
-    }).reset_index()
-    
-    # 如果没有利润额,估算
-    # 如果没有利润额,估算 (Plotly版本)
-    if '利润额' not in df.columns:
-        product_metrics['利润额'] = product_metrics['实收价格'] * 0.3
-    
-    # 计算利润率
-    product_metrics['利润率'] = (product_metrics['利润额'] / product_metrics['实收价格'] * 100).round(1)
-    
-    # 取Top 20
-    product_metrics = product_metrics.nlargest(20, '实收价格')
-    product_metrics = product_metrics.sort_values('利润率')
-    
-    # 颜色映射
-    colors = ['#91CC75' if r >= 30 else '#FAC858' if r >= 20 else '#EE6666' 
-              for r in product_metrics['利润率']]
-    
-    fig = go.Figure(data=[
-        go.Bar(
-            x=product_metrics['实收价格'],
-            y=product_metrics['商品名称'],
-            orientation='h',
-            marker_color=colors,
-            text=[f"{r:.1f}%" for r in product_metrics['利润率']],
-            textposition='outside',
-            hovertemplate='<b>%{y}</b><br>销售额: ¥%{x:,.2f}<br>利润率: %{text}<extra></extra>'
-        )
-    ])
-    
-    fig.update_layout(
-        height=600,
-        xaxis_title='销售额(元)',
-        showlegend=False,
-        margin=dict(t=30, b=30, l=150, r=80)
-    )
-    
-    return dcc.Graph(figure=fig, config={'displayModeBar': False})
-
-
-def render_cost_optimization_suggestions(metrics: Dict[str, Any]):
-    """渲染成本优化建议"""
-    suggestions = []
-    
-    # 基于利润率给建议
-    profit_rate = metrics['profit_rate']
-    
-    if profit_rate < 20:
-        suggestions.append({
-            'icon': 'exclamation-triangle',
-            'color': 'danger',
-            'title': '⚠️ 利润率偏低',
-            'content': f"当前利润率仅 {profit_rate:.1f}%，低于行业平均水平(25-35%)。建议优化成本结构或提升定价策略。"
-        })
-    elif profit_rate < 30:
-        suggestions.append({
-            'icon': 'info-circle',
-            'color': 'warning',
-            'title': '💡 利润率一般',
-            'content': f"当前利润率 {profit_rate:.1f}%，处于中等水平。可通过优化商品组合和控制履约成本进一步提升。"
-        })
-    else:
-        suggestions.append({
-            'icon': 'check-circle',
-            'color': 'success',
-            'title': '✅ 利润率健康',
-            'content': f"当前利润率 {profit_rate:.1f}%，处于良好水平。继续保持成本控制和定价策略。"
-        })
-    
-    # 成本结构建议
-    cost_breakdown = metrics['cost_breakdown']
-    total_cost = metrics['total_cost']
-    
-    for cost_type, cost_value in cost_breakdown.items():
-        cost_pct = (cost_value / total_cost * 100) if total_cost > 0 else 0
-        
-        if cost_type == '商品成本' and cost_pct > 70:
-            suggestions.append({
-                'icon': 'box',
-                'color': 'info',
-                'title': '📦 商品成本优化',
-                'content': f"商品成本占比 {cost_pct:.1f}%，建议优化供应链、批量采购降低单位成本，或调整商品结构增加高毛利品。"
-            })
-        
-        if cost_type == '配送费成本' and cost_pct > 25:
-            suggestions.append({
-                'icon': 'truck',
-                'color': 'info',
-                'title': '🚚 履约成本优化',
-                'content': f"配送费成本占比 {cost_pct:.1f}%，建议提升订单客单价、优化配送路线或调整配送策略。"
-            })
-        
-        if cost_type == '营销费用' and cost_pct > 15:
-            suggestions.append({
-                'icon': 'megaphone',
-                'color': 'info',
-                'title': '📢 营销成本优化',
-                'content': f"营销费用占比 {cost_pct:.1f}%，建议优化营销ROI、精准投放或提升自然流量。"
-            })
-    
-    # 渲染建议卡片
-    return dbc.Card([
-        dbc.CardHeader([
-            html.I(className="bi bi-lightbulb me-2"),
-            "💡 成本优化建议"
-        ]),
-        dbc.CardBody([
-            dbc.Row([
-                dbc.Col([
-                    dbc.Alert([
-                        html.H6([
-                            html.I(className=f"bi bi-{sug['icon']} me-2"),
-                            sug['title']
-                        ], className="mb-2"),
-                        html.P(sug['content'], className="mb-0")
-                    ], color=sug['color'], className="mb-3")
-                ], md=6)
-                for sug in suggestions
-            ])
-        ])
-    ], className="shadow-sm")
-
-
-# ==================== Tab 6回调 ====================
-
-@app.callback(
-    Output('tab-6-content', 'children'),
-    Input('main-tabs', 'value')
-)
-def render_tab6_content(active_tab):
-    """Tab 6: 成本利润分析 - 使用ECharts可视化"""
-    if active_tab != 'tab-6':
-        raise PreventUpdate
-    
-    global GLOBAL_DATA, GLOBAL_FULL_DATA
-    
-    # 🔧 成本分析需要使用完整数据(含耗材成本)
-    df_to_use = GLOBAL_FULL_DATA if GLOBAL_FULL_DATA is not None and not GLOBAL_FULL_DATA.empty else GLOBAL_DATA
-    
-    if df_to_use is None or df_to_use.empty:
-        return dbc.Alert([
-            html.I(className="bi bi-exclamation-triangle me-2"),
-            "暂无数据，请从数据库加载或上传数据文件"
-        ], color="warning", className="text-center")
-    
-    try:
-        df = df_to_use.copy()
-        
-        # 计算成本利润指标
-        cost_profit_metrics = calculate_cost_profit_metrics(df)
-        
-        # 创建布局
-        layout = html.Div([
-            # 标题
-            html.H3([
-                html.I(className="bi bi-currency-dollar me-2"),
-                "💵 成本利润分析"
-            ], className="mb-4"),
-            
-            # 关键指标卡片
-            dbc.Row([
-                dbc.Col([
-                    dbc.Card([
-                        dbc.CardBody([
-                            html.H6("💰 总销售额", className="text-primary mb-2"),
-                            html.H4(f"¥{cost_profit_metrics['total_sales']:,.2f}", className="mb-1"),
-                            html.P(f"订单数: {cost_profit_metrics['total_orders']:,}", 
-                                   className="text-muted mb-0 small")
-                        ])
-                    ], className="modern-card shadow-sm border-primary h-100")
-                ], md=3),
-                
-                dbc.Col([
-                    dbc.Card([
-                        dbc.CardBody([
-                            html.H6("📦 总成本", className="text-danger mb-2"),
-                            html.H4(f"¥{cost_profit_metrics['total_cost']:,.2f}", className="mb-1"),
-                            html.P(f"成本率: {cost_profit_metrics['cost_rate']:.1f}%", 
-                                   className="text-muted mb-0 small")
-                        ])
-                    ], className="modern-card shadow-sm border-danger h-100")
-                ], md=3),
-                
-                dbc.Col([
-                    dbc.Card([
-                        dbc.CardBody([
-                            html.H6("💎 总利润", className="text-success mb-2"),
-                            html.H4(f"¥{cost_profit_metrics['total_profit']:,.2f}", className="mb-1"),
-                            html.P(f"利润率: {cost_profit_metrics['profit_rate']:.1f}%", 
-                                   className="text-muted mb-0 small")
-                        ])
-                    ], className="modern-card shadow-sm border-success h-100")
-                ], md=3),
-                
-                dbc.Col([
-                    dbc.Card([
-                        dbc.CardBody([
-                            html.H6("📊 平均客单价", className="text-info mb-2"),
-                            html.H4(f"¥{cost_profit_metrics['avg_order_value']:.2f}", className="mb-1"),
-                            html.P(f"单利润: ¥{cost_profit_metrics['avg_profit_per_order']:.2f}", 
-                                   className="text-muted mb-0 small")
-                        ])
-                    ], className="modern-card shadow-sm border-info h-100")
-                ], md=3)
-            ], className="mb-4"),
-            
-            # 成本结构分析 (使用ECharts)
-            dbc.Row([
-                dbc.Col([
-                    dbc.Card([
-                        dbc.CardHeader([
-                            html.I(className="bi bi-pie-chart me-2"),
-                            "📊 成本结构分析"
-                        ]),
-                        dbc.CardBody([
-                            render_cost_structure_chart(cost_profit_metrics) if ECHARTS_AVAILABLE
-                            else render_cost_structure_chart_plotly(cost_profit_metrics)
-                        ])
-                    ], className="shadow-sm")
-                ], md=6),
-                
-                # 利润来源分析 (使用ECharts)
-                dbc.Col([
-                    dbc.Card([
-                        dbc.CardHeader([
-                            html.I(className="bi bi-bar-chart me-2"),
-                            "💎 利润来源分析"
-                        ]),
-                        dbc.CardBody([
-                            render_profit_source_chart(cost_profit_metrics) if ECHARTS_AVAILABLE
-                            else render_profit_source_chart_plotly(cost_profit_metrics)
-                        ])
-                    ], className="shadow-sm")
-                ], md=6)
-            ], className="mb-4"),
-            
-            # 商品级成本利润分析 (使用ECharts)
-            dbc.Row([
-                dbc.Col([
-                    dbc.Card([
-                        dbc.CardHeader([
-                            html.I(className="bi bi-graph-up me-2"),
-                            "🏷️ 商品利润率分析 (Top 20)"
-                        ]),
-                        dbc.CardBody([
-                            render_product_profit_chart(df) if ECHARTS_AVAILABLE
-                            else render_product_profit_chart_plotly(df)
-                        ])
-                    ], className="shadow-sm")
-                ])
-            ], className="mb-4"),
-            
-            # 成本优化建议
-            dbc.Row([
-                dbc.Col([
-                    render_cost_optimization_suggestions(cost_profit_metrics)
-                ])
-            ])
-        ])
-        
-        return layout
-        
-    except Exception as e:
-        print(f"❌ Tab 6渲染失败: {e}")
-        import traceback
-        traceback.print_exc()
-        return dbc.Alert(f"渲染失败: {str(e)}", color="danger")
 
 
 # ==================== Tab 7回调已在后面定义 (营销成本分析) ====================
@@ -19932,10 +18700,10 @@ app.clientside_callback(
 )
 
 
-# ==================== Tab 7: 营销成本分析 ====================
+# ==================== Tab 2: 营销成本分析 ====================
 
 @app.callback(
-    Output('tab-7-content', 'children'),
+    Output('tab-2-content', 'children'),
     [Input('main-tabs', 'value'),
      Input('data-update-trigger', 'data')],  # 🔴 监听数据更新
     [State('current-store-id', 'data'),
@@ -19943,20 +18711,24 @@ app.clientside_callback(
      State('tabs-loaded-status', 'data')],
     prevent_initial_call=True
 )
-def render_tab7_marketing_content(active_tab, data_trigger, store_id, store_data, tabs_status):
-    """Tab 7: 营销成本异常分析
+def render_tab2_marketing_content(active_tab, data_trigger, store_id, store_data, tabs_status):
+    """Tab 2: 营销成本异常分析
     
     ⚡ 懒加载优化: 首次显示骨架屏
     """
-    if active_tab != 'tab-7':
+    if active_tab != 'tab-2':
         raise PreventUpdate
     
     # ⚡ 懒加载: 首次加载时先显示骨架屏
-    if tabs_status and not tabs_status.get('tab-7', False):
+    if tabs_status and not tabs_status.get('tab-2', False):
         skeleton = create_tab_skeleton() if LOADING_COMPONENTS_AVAILABLE else html.Div("加载中...")
         return skeleton
     
-    print(f"[Tab7渲染] 门店ID: {store_id}, 数据触发: {data_trigger}, 数据量: {len(store_data) if store_data else 0}")
+    # 🔍 增强调试日志
+    global_len = len(GLOBAL_DATA) if GLOBAL_DATA is not None else 0
+    store_len = len(store_data) if store_data else 0
+    print(f"[Tab7渲染] 门店ID: {store_id}, 触发值: {data_trigger}")
+    print(f"[Tab7渲染] GLOBAL_DATA: {global_len}行, store_data: {store_len}行", flush=True)
     
     try:
         # 检查分析器是否可用
@@ -19972,14 +18744,19 @@ def render_tab7_marketing_content(active_tab, data_trigger, store_id, store_data
                 ])
             ], color="warning", className="m-3")
         
-        # 🔴 使用门店数据而非全局数据
-        if store_data and len(store_data) > 0:
-            df = pd.DataFrame(store_data)
-        else:
+        # ✅ 2025-12-02: 直接使用GLOBAL_DATA保证数据一致性
+        # （store_data可能因回调顺序问题导致数据不同步）
+        if GLOBAL_DATA is not None and len(GLOBAL_DATA) > 0:
             df = GLOBAL_DATA.copy()
+            print(f"[Tab7] ✅ 使用GLOBAL_DATA: {len(df)} 行", flush=True)
+        elif store_data and len(store_data) > 0:
+            df = pd.DataFrame(store_data)
+            print(f"[Tab7] ⚠️ 回退使用store_data: {len(df)} 行", flush=True)
+        else:
+            df = None
         
         if df is None or len(df) == 0:
-            return dbc.Alert("📊 暂无数据，请先加载数据", color="warning", className="text-center"), tabs_status
+            return dbc.Alert("📊 暂无数据，请先加载数据", color="warning", className="text-center")
         
         # ❌ 2025-11-18: 禁用耗材剔除,保留真实成本数据
         # if '一级分类名' in df.columns:
@@ -20025,9 +18802,9 @@ def render_tab7_marketing_content(active_tab, data_trigger, store_id, store_data
                 dbc.Col([
                     html.H3([
                         html.I(className="bi bi-grid-3x3-gap me-2"),
-                        "营销分析看板 - 双维度智能诊断"
+                        "营销效率分析看板"
                     ], className="text-primary mb-2"),
-                    html.P("基于品类动态阈值和综合评分模型的科学分析", 
+                    html.P("双维度商品分析与营销效率评估", 
                           className="text-muted")
                 ], md=6),
                 dbc.Col([
@@ -20065,7 +18842,6 @@ def render_tab7_marketing_content(active_tab, data_trigger, store_id, store_data
                 ], md=3)
             ], className="mb-4"),
             
-            
             # 双维度对比区 - 左右分栏
             dbc.Row([
                 # 左侧: 科学方法(品类动态阈值)
@@ -20100,15 +18876,11 @@ def render_tab7_marketing_content(active_tab, data_trigger, store_id, store_data
                                 ], md=4)
                             ], className="mb-3"),
                             
-                            # 象限分布饼图
-                            html.Div([
-                                create_scientific_quadrant_pie_echarts(scientific_result.to_dict('records'))
-                            ], className="mb-3"),
+                            # 象限分布饼图 - 改为动态容器
+                            html.Div(id='scientific-quadrant-pie-container', className="mb-3"),
                             
-                            # 置信度分布图
-                            html.Div([
-                                create_scientific_confidence_bar_echarts(scientific_result.to_dict('records'))
-                            ], className="mb-3"),
+                            # 置信度分布图 - 改为动态容器
+                            html.Div(id='scientific-confidence-bar-container', className="mb-3"),
                             
                             # 品类阈值信息(筛选品类时显示)
                             html.Div(id='scientific-category-threshold-info'),
@@ -20157,10 +18929,8 @@ def render_tab7_marketing_content(active_tab, data_trigger, store_id, store_data
                                 ], md=4)
                             ], className="mb-3"),
                             
-                            # 评分分布柱状图
-                            html.Div([
-                                create_scoring_distribution_bar_echarts(scoring_result.to_dict('records'))
-                            ], className="mb-3"),
+                            # 评分分布柱状图 - 改为动态容器
+                            html.Div(id='scoring-distribution-bar-container', className="mb-3"),
                             
                             # 品类平均分(筛选品类时显示)
                             html.Div(id='scoring-category-avg-info'),
@@ -20177,6 +18947,52 @@ def render_tab7_marketing_content(active_tab, data_trigger, store_id, store_data
                     ], className="shadow-sm h-100")
                 ], md=6)
             ], className="mb-4"),
+            
+            # ==================== AI智能洞察区域 ====================
+            dbc.Card([
+                dbc.CardHeader([
+                    dbc.Row([
+                        dbc.Col([
+                            html.I(className="bi bi-robot me-2"),
+                            html.Strong("🤖 AI智能洞察 (通义千问)")
+                        ], md=8),
+                        dbc.Col([
+                            dbc.Button([
+                                html.I(className="bi bi-lightning-charge me-2"),
+                                "生成AI分析"
+                            ], id="btn-generate-ai-insight", color="warning", size="sm", 
+                               className="float-end", disabled=not AI_QWEN_AVAILABLE)
+                        ], md=4)
+                    ], align="center")
+                ], className="bg-gradient bg-warning bg-opacity-75 text-dark"),
+                dbc.CardBody([
+                    # AI状态提示
+                    html.Div(id='ai-insight-status', children=[
+                        dbc.Alert([
+                            html.I(className="bi bi-info-circle me-2"),
+                            "点击「生成AI分析」按钮，AI将基于商品数据为您提供智能洞察和优化建议"
+                        ], color="info", className="mb-0") if AI_QWEN_AVAILABLE else
+                        dbc.Alert([
+                            html.I(className="bi bi-exclamation-triangle me-2"),
+                            "AI服务未配置，请确保ai_qwen_service.py模块已正确安装"
+                        ], color="warning", className="mb-0")
+                    ]),
+                    
+                    # AI整体洞察结果
+                    html.Div(id='ai-overall-insight', className="mt-3"),
+                    
+                    # AI问题商品建议
+                    html.Div(id='ai-problem-products-advice', className="mt-3"),
+                    
+                    # 加载状态
+                    dbc.Spinner(
+                        html.Div(id='ai-loading-indicator'),
+                        color="warning",
+                        type="grow",
+                        size="sm"
+                    )
+                ])
+            ], className="shadow-sm mb-4 border-warning"),
             
             # 底部: 两种分析模型的定义说明
             dbc.Card([
@@ -20323,7 +19139,7 @@ def render_tab7_marketing_content(active_tab, data_trigger, store_id, store_data
         print(f"❌ Tab 7渲染失败: {e}")
         import traceback
         traceback.print_exc()
-        return dbc.Alert(f"渲染失败: {str(e)}", color="danger"), tabs_status
+        return dbc.Alert(f"渲染失败: {str(e)}", color="danger")
 
 
 # Tab 7 子组件回调
@@ -20380,6 +19196,113 @@ def update_tab7_by_channel(channel, raw_data):
         import traceback
         traceback.print_exc()
         raise PreventUpdate
+
+
+# 🆕 Tab 2 (营销分析): 渠道筛选更新科学分析和评分分析
+@app.callback(
+    [Output('scientific-golden-count', 'children'),
+     Output('scientific-eliminate-count', 'children'),
+     Output('scientific-low-confidence-count', 'children'),
+     Output('scientific-quadrant-pie-container', 'children'),
+     Output('scientific-confidence-bar-container', 'children'),
+     Output('tab7-scientific-data', 'data'),
+     Output('scoring-avg-score', 'children'),
+     Output('scoring-excellent-count', 'children'),
+     Output('scoring-poor-count', 'children'),
+     Output('scoring-distribution-bar-container', 'children'),
+     Output('tab7-scoring-data', 'data')],
+    [Input('tab7-channel-filter', 'value'),
+     Input('tab7-category-filter', 'value')],
+    [State('tab7-raw-data', 'data')],
+    prevent_initial_call=False  # 初始加载时也要执行
+)
+def update_scientific_and_scoring_by_filter(channel, category, raw_data):
+    """根据渠道和品类筛选更新科学分析和评分分析"""
+    # 初始化默认返回值
+    empty_returns = (
+        "0", "0", "0", html.Div("加载中..."), html.Div("加载中..."), [],
+        "0", "0", "0", html.Div("加载中..."), []
+    )
+    
+    if not raw_data:
+        return empty_returns
+    
+    try:
+        df = pd.DataFrame(raw_data)
+        print(f"[营销分析] 筛选条件: 渠道={channel}, 品类={category}, 原始数据={len(df)}行", flush=True)
+        
+        # 🔴 应用渠道筛选
+        if channel and channel != 'ALL' and '渠道' in df.columns:
+            df = df[df['渠道'] == channel].copy()
+            print(f"[营销分析] 渠道筛选后: {len(df)}行", flush=True)
+        
+        # 🔴 应用品类筛选
+        if category and category != 'ALL' and '一级分类名' in df.columns:
+            df = df[df['一级分类名'] == category].copy()
+            print(f"[营销分析] 品类筛选后: {len(df)}行", flush=True)
+        
+        if len(df) == 0:
+            return (
+                "0", "0", "0", 
+                dbc.Alert("该筛选条件下无数据", color="warning"),
+                html.Div(),
+                [],
+                "0", "0", "0",
+                dbc.Alert("该筛选条件下无数据", color="warning"),
+                []
+            )
+        
+        # 重新计算科学分析
+        scientific_analyzer = ScientificQuadrantAnalyzer(df, use_category_threshold=True)
+        scientific_result = scientific_analyzer.analyze_with_confidence()
+        
+        # 统计科学分析指标
+        golden_count = len(scientific_result[scientific_result['象限'] == '黄金商品']) if '象限' in scientific_result.columns else 0
+        eliminate_count = len(scientific_result[scientific_result['象限'] == '淘汰区']) if '象限' in scientific_result.columns else 0
+        low_conf_count = len(scientific_result[scientific_result['置信度'] == '低']) if '置信度' in scientific_result.columns else 0
+        
+        # 创建科学分析图表
+        scientific_pie = create_scientific_quadrant_pie_echarts(scientific_result.to_dict('records'))
+        scientific_bar = create_scientific_confidence_bar_echarts(scientific_result.to_dict('records'))
+        
+        # 重新计算评分分析
+        scoring_analyzer = ScoringModelAnalyzer(df)
+        scoring_result = scoring_analyzer.analyze_with_scoring({
+            '营销效率': 0.25,
+            '盈利能力': 0.45,
+            '动销健康': 0.3
+        })
+        
+        # 统计评分分析指标
+        avg_score = f"{scoring_result['综合评分'].mean():.1f}" if '综合评分' in scoring_result.columns else "0"
+        excellent_count = len(scoring_result[scoring_result['综合评分'] >= 70]) if '综合评分' in scoring_result.columns else 0
+        poor_count = len(scoring_result[scoring_result['综合评分'] < 40]) if '综合评分' in scoring_result.columns else 0
+        
+        # 创建评分分析图表
+        scoring_bar = create_scoring_distribution_bar_echarts(scoring_result.to_dict('records'))
+        
+        print(f"[营销分析] 更新完成: 黄金商品={golden_count}, 淘汰区={eliminate_count}, 平均分={avg_score}", flush=True)
+        
+        return (
+            str(golden_count),
+            str(eliminate_count), 
+            str(low_conf_count),
+            scientific_pie,
+            scientific_bar,
+            scientific_result.to_dict('records'),
+            avg_score,
+            str(excellent_count),
+            str(poor_count),
+            scoring_bar,
+            scoring_result.to_dict('records')
+        )
+        
+    except Exception as e:
+        print(f"❌ 营销分析筛选更新失败: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        return empty_returns
+
 
 @app.callback(
     Output('anomaly-products-table', 'children'),
@@ -21018,11 +19941,12 @@ def export_quadrant_data_tab7(n_clicks, analyzer_data, selected_quadrant, channe
 @app.callback(
     Output('download-scientific-data', 'data'),
     Input('export-scientific-btn', 'n_clicks'),
-    State('tab7-scientific-data', 'data'),
-    State('tab7-channel-filter', 'value'),
+    [State('tab7-scientific-data', 'data'),
+     State('tab7-channel-filter', 'value'),
+     State('tab7-raw-data', 'data')],  # 🆕 添加原始数据以获取门店名称
     prevent_initial_call=True
 )
-def export_scientific_analysis(n_clicks, scientific_data, channel):
+def export_scientific_analysis(n_clicks, scientific_data, channel, raw_data):
     """导出科学分析报告（品类动态阈值方法）- 既要完整数据又要多维度分析"""
     print(f"[导出科学分析] 点击次数: {n_clicks}, 数据量: {len(scientific_data) if scientific_data else 0}")
     
@@ -21034,12 +19958,24 @@ def export_scientific_analysis(n_clicks, scientific_data, channel):
     from datetime import datetime
     
     quadrant_df = pd.DataFrame(scientific_data)
-    print(f"[导出科学分析] ✅ 准备导出 {len(quadrant_df)} 条数据，共 {len(quadrant_df.columns)} 个字段")
+    
+    # 🆕 获取门店名称和渠道信息
+    store_name = "未知门店"
+    if raw_data:
+        raw_df = pd.DataFrame(raw_data)
+        if '门店名称' in raw_df.columns:
+            store_name = raw_df['门店名称'].iloc[0] if len(raw_df) > 0 else "未知门店"
+    
+    # 🆕 在导出数据开头添加门店和渠道字段
+    channel_name = "全部渠道" if channel == 'ALL' or not channel else channel
+    quadrant_df.insert(0, '渠道', channel_name)
+    quadrant_df.insert(0, '门店名称', store_name)
+    
+    print(f"[导出科学分析] ✅ 准备导出 {len(quadrant_df)} 条数据，门店: {store_name}, 渠道: {channel_name}")
     
     # 生成文件名
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    channel_suffix = "全部渠道" if channel == 'ALL' else channel
-    filename = f"科学分析报告_{channel_suffix}_{timestamp}.xlsx"
+    filename = f"科学分析报告_{store_name}_{channel_name}_{timestamp}.xlsx"
     
     # 准备导出数据 - 既要完整数据又要多维度分析
     output = io.BytesIO()
@@ -21101,11 +20037,12 @@ def export_scientific_analysis(n_clicks, scientific_data, channel):
 @app.callback(
     Output('download-scoring-data', 'data'),
     Input('export-scoring-btn', 'n_clicks'),
-    State('tab7-scoring-data', 'data'),
-    State('tab7-channel-filter', 'value'),
+    [State('tab7-scoring-data', 'data'),
+     State('tab7-channel-filter', 'value'),
+     State('tab7-raw-data', 'data')],  # 🆕 添加原始数据以获取门店名称
     prevent_initial_call=True
 )
-def export_scoring_analysis(n_clicks, scoring_data, channel):
+def export_scoring_analysis(n_clicks, scoring_data, channel, raw_data):
     """导出评分排名报告（通用阈值评分方法）- 既要完整数据又要多维度分析"""
     print(f"[导出评分排名] 点击次数: {n_clicks}, 数据量: {len(scoring_data) if scoring_data else 0}")
     
@@ -21117,7 +20054,20 @@ def export_scoring_analysis(n_clicks, scoring_data, channel):
     from datetime import datetime
     
     quadrant_df = pd.DataFrame(scoring_data)
-    print(f"[导出评分排名] ✅ 准备导出 {len(quadrant_df)} 条数据，共 {len(quadrant_df.columns)} 个字段")
+    
+    # 🆕 获取门店名称和渠道信息
+    store_name = "未知门店"
+    if raw_data:
+        raw_df = pd.DataFrame(raw_data)
+        if '门店名称' in raw_df.columns:
+            store_name = raw_df['门店名称'].iloc[0] if len(raw_df) > 0 else "未知门店"
+    
+    # 🆕 在导出数据开头添加门店和渠道字段
+    channel_name = "全部渠道" if channel == 'ALL' or not channel else channel
+    quadrant_df.insert(0, '渠道', channel_name)
+    quadrant_df.insert(0, '门店名称', store_name)
+    
+    print(f"[导出评分排名] ✅ 准备导出 {len(quadrant_df)} 条数据，门店: {store_name}, 渠道: {channel_name}")
     
     # 按综合得分排序（如果有综合得分字段）
     if '综合得分' in quadrant_df.columns:
@@ -21125,8 +20075,7 @@ def export_scoring_analysis(n_clicks, scoring_data, channel):
     
     # 生成文件名
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    channel_suffix = "全部渠道" if channel == 'ALL' else channel
-    filename = f"评分排名报告_{channel_suffix}_{timestamp}.xlsx"
+    filename = f"评分排名报告_{store_name}_{channel_name}_{timestamp}.xlsx"
     
     # 准备导出数据 - 既要完整数据又要多维度分析
     output = io.BytesIO()
@@ -21212,6 +20161,248 @@ def export_scoring_analysis(n_clicks, scoring_data, channel):
     return dcc.send_bytes(output.getvalue(), filename)
 
 
+# ==================== AI智能洞察回调 ====================
+
+@app.callback(
+    [Output('ai-overall-insight', 'children'),
+     Output('ai-problem-products-advice', 'children'),
+     Output('ai-loading-indicator', 'children')],
+    Input('btn-generate-ai-insight', 'n_clicks'),
+    [State('tab7-scientific-data', 'data'),
+     State('tab7-scoring-data', 'data'),
+     State('tab7-channel-filter', 'value'),
+     State('tab7-category-filter', 'value')],
+    prevent_initial_call=True
+)
+def generate_ai_insight(n_clicks, scientific_data, scoring_data, channel, category):
+    """生成AI智能洞察 - 按象限维度深度分析
+    
+    功能:
+    1. 整体健康度评估
+    2. 按象限分别解读（重点分析问题象限）
+    3. 具体行动建议（精确到商品+数值）
+    """
+    if not n_clicks or not AI_QWEN_AVAILABLE:
+        raise PreventUpdate
+    
+    try:
+        # 初始化AI服务
+        ai_service = QwenAIService()
+        
+        # 使用评分模型数据（包含象限信息）
+        if not scoring_data or len(scoring_data) == 0:
+            return (
+                dbc.Alert("暂无数据，请先加载商品数据", color="warning"),
+                None,
+                None
+            )
+        
+        # 调用象限深度分析
+        analysis_result = ai_service.analyze_all_quadrants_sync(scoring_data)
+        
+        # ========== 1. 整体健康度卡片 ==========
+        health_score = analysis_result.get('overall_health', 0)
+        total_products = analysis_result.get('total_products', 0)
+        quadrant_dist = analysis_result.get('quadrant_distribution', {})
+        
+        # 健康度颜色
+        if health_score >= 80:
+            health_color = "success"
+            health_icon = "bi-emoji-smile"
+            health_text = "优秀"
+        elif health_score >= 60:
+            health_color = "info"
+            health_icon = "bi-emoji-neutral"
+            health_text = "良好"
+        elif health_score >= 40:
+            health_color = "warning"
+            health_icon = "bi-emoji-frown"
+            health_text = "需改进"
+        else:
+            health_color = "danger"
+            health_icon = "bi-emoji-angry"
+            health_text = "较差"
+        
+        # 象限分布统计
+        quadrant_badges = []
+        quadrant_order = ['Q5', 'Q7', 'Q6', 'Q1', 'Q2', 'Q3', 'Q4', 'Q8']
+        quadrant_colors = {
+            'Q5': 'success', 'Q7': 'info', 'Q6': 'primary',
+            'Q1': 'warning', 'Q2': 'warning', 'Q3': 'danger', 
+            'Q4': 'danger', 'Q8': 'secondary'
+        }
+        quadrant_names = {
+            'Q5': '⭐黄金', 'Q7': '🎯引流', 'Q6': '💎潜力',
+            'Q1': '💰过度', 'Q2': '⚠️蓄客', 'Q3': '🔴亏损',
+            'Q4': '❌双输', 'Q8': '🗑️淘汰'
+        }
+        
+        for q in quadrant_order:
+            count = quadrant_dist.get(q, 0)
+            if count > 0:
+                quadrant_badges.append(
+                    dbc.Badge(f"{quadrant_names.get(q, q)}: {count}", 
+                             color=quadrant_colors.get(q, 'secondary'),
+                             className="me-1 mb-1")
+                )
+        
+        overall_card = dbc.Card([
+            dbc.CardHeader([
+                html.I(className=f"bi {health_icon} me-2"),
+                html.Strong(f"商品组合健康度: {health_score:.0f}分 ({health_text})")
+            ], className=f"bg-{health_color} text-white"),
+            dbc.CardBody([
+                html.P(f"共分析 {total_products} 个商品，象限分布:", className="mb-2"),
+                html.Div(quadrant_badges, className="mb-0")
+            ])
+        ], className="mb-3")
+        
+        # ========== 2. 象限深度分析卡片 ==========
+        quadrant_cards = []
+        quadrant_analyses = analysis_result.get('quadrant_analyses', {})
+        
+        # 按优先级排序显示（问题象限优先）
+        display_order = ['Q4', 'Q3', 'Q8', 'Q2', 'Q1', 'Q5', 'Q6', 'Q7']
+        
+        for q_code in display_order:
+            if q_code not in quadrant_analyses:
+                continue
+            
+            qa = quadrant_analyses[q_code]
+            q_name = qa.get('quadrant_name', q_code)
+            q_count = qa.get('product_count', 0)
+            q_profit = qa.get('total_profit', 0)
+            q_summary = qa.get('quadrant_summary', '')
+            key_findings = qa.get('key_findings', [])
+            action_items = qa.get('action_items', [])
+            priority_products = qa.get('priority_products', [])
+            
+            # 象限卡片颜色
+            card_color = quadrant_colors.get(q_code, 'secondary')
+            
+            # 构建发现列表
+            findings_list = []
+            for finding in key_findings[:3]:
+                findings_list.append(html.Li(finding, className="small"))
+            
+            # 构建行动建议列表
+            action_list = []
+            for action in action_items[:2]:
+                priority_badge_color = {'紧急': 'danger', '重要': 'warning', '一般': 'info'}.get(
+                    action.get('priority', '一般'), 'info'
+                )
+                action_list.append(
+                    html.Div([
+                        dbc.Badge(action.get('priority', '一般'), color=priority_badge_color, className="me-2"),
+                        html.Span(action.get('action', ''), className="small fw-bold"),
+                        html.Br(),
+                        html.Small(f"→ {action.get('expected_result', '')}", className="text-muted")
+                    ], className="mb-2 p-2 bg-light rounded")
+                )
+            
+            quadrant_cards.append(
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.Span(f"{q_name}", className="fw-bold"),
+                        dbc.Badge(f"{q_count}个商品", color="light", text_color="dark", className="ms-2"),
+                        dbc.Badge(f"利润¥{q_profit:,.0f}", 
+                                 color="success" if q_profit > 0 else "danger", 
+                                 className="ms-2")
+                    ], className=f"bg-{card_color} bg-opacity-25"),
+                    dbc.CardBody([
+                        # 概述
+                        html.P(q_summary, className="mb-2 fst-italic text-muted small"),
+                        
+                        # 关键发现
+                        html.Div([
+                            html.Strong("🔍 关键发现:", className="small"),
+                            html.Ul(findings_list, className="mb-2 ps-3")
+                        ]) if findings_list else None,
+                        
+                        # 行动建议
+                        html.Div([
+                            html.Strong("📋 行动建议:", className="small"),
+                            html.Div(action_list)
+                        ]) if action_list else None,
+                        
+                        # 优先处理商品
+                        html.Div([
+                            html.Strong("⚡ 优先处理: ", className="small text-danger"),
+                            html.Span(", ".join(priority_products[:3]), className="small")
+                        ], className="mt-2") if priority_products else None
+                    ])
+                ], className=f"mb-2 border-start border-4 border-{card_color}")
+            )
+        
+        # ========== 3. TOP行动建议汇总 ==========
+        top_actions = analysis_result.get('top_actions', [])
+        
+        top_actions_card = None
+        if top_actions:
+            action_rows = []
+            for i, action in enumerate(top_actions[:3], 1):
+                priority = action.get('priority', '一般')
+                p_color = {'紧急': 'danger', '重要': 'warning', '一般': 'info'}.get(priority, 'info')
+                from_q = action.get('from_quadrant', '')
+                
+                action_rows.append(
+                    html.Tr([
+                        html.Td(dbc.Badge(f"#{i}", color=p_color)),
+                        html.Td(action.get('action', ''), className="small"),
+                        html.Td(action.get('expected_result', ''), className="small text-muted"),
+                        html.Td(dbc.Badge(from_q, color="secondary", className="small"))
+                    ])
+                )
+            
+            top_actions_card = dbc.Card([
+                dbc.CardHeader([
+                    html.I(className="bi bi-lightning-charge me-2 text-warning"),
+                    html.Strong("🎯 最优先行动 TOP3")
+                ], className="bg-warning bg-opacity-25"),
+                dbc.CardBody([
+                    dbc.Table([
+                        html.Thead(html.Tr([
+                            html.Th("优先级", style={'width': '60px'}),
+                            html.Th("具体操作"),
+                            html.Th("预期效果"),
+                            html.Th("来源", style={'width': '50px'})
+                        ])),
+                        html.Tbody(action_rows)
+                    ], bordered=True, hover=True, size="sm", className="mb-0")
+                ])
+            ], className="mt-3")
+        
+        # 组合所有内容
+        overall_content = html.Div([
+            overall_card,
+            top_actions_card
+        ])
+        
+        quadrant_content = html.Div([
+            html.H6([
+                html.I(className="bi bi-grid-3x3-gap me-2"),
+                "各象限深度分析"
+            ], className="mb-3 mt-2"),
+            html.Div(quadrant_cards)
+        ])
+        
+        return (
+            overall_content,
+            quadrant_content,
+            None  # 清除加载指示器
+        )
+        
+    except Exception as e:
+        print(f"❌ AI洞察生成失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return (
+            dbc.Alert(f"AI分析失败: {str(e)}", color="danger"),
+            None,
+            None
+        )
+
+
 @app.callback(
     Output('download-tab7-full-report', 'data'),
     Input('export-tab7-full-report-btn', 'n_clicks'),
@@ -21226,6 +20417,7 @@ def export_tab7_full_report(n_clicks, analyzer_data, channel, raw_data, store_id
     
     业务逻辑:
     - Sheet1: 异常商品明细_需优化 (按优先级分组)
+
     - Sheet2: 营销活动效率分析 (各活动ROI对比)
     - Sheet3: TOP营销成本商品 (按营销总成本降序)
     - Sheet4: 八象限分析 (按象限和优先级分组)
@@ -21544,15 +20736,15 @@ def export_aov_analysis(n_clicks, store_data, cached_agg, store_id):
         # 如果缓存为空，现场聚合 (✅ 包含实收价格)
         agg_dict = {
             '商品实售价': 'sum',
-            '订单实际利润': 'first',
+            '订单实际利润': 'sum',  # 🔧 修复: 商品级字段用sum
             '营销成本': 'sum'
         }
         if '实收价格' in df.columns:
             agg_dict['实收价格'] = 'sum'
         if '预计订单收入' in df.columns:
-            agg_dict['预计订单收入'] = 'first'
+            agg_dict['预计订单收入'] = 'sum'  # 🔧 修复: 商品级字段用sum
         if '订单总收入' in df.columns:
-            agg_dict['订单总收入'] = 'first'
+            agg_dict['订单总收入'] = 'sum'  # 🔧 修复: 商品级字段用sum
         
         order_agg = df.groupby('订单ID').agg(agg_dict).reset_index()
     
@@ -23172,6 +22364,14 @@ if __name__ == '__main__':
         except Exception as e:
             print(f"⚠️ 下钻回调函数注册失败: {e}")
     
+    # ========== 注册今日必做回调函数 ==========
+    try:
+        from components.today_must_do import register_today_must_do_callbacks
+        register_today_must_do_callbacks(app)
+        print("✅ 今日必做回调函数已注册")
+    except Exception as e:
+        print(f"⚠️ 今日必做回调函数注册失败: {e}")
+    
     # 强制刷新输出，确保日志实时显示
     sys.stdout.flush()
     sys.stderr.flush()
@@ -23227,17 +22427,43 @@ if __name__ == '__main__':
     if debug_mode:
         print("🔧 [调试模式] 已开启: 修改代码并保存后，看板将自动重启应用新逻辑", flush=True)
     else:
-        print("🛡️ [生产模式] 已开启: 稳定性优先，自动重载已禁用", flush=True)
+        print("🛡️ [生产模式] 已开启: 使用 Waitress 高性能服务器", flush=True)
     
     print("", flush=True)
     
     try:
-        app.run(
-            debug=debug_mode,
-            host='0.0.0.0',
-            port=8050,
-            use_reloader=debug_mode  # 调试模式下开启自动重载
-        )
+        if debug_mode:
+            # 调试模式：使用 Flask 内置服务器（支持热重载）
+            app.run(
+                debug=True,
+                host='0.0.0.0',
+                port=8050,
+                use_reloader=True  # 调试模式下开启自动重载
+            )
+        else:
+            # 生产模式：使用 Waitress 服务器（高性能、稳定）
+            try:
+                from waitress import serve
+                print("🚀 启动 Waitress 生产服务器...", flush=True)
+                serve(
+                    app.server,
+                    host='0.0.0.0',
+                    port=8050,
+                    threads=4,  # 并发线程数（可根据CPU核心数调整）
+                    channel_timeout=120,  # 通道超时时间（秒）
+                    connection_limit=100,  # 最大连接数
+                    cleanup_interval=30,  # 清理空闲连接间隔
+                    log_socket_errors=False  # 不记录套接字错误（减少噪音）
+                )
+            except ImportError:
+                print("⚠️ Waitress 未安装，回退到 Flask 内置服务器", flush=True)
+                print("   安装命令: pip install waitress", flush=True)
+                app.run(
+                    debug=False,
+                    host='0.0.0.0',
+                    port=8050,
+                    use_reloader=False
+                )
         print("⚠️ 应用服务器已停止", flush=True)
     except KeyboardInterrupt:
         print("\n✋ 用户中断 (Ctrl+C)", flush=True)

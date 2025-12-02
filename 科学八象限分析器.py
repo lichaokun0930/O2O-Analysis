@@ -40,13 +40,28 @@ class ScientificQuadrantAnalyzer:
         if '月售' not in self.data.columns and '销量' in self.data.columns:
             self.data['月售'] = self.data['销量']
         
-        # 营销总成本字段（平台服务费和平台佣金是同一个东西，商品级用服务费，订单级用佣金）
-        if '营销总成本' not in self.data.columns:
+        # 营销总成本字段 (修正: 优先使用营销活动补贴，而非平台佣金)
+        # 营销活动字段列表
+        marketing_cols = ['满减金额', '新客减免金额', '配送费减免金额', '商家代金券', 
+                         '商家承担部分券', '满赠金额', '商家其他优惠', '商品减免金额']
+        
+        # 检查是否存在营销字段
+        available_marketing_cols = [col for col in marketing_cols if col in self.data.columns]
+        
+        if available_marketing_cols:
+            # 如果有营销字段，计算总营销成本
+            # 注意: 这些通常是订单级字段，如果数据是商品级明细，直接相加会重复计算
+            # 这里假设输入数据是商品级明细(每行一个商品)，且订单级字段在同一订单的所有行中重复
+            
+            # 策略: 暂时先不在此处计算，而在 _aggregate_to_product_level 中通过分摊逻辑计算
+            pass
+        elif '营销总成本' not in self.data.columns:
+            # 降级方案: 如果没有营销活动字段，才使用平台服务费/佣金
             if '平台服务费' in self.data.columns:
                 self.data['营销总成本'] = self.data['平台服务费'].fillna(0)
             elif '平台佣金' in self.data.columns:
                 self.data['营销总成本'] = self.data['平台佣金'].fillna(0)
-        
+    
     def _detect_category_field(self) -> Optional[str]:
         """检测品类字段"""
         for col in ['一级分类名', '美团一级分类', '一级分类']:
@@ -96,12 +111,46 @@ class ScientificQuadrantAnalyzer:
         # 先计算每条记录的订单总收入（实收价格是单价，需要乘以销量）
         self.data['订单总收入'] = self.data['实收价格'] * self.data['月售']
         
+        # === 核心修正: 营销成本分摊逻辑 ===
+        # 营销活动字段列表
+        marketing_cols = ['满减金额', '新客减免金额', '配送费减免金额', '商家代金券', 
+                         '商家承担部分券', '满赠金额', '商家其他优惠', '商品减免金额']
+        available_marketing_cols = [col for col in marketing_cols if col in self.data.columns]
+        
+        if available_marketing_cols and '订单ID' in self.data.columns:
+            # 1. 计算每个订单的总营销成本 (取first避免重复)
+            order_marketing = self.data.groupby('订单ID')[available_marketing_cols].first().sum(axis=1).reset_index(name='订单营销总额')
+            
+            # 2. 计算每个订单的总GMV (用于分摊)
+            order_gmv = self.data.groupby('订单ID')['订单总收入'].sum().reset_index(name='订单GMV')
+            
+            # 3. 合并回原数据
+            temp_df = self.data.merge(order_marketing, on='订单ID', how='left').merge(order_gmv, on='订单ID', how='left')
+            
+            # 4. 按金额占比分摊营销成本
+            # 分摊公式: 商品营销成本 = 订单营销总额 * (商品收入 / 订单GMV)
+            # 处理除零错误
+            temp_df['分摊营销成本'] = np.where(
+                temp_df['订单GMV'] > 0,
+                temp_df['订单营销总额'] * (temp_df['订单总收入'] / temp_df['订单GMV']),
+                0
+            )
+            
+            # 更新到self.data (为了后续聚合)
+            self.data['分摊营销成本'] = temp_df['分摊营销成本']
+            marketing_agg_col = '分摊营销成本'
+        else:
+            # 降级: 使用预先存在的营销总成本(可能是佣金)
+            marketing_agg_col = '营销总成本' if '营销总成本' in self.data.columns else None
+
         agg_dict = {
-            '营销总成本': 'sum',      # 已是总额，直接sum
             '订单总收入': 'sum',      # 实收价格×销量的总和
             '利润额': 'sum',          # 已是总额，直接sum
             '月售': 'sum'
         }
+        
+        if marketing_agg_col:
+            agg_dict[marketing_agg_col] = 'sum'
         
         # 添加店内码字段（如果存在）
         if '店内码' in self.data.columns:
@@ -117,6 +166,12 @@ class ScientificQuadrantAnalyzer:
         # 重命名回实收价格（现在是总收入）
         product_data.rename(columns={'订单总收入': '实收价格'}, inplace=True)
         
+        # 统一营销成本字段名
+        if marketing_agg_col == '分摊营销成本':
+            product_data.rename(columns={'分摊营销成本': '营销总成本'}, inplace=True)
+        elif marketing_agg_col is None:
+            product_data['营销总成本'] = 0
+            
         # 获取期末库存(最后订单日的剩余库存)
         stock_col = self._detect_stock_field()
         if stock_col:

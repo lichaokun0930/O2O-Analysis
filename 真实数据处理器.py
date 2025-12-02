@@ -122,6 +122,7 @@ class RealDataProcessor:
             # 商品信息
             '商品名称': ['商品名称', 'product_name', 'name', '名称', '商品'],
             '条码': ['条码', 'barcode', 'sku', 'SKU', '商品编码'],
+            '店内码': ['店内码', 'store_code', 'internal_code', '内码', '商品内码'],
             '一级分类名': ['美团一级分类', '一级分类名', 'category_l1', 'primary_category', '一级分类'],
             '三级分类名': ['美团三级分类', '三级分类名', 'category_l3', 'tertiary_category', '三级分类'],
             
@@ -133,6 +134,9 @@ class RealDataProcessor:
             # 订单配送信息
             '订单ID': ['订单ID', 'order_id', 'orderId', '订单号'],
             '物流配送费': ['物流配送费', '配送费', 'delivery_fee', 'shipping_fee'],
+            '用户支付配送费': ['用户支付配送费', 'user_delivery_fee', 'user_shipping_fee', '顾客配送费'],
+            '配送费减免金额': ['配送费减免金额', 'delivery_discount', 'shipping_discount', '配送费减免'],
+            '企客后返': ['企客后返', 'rebate', 'enterprise_rebate', '企业客户返利'],
             '平台佣金': ['平台佣金', '佣金', 'commission', 'platform_fee'],
             
             # 销量库存
@@ -153,7 +157,10 @@ class RealDataProcessor:
             '门店加盟类型': ['门店加盟类型', '加盟类型', '门店类型', 'store_franchise_type', 'franchise_type', '店铺类型'],
             
             # 渠道信息 (用于渠道分析和筛选)
-            '渠道': ['渠道', 'channel', '订单渠道', '销售渠道', '平台', '订单平台', '来源渠道']
+            '渠道': ['渠道', 'channel', '订单渠道', '销售渠道', '平台', '订单平台', '来源渠道'],
+            
+            # 配送信息
+            '配送距离': ['配送距离', 'delivery_distance', 'distance', '距离', '配送里程']
         }
         
         # 执行字段映射
@@ -196,6 +203,15 @@ class RealDataProcessor:
         
         if '物流配送费' in standardized_df.columns:
             standardized_df['物流配送费'] = pd.to_numeric(standardized_df['物流配送费'], errors='coerce')
+            
+        if '用户支付配送费' in standardized_df.columns:
+            standardized_df['用户支付配送费'] = pd.to_numeric(standardized_df['用户支付配送费'], errors='coerce')
+            
+        if '配送费减免金额' in standardized_df.columns:
+            standardized_df['配送费减免金额'] = pd.to_numeric(standardized_df['配送费减免金额'], errors='coerce')
+            
+        if '企客后返' in standardized_df.columns:
+            standardized_df['企客后返'] = pd.to_numeric(standardized_df['企客后返'], errors='coerce')
         
         if '平台佣金' in standardized_df.columns:
             standardized_df['平台佣金'] = pd.to_numeric(standardized_df['平台佣金'], errors='coerce')

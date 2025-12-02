@@ -21,6 +21,7 @@ sys.path.insert(0, project_root)
 
 from database.connection import SessionLocal, init_database
 from database.models import Order
+from 真实数据处理器 import RealDataProcessor
 
 # 导入历史记录文件
 IMPORT_HISTORY_FILE = "学习数据仓库/import_history.json"
@@ -32,6 +33,7 @@ class SmartImporter:
         # ✅ 确保数据库表已创建
         init_database()
         self.session = SessionLocal()
+        self.processor = RealDataProcessor()  # 初始化数据处理器
         self.import_history = self.load_import_history()
         self.validation_report = {
             'success': True,
@@ -122,38 +124,50 @@ class SmartImporter:
         """验证Excel数据结构"""
         print(f"\n  📋 验证数据结构: {file_name}")
         
-        # 必需字段
-        required_fields = [
-            '订单ID', '门店名称', '商品名称', '商品实售价', 
-            '销量', '一级分类名', '下单时间'
+        # 必需字段 (支持标准化后的字段名)
+        # 格式: (显示名称, [候选字段列表])
+        required_checks = [
+            ('订单ID', ['订单ID']),
+            ('门店名称', ['门店名称']),
+            ('商品名称', ['商品名称']),
+            ('商品实售价', ['商品实售价']),
+            ('销量', ['销量', '月售']),  # 兼容标准化后的'月售'
+            ('一级分类名', ['一级分类名']),
+            ('下单时间', ['下单时间', '日期']) # 兼容标准化后的'日期'
         ]
         
-        # 重要字段(非必需但强烈建议)
-        important_fields = [
-            '成本', '利润额', '物流配送费', '平台佣金',
-            '剩余库存', '条码', '店内码'
+        # 重要字段
+        important_checks = [
+            ('成本', ['成本', '商品采购成本']), # 兼容标准化后的'商品采购成本'
+            ('利润额', ['利润额']),
+            ('物流配送费', ['物流配送费']),
+            ('平台佣金', ['平台佣金']),
+            ('剩余库存', ['剩余库存', '库存']), # 兼容标准化后的'库存'
+            ('条码', ['条码']),
+            ('店内码', ['店内码'])
         ]
         
         validation_ok = True
         
         # 检查必需字段
-        for field in required_fields:
-            if field not in df.columns:
+        for label, candidates in required_checks:
+            if not any(field in df.columns for field in candidates):
                 self.validation_report['errors'].append(
-                    f"❌ {file_name}: 缺少必需字段 '{field}'"
+                    f"❌ {file_name}: 缺少必需字段 '{label}' (检查过: {candidates})"
                 )
                 validation_ok = False
         
         # 检查重要字段
-        for field in important_fields:
-            if field not in df.columns:
+        for label, candidates in important_checks:
+            if not any(field in df.columns for field in candidates):
                 self.validation_report['warnings'].append(
-                    f"⚠️  {file_name}: 缺少重要字段 '{field}'"
+                    f"⚠️  {file_name}: 缺少重要字段 '{label}'"
                 )
         
         # 检查数据质量
-        if '成本' in df.columns:
-            non_zero_cost = len(df[df['成本'] > 0])
+        cost_field = next((f for f in ['成本', '商品采购成本'] if f in df.columns), None)
+        if cost_field:
+            non_zero_cost = len(df[df[cost_field] > 0])
             cost_ratio = non_zero_cost / len(df) * 100 if len(df) > 0 else 0
             
             if cost_ratio < 50:
@@ -161,7 +175,7 @@ class SmartImporter:
                     f"⚠️  {file_name}: 成本数据较少({cost_ratio:.1f}%有成本)"
                 )
             
-            print(f"    ✅ 成本字段: {non_zero_cost}/{len(df)} ({cost_ratio:.1f}%)")
+            print(f"    ✅ 成本字段({cost_field}): {non_zero_cost}/{len(df)} ({cost_ratio:.1f}%)")
         else:
             print(f"    ❌ 成本字段: 不存在")
         
@@ -182,6 +196,10 @@ class SmartImporter:
             print(f"\n1️⃣ 读取Excel...")
             df = pd.read_excel(file_path)
             print(f"   总行数: {len(df):,}")
+            
+            # 1.5 标准化字段名 (使用真实数据处理器)
+            print(f"   🔄 标准化字段名...")
+            df = self.processor.standardize_sales_data(df)
             
             # 2. 验证数据结构
             if not self.validate_excel_structure(df, os.path.basename(file_path)):
@@ -339,16 +357,19 @@ class SmartImporter:
             'store_name': str(row.get('门店名称', '')),
             # ✅ 移除了store_id字段(Order模型中不存在)
             'product_name': str(row.get('商品名称', '')),
+            'barcode': str(row.get('条码', '')),
+            # ✅ 添加店内码字段映射
+            'store_code': str(row.get('店内码', '')) if pd.notna(row.get('店内码')) else '',
             'price': float(row.get('商品实售价', 0)),
             'original_price': float(row.get('商品原价', 0)),
-            'quantity': int(row.get('销量', 0)),
-            'cost': float(row.get('成本', 0)) if pd.notna(row.get('成本')) else 0.0,
+            'quantity': int(row.get('销量', row.get('月售', 0))), # 兼容标准化后的'月售'
+            'cost': float(row.get('成本', row.get('商品采购成本', 0))) if pd.notna(row.get('成本', row.get('商品采购成本'))) else 0.0,
             'profit': float(row.get('利润额', 0)) if pd.notna(row.get('利润额')) else 0.0,
             'category_level1': str(row.get('一级分类名', '')),
             'category_level3': str(row.get('三级分类名', '')),
             'barcode': str(row.get('条码', '')),
             # ✅ 添加剩余库存字段映射
-            'remaining_stock': float(row.get('剩余库存', 0)) if pd.notna(row.get('剩余库存')) else 0.0,
+            'remaining_stock': float(row.get('剩余库存', row.get('库存', 0))) if pd.notna(row.get('剩余库存', row.get('库存'))) else 0.0,
             'delivery_fee': float(row.get('物流配送费', 0)) if pd.notna(row.get('物流配送费')) else 0.0,
             'commission': float(row.get('平台佣金', 0)) if pd.notna(row.get('平台佣金')) else 0.0,
             'platform_service_fee': float(row.get('平台服务费', 0)) if pd.notna(row.get('平台服务费')) else 0.0,  # 修复:添加平台服务费字段映射
@@ -367,7 +388,12 @@ class SmartImporter:
             'corporate_rebate': float(row.get('企客后返', 0)) if pd.notna(row.get('企客后返')) else 0.0,
             # ✅ 配送平台字段
             'delivery_platform': str(row.get('配送平台', '')),
-            # ✅ 移除了delivery_distance和city字段(Order模型中不存在)
+            # ✅ 恢复delivery_distance和city字段映射 (Order模型已支持)
+            'delivery_distance': float(row.get('配送距离', row.get('distance', row.get('距离', 0)))) if pd.notna(row.get('配送距离', row.get('distance', row.get('距离')))) else 0.0,
+            'city': str(row.get('城市', '')),
+            'store_id': str(row.get('门店ID', '')),
+            'store_franchise_type': int(row.get('门店加盟类型', 0)) if pd.notna(row.get('门店加盟类型')) else None,
+            
             'address': str(row.get('收货地址', '')),
             'channel': str(row.get('渠道', '')),
             'actual_price': float(row.get('实收价格', 0)) if pd.notna(row.get('实收价格')) else 0.0,

@@ -44,21 +44,37 @@ if ($localChanges) {
 
 # 拉取代码
 Write-Host "`n[1/3] 拉取最新代码..." -ForegroundColor Cyan
-git pull
+
+# 记录拉取前的提交哈希，用于后续对比
+$beforePull = git rev-parse HEAD 2>$null
+
+git pull origin master
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "`n拉取失败!" -ForegroundColor Red
-    Write-Host "可能原因:" -ForegroundColor Yellow
-    Write-Host "  1. 网络问题" -ForegroundColor White
-    Write-Host "  2. 本地和远程有冲突" -ForegroundColor White
-    Write-Host "  3. 分支配置问题" -ForegroundColor White
-    exit 1
+    Write-Host "`n拉取失败! 尝试设置上游分支后重试..." -ForegroundColor Yellow
+    git pull -u origin master
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "`n拉取失败!" -ForegroundColor Red
+        Write-Host "可能原因:" -ForegroundColor Yellow
+        Write-Host "  1. 网络问题" -ForegroundColor White
+        Write-Host "  2. 本地和远程有冲突" -ForegroundColor White
+        Write-Host "  3. 分支配置问题" -ForegroundColor White
+        exit 1
+    }
 }
 
 # 显示更新内容
 Write-Host "`n[2/3] 查看更新内容..." -ForegroundColor Cyan
 $lastCommit = git log -1 --oneline
-$changedFiles = git diff --name-only HEAD@{1} HEAD
+
+# 安全获取变更文件列表
+$afterPull = git rev-parse HEAD
+if ($beforePull -and $beforePull -ne $afterPull) {
+    $changedFiles = git diff --name-only $beforePull $afterPull
+} else {
+    $changedFiles = $null
+    Write-Host "已是最新版本，无需更新" -ForegroundColor Green
+}
 
 Write-Host "最新提交: $lastCommit" -ForegroundColor Green
 
@@ -93,8 +109,8 @@ if ($hasMigrations) {
         Write-Host "`n稍后手动运行: .\B电脑_同步数据库.ps1" -ForegroundColor Yellow
     }
 } else {
-    Write-Host "`n[3/3] 清理Redis缓存..." -ForegroundColor Cyan
-    python 清理Redis缓存.py
+    Write-Host "`n[3/3] 无数据库相关修改" -ForegroundColor Cyan
+    Write-Host "如需清理缓存，可手动重启看板" -ForegroundColor Gray
 }
 
 Write-Host "`n$separator"

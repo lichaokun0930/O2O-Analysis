@@ -152,7 +152,8 @@ class DataSourceManager:
                     '商品名称': order.product_name,
                     '商品条形码': order.barcode,
                     '条码': order.barcode,  # 兼容字段
-                    '店内码': store_code if store_code else '',  # ✨ 从Product表JOIN获取
+                    # ✅ 优先使用Order表自己的store_code，如果为空再用Product表的
+                    '店内码': order.store_code if (hasattr(order, 'store_code') and order.store_code) else (store_code if store_code else ''),
                     '一级分类名': order.category_level1,
                     '三级分类名': order.category_level3,
                     
@@ -199,8 +200,8 @@ class DataSourceManager:
                     # ✅ 新增配送平台字段
                     '配送平台': order.delivery_platform if hasattr(order, 'delivery_platform') and order.delivery_platform else '',
                     
-                    # ✨ 配送信息（Order模型中没有此字段）
-                    '配送距离': 0.0,
+                    # ✨ 配送信息
+                    '配送距离': order.delivery_distance if hasattr(order, 'delivery_distance') and order.delivery_distance is not None else 0.0,
                     
                     # 渠道场景
                     '渠道': order.channel if order.channel else '',

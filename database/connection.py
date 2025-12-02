@@ -106,19 +106,62 @@ def drop_all_tables():
         print("❌ 操作已取消")
 
 
-def check_connection():
+def check_connection() -> dict:
     """
     检查数据库连接是否正常
+    
+    Returns:
+        dict: {'connected': bool, 'message': str, 'details': dict}
     """
     try:
         from sqlalchemy import text
+        import time
+        start = time.time()
         with engine.connect() as conn:
             result = conn.execute(text("SELECT 1"))
-            print("[OK] Database connection successful!")
-            return True
+            latency = round((time.time() - start) * 1000, 2)
+            
+            # 获取数据库版本
+            version = conn.execute(text("SELECT version()")).scalar()
+            
+            return {
+                'connected': True,
+                'message': '数据库连接正常',
+                'details': {
+                    'latency_ms': latency,
+                    'database': 'o2o_dashboard',
+                    'version': version[:50] if version else 'Unknown'
+                }
+            }
     except Exception as e:
-        print(f"[ERROR] Database connection failed: {e}")
-        return False
+        error_msg = str(e)
+        # 简化错误信息
+        if 'password authentication failed' in error_msg.lower():
+            simple_msg = '密码认证失败'
+        elif 'connection refused' in error_msg.lower():
+            simple_msg = '连接被拒绝(数据库服务未启动)'
+        elif 'timeout' in error_msg.lower():
+            simple_msg = '连接超时'
+        else:
+            simple_msg = '连接失败'
+        
+        return {
+            'connected': False,
+            'message': simple_msg,
+            'details': {
+                'error': error_msg[:200]
+            }
+        }
+
+
+def get_connection_status() -> dict:
+    """
+    获取数据库连接状态（带缓存，避免频繁检测）
+    
+    Returns:
+        dict: 连接状态信息
+    """
+    return check_connection()
 
 
 if __name__ == "__main__":

@@ -638,3 +638,107 @@ def create_gauge_card(value, max_value, title, unit='¥', color_scheme='blue', h
             ])
         ], style={'padding': '0.75rem'})
     ], className="shadow-sm h-100")
+
+
+# ==================== 双轴图工厂 ====================
+
+def create_dual_axis_chart(
+    data,
+    x_field,
+    bar_fields,
+    line_fields,
+    title='双轴图',
+    bar_names=None,
+    line_names=None,
+    height='400px'
+):
+    """
+    创建双轴图（柱状图+折线图）
+    
+    Args:
+        data: pandas DataFrame
+        x_field: X轴字段名
+        bar_fields: 柱状图字段列表 (对应左轴)
+        line_fields: 折线图字段列表 (对应右轴)
+        title: 图表标题
+        bar_names: 柱状图系列名称列表
+        line_names: 折线图系列名称列表
+        height: 图表高度
+    """
+    if not ECHARTS_AVAILABLE:
+        return None
+    
+    # 数据处理
+    x_data = data[x_field].tolist()
+    
+    if not isinstance(bar_fields, list):
+        bar_fields = [bar_fields]
+    if not isinstance(line_fields, list):
+        line_fields = [line_fields]
+        
+    bar_data_list = [[format_number(v) for v in data[f].tolist()] for f in bar_fields]
+    line_data_list = [[format_number(v) for v in data[f].tolist()] for f in line_fields]
+    
+    if bar_names is None:
+        bar_names = bar_fields
+    if line_names is None:
+        line_names = line_fields
+        
+    series = []
+    
+    # 添加柱状图系列 (左轴)
+    for i, (name, y_data) in enumerate(zip(bar_names, bar_data_list)):
+        series.append({
+            'name': name,
+            'type': 'bar',
+            'data': y_data,
+            'yAxisIndex': 0,
+            'barMaxWidth': 30,
+            'itemStyle': {
+                'color': COMMON_COLORS['blue'][i],
+                'borderRadius': [4, 4, 0, 0]
+            }
+        })
+        
+    # 添加折线图系列 (右轴)
+    for i, (name, y_data) in enumerate(zip(line_names, line_data_list)):
+        series.append({
+            'name': name,
+            'type': 'line',
+            'data': y_data,
+            'yAxisIndex': 1,
+            'smooth': True,
+            'symbol': 'circle',
+            'symbolSize': 8,
+            'lineStyle': {'width': 3, 'color': COMMON_COLORS['orange'][i]},
+            'itemStyle': {'color': COMMON_COLORS['orange'][i], 'borderWidth': 2, 'borderColor': '#fff'}
+        })
+        
+    option = {
+        'title': dict(COMMON_TITLE, text=title),
+        'tooltip': dict(COMMON_TOOLTIP, trigger='axis', axisPointer={'type': 'cross'}),
+        'legend': dict(COMMON_LEGEND, data=bar_names + line_names),
+        'grid': dict(COMMON_GRID, right='8%'), # 增加右侧边距以容纳右轴
+        'xAxis': {'type': 'category', 'data': x_data, 'axisLabel': dict(COMMON_AXIS_LABEL, rotate=30)},
+        'yAxis': [
+            {
+                'type': 'value',
+                'name': '金额',
+                'position': 'left',
+                'splitLine': COMMON_SPLIT_LINE,
+                'axisLabel': COMMON_AXIS_LABEL
+            },
+            {
+                'type': 'value',
+                'name': '比率/单均',
+                'position': 'right',
+                'splitLine': {'show': False},
+                'axisLabel': dict(COMMON_AXIS_LABEL, formatter='{value}')
+            }
+        ],
+        'series': series
+    }
+    
+    option.update(COMMON_ANIMATION)
+    
+    return DashECharts(option=option, style={'height': height, 'width': '100%'})

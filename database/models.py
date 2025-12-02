@@ -26,6 +26,7 @@ class Order(Base):
     product_id = Column(Integer, ForeignKey('products.id'), index=True, comment='商品ID')
     product_name = Column(String(500), nullable=False, comment='商品名称')
     barcode = Column(String(100), index=True, comment='条码')
+    store_code = Column(String(100), index=True, comment='店内码')  # ✅ 添加店内码字段
     
     # 分类
     category_level1 = Column(String(100), index=True, comment='一级分类')
