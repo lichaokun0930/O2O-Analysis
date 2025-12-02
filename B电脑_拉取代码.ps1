@@ -99,18 +99,19 @@ if ($changedFiles) {
 $hasMigrations = $changedFiles | Where-Object { $_ -match "migrations|models.py" }
 
 if ($hasMigrations) {
-    Write-Host "`n[3/3] 检测到数据库相关修改..." -ForegroundColor Yellow
-    $syncDb = Read-Host "是否同步数据库结构? (y/n)"
+    Write-Host "`n[3/3] 检测到数据库相关修改，自动同步..." -ForegroundColor Yellow
     
-    if ($syncDb -eq 'y') {
-        Write-Host "`n运行数据库同步..." -ForegroundColor Cyan
-        .\B电脑_同步数据库.ps1
+    # 直接执行数据库同步
+    Write-Host "`n运行数据库同步..." -ForegroundColor Cyan
+    .\B电脑_同步数据库.ps1
+    
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "数据库同步完成!" -ForegroundColor Green
     } else {
-        Write-Host "`n稍后手动运行: .\B电脑_同步数据库.ps1" -ForegroundColor Yellow
+        Write-Host "数据库同步失败，请手动运行: .\B电脑_同步数据库.ps1" -ForegroundColor Red
     }
 } else {
     Write-Host "`n[3/3] 无数据库相关修改" -ForegroundColor Cyan
-    Write-Host "如需清理缓存，可手动重启看板" -ForegroundColor Gray
 }
 
 Write-Host "`n$separator"
