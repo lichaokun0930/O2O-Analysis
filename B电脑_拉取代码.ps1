@@ -99,7 +99,7 @@ if ($changedFiles) {
 $hasMigrations = $changedFiles | Where-Object { $_ -match "migrations|models.py" }
 
 if ($hasMigrations) {
-    Write-Host "`n[3/3] 检测到数据库相关修改，自动同步..." -ForegroundColor Yellow
+    Write-Host "`n[3/4] 检测到数据库相关修改，自动同步..." -ForegroundColor Yellow
     
     # 直接执行数据库同步
     Write-Host "`n运行数据库同步..." -ForegroundColor Cyan
@@ -111,7 +111,23 @@ if ($hasMigrations) {
         Write-Host "数据库同步失败，请手动运行: .\B电脑_同步数据库.ps1" -ForegroundColor Red
     }
 } else {
-    Write-Host "`n[3/3] 无数据库相关修改" -ForegroundColor Cyan
+    Write-Host "`n[3/4] 无数据库相关修改" -ForegroundColor Cyan
+}
+
+# 检查是否需要更新依赖
+$hasRequirements = $changedFiles | Where-Object { $_ -match "requirements" }
+
+if ($hasRequirements) {
+    Write-Host "`n[4/4] 检测到依赖更新，同步Python包..." -ForegroundColor Yellow
+    .\.venv\Scripts\Activate.ps1
+    pip install -r requirements.txt -q
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "依赖更新完成!" -ForegroundColor Green
+    } else {
+        Write-Host "依赖更新失败，请手动运行: pip install -r requirements.txt" -ForegroundColor Red
+    }
+} else {
+    Write-Host "`n[4/4] 无依赖更新" -ForegroundColor Cyan
 }
 
 Write-Host "`n$separator"
