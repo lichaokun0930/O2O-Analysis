@@ -12,27 +12,28 @@
 3. 营销侧: 满减穿底订单、营销×配送交叉分析
 """
 
-from .callbacks import (
+from components.today_must_do.callbacks import (
     register_today_must_do_callbacks,
     create_today_must_do_layout
 )
 
-from .product_analysis import (
+from components.today_must_do.product_analysis import (
     analyze_product_fluctuation,
     analyze_slow_moving_products,
     get_product_insight,
+    get_product_insight_enhanced,  # V2.0 增强版单品洞察
     get_declining_products, 
     identify_slow_moving_products
 )
 
-from .delivery_analysis import (
+from components.today_must_do.delivery_analysis import (
     analyze_delivery_issues,
     create_delivery_heatmap_data,
     identify_delivery_issues, 
     get_delivery_summary_by_distance
 )
 
-from .marketing_analysis import (
+from components.today_must_do.marketing_analysis import (
     analyze_marketing_loss,
     analyze_activity_overlap,
     create_marketing_delivery_matrix,
@@ -49,6 +50,7 @@ __all__ = [
     'analyze_product_fluctuation',
     'analyze_slow_moving_products',
     'get_product_insight',
+    'get_product_insight_enhanced',  # V2.0 增强版单品洞察
     'get_declining_products',
     'identify_slow_moving_products',
     

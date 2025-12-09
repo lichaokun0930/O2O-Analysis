@@ -353,6 +353,7 @@ class SmartImporter:
         
         return {
             'order_id': str(row.get('订单ID', '')),
+            'order_number': str(row.get('订单编号', '')),  # ✅ 新增订单编号字段映射
             'date': order_date,
             'store_name': str(row.get('门店名称', '')),
             # ✅ 移除了store_id字段(Order模型中不存在)

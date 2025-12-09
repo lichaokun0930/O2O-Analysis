@@ -62,10 +62,17 @@ set PYTHONUNBUFFERED=1
 set PYTHONIOENCODING=utf-8
 
 echo.
-echo [4/4] 正在启动智能门店经营看板...
+echo [4/4] 检查防火墙配置...
+powershell -Command "if (Get-NetFirewallRule -DisplayName '智能门店看板' -ErrorAction SilentlyContinue) { Write-Host '[OK] 防火墙规则已配置，支持局域网访问' } else { Write-Host '[WARN] 未配置防火墙，局域网访问可能被阻止' -ForegroundColor Yellow; Write-Host '      请以管理员身份运行: 配置防火墙.ps1' -ForegroundColor Yellow }"
+
+echo.
+echo [5/5] 正在启动智能门店经营看板...
 echo.
 echo       请等待启动完成（约10-15秒）
-echo       然后在浏览器中访问: http://localhost:8050
+echo       本机访问: http://localhost:8051
+echo.
+echo       若需局域网访问，启动后查看控制台显示的局域网地址
+echo       如无法访问，请运行: 诊断局域网访问.ps1
 echo.
 echo ----------------------------------------------------------------
 echo.

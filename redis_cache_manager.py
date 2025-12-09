@@ -50,14 +50,26 @@ class RedisCacheManager:
                 db=db,
                 password=password,
                 decode_responses=False,  # 保持二进制模式，用于pickle
-                socket_connect_timeout=2,
-                socket_timeout=2
+                socket_connect_timeout=5,  # 增加超时时间到5秒
+                socket_timeout=5,
+                retry_on_timeout=True  # 超时自动重试
             )
             
-            # 测试连接
-            self.client.ping()
-            self.enabled = True
-            logger.info(f"✅ Redis连接成功: {host}:{port}/{db}")
+            # 测试连接（增加重试逻辑）
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    self.client.ping()
+                    self.enabled = True
+                    logger.info(f"✅ Redis连接成功: {host}:{port}/{db}")
+                    break
+                except redis.TimeoutError:
+                    if attempt < max_retries - 1:
+                        logger.warning(f"⚠️ Redis连接超时，重试 {attempt + 1}/{max_retries}...")
+                        import time
+                        time.sleep(1)
+                    else:
+                        raise
             
         except redis.ConnectionError as e:
             logger.warning(f"⚠️  Redis连接失败，缓存功能已禁用: {e}")

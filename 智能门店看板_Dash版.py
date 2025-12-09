@@ -3,7 +3,7 @@
 """
 门店诊断看板(订单数据)
 启动命令: python "智能门店看板_Dash版.py"
-访问地址: http://localhost:8050
+访问地址: http://localhost:8051
 """
 import base64
 import io
@@ -442,6 +442,10 @@ def deserialize_order_agg_cache(payload: Any) -> (Optional[pd.DataFrame], Option
 
 def build_data_source_card() -> dbc.Card:
     """构建数据库/文件数据源选择组件，供不同布局复用。"""
+    
+    # 运行时检查数据库状态（而非依赖模块加载时的静态变量）
+    db_available = DATABASE_AVAILABLE and DATA_SOURCE_MANAGER is not None
+    store_options = INITIAL_STORE_OPTIONS if db_available else []
 
     database_tab = (html.Div([
         dbc.Alert([
@@ -454,7 +458,7 @@ def build_data_source_card() -> dbc.Card:
                 html.Label("🏪 选择门店:"),
                 dcc.Dropdown(
                     id='db-store-filter',
-                    options=[{'label': opt['label'], 'value': opt['value']} for opt in (INITIAL_STORE_OPTIONS if DATABASE_AVAILABLE else [])],
+                    options=[{'label': opt['label'], 'value': opt['value']} for opt in store_options],
                     placeholder='全部门店',
                     clearable=True
                 )
@@ -515,11 +519,28 @@ def build_data_source_card() -> dbc.Card:
             fullscreen=False,
             style={'marginTop': '20px'}
         )
-    ], className="p-3") if DATABASE_AVAILABLE else html.Div([
+    ], className="p-3") if db_available else html.Div([
         dbc.Alert([
             html.I(className="bi bi-exclamation-triangle me-2"),
             "数据库功能未启用。请安装必要的依赖： pip install psycopg2-binary sqlalchemy"
-        ], color="warning", className="mt-3")
+        ], color="warning", className="mt-3"),
+        # 隐藏的占位组件，防止回调报错
+        html.Div([
+            dcc.Dropdown(id='db-store-filter', style={'display': 'none'}),
+            dcc.DatePickerRange(id='db-date-range', style={'display': 'none'}),
+            html.Div(id='database-stats', style={'display': 'none'}),
+            html.Div(id='database-load-status', style={'display': 'none'}),
+            html.Div(id='cache-status-alert', style={'display': 'none'}),
+            html.Button(id='load-from-database-btn', style={'display': 'none'}),
+            html.Button(id='quick-date-yesterday', style={'display': 'none'}),
+            html.Button(id='quick-date-today', style={'display': 'none'}),
+            html.Button(id='quick-date-last-week', style={'display': 'none'}),
+            html.Button(id='quick-date-this-week', style={'display': 'none'}),
+            html.Button(id='quick-date-last-month', style={'display': 'none'}),
+            html.Button(id='quick-date-this-month', style={'display': 'none'}),
+            html.Button(id='quick-date-last-7days', style={'display': 'none'}),
+            html.Button(id='quick-date-last-30days', style={'display': 'none'}),
+        ], style={'display': 'none'})
     ]))
 
     upload_tab = html.Div([
@@ -535,7 +556,7 @@ def build_data_source_card() -> dbc.Card:
                     html.Span("⚠️ 如果门店已存在数据，将自动覆盖。", className="text-warning fw-bold")
                 ])
             ])
-        ], color="primary", className="mb-3" if DATABASE_AVAILABLE else "d-none"),
+        ], color="primary", className="mb-3" if db_available else "d-none"),
 
         dbc.Alert([
             html.I(className="bi bi-exclamation-triangle me-2"),
@@ -544,7 +565,7 @@ def build_data_source_card() -> dbc.Card:
                 html.Br(),
                 html.Small("上传的数据仅供临时分析，不会保存到数据库。如需持久化存储，请安装数据库依赖。")
             ])
-        ], color="warning", className="mb-3" if not DATABASE_AVAILABLE else "d-none"),
+        ], color="warning", className="mb-3" if not db_available else "d-none"),
 
         dcc.Upload(
             id='upload-data',
@@ -556,7 +577,7 @@ def build_data_source_card() -> dbc.Card:
                 html.Span('支持 .xlsx / .xls 格式，可同时上传多个文件', className="upload-hint"),
                 html.Br(),
                 html.Span('💾 数据将自动保存到数据库，支持多人共享访问', 
-                         className="upload-database-hint") if DATABASE_AVAILABLE else ""
+                         className="upload-database-hint") if db_available else ""
             ]),
             className="upload-area",
             multiple=True
@@ -691,6 +712,8 @@ app = Dash(
     external_stylesheets=[
         dbc.themes.BOOTSTRAP,
         "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css",
+        "https://cdn.jsdelivr.net/npm/ag-grid-community@31.0.0/styles/ag-grid.css",  # AG Grid 基础样式
+        "https://cdn.jsdelivr.net/npm/ag-grid-community@31.0.0/styles/ag-theme-alpine.css",  # AG Grid Alpine 主题
         "/assets/dashboard_styles.css"  # 自定义样式表
     ],
     suppress_callback_exceptions=True,
@@ -1006,11 +1029,21 @@ def initialize_data():
     # 初始化数据源管理器
     if DATABASE_AVAILABLE and DATA_SOURCE_MANAGER is None:
         try:
+            print("🔄 正在初始化数据源管理器...")
             DATA_SOURCE_MANAGER = DataSourceManager()
-            print("✅ 数据源管理器已初始化", flush=True)
+            print(f"✅ 数据源管理器已初始化: {DATA_SOURCE_MANAGER}", flush=True)
+            print(f"   类型: {type(DATA_SOURCE_MANAGER)}", flush=True)
+            print(f"   DATA_SOURCE_MANAGER is None: {DATA_SOURCE_MANAGER is None}", flush=True)
         except Exception as e:
-            print(f"⚠️ 数据源管理器初始化失败: {e}", flush=True)
+            print(f"❌ 数据源管理器初始化失败: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
             DATA_SOURCE_MANAGER = None
+    else:
+        if not DATABASE_AVAILABLE:
+            print("⚠️ DATABASE_AVAILABLE = False，跳过数据源管理器初始化", flush=True)
+        elif DATA_SOURCE_MANAGER is not None:
+            print(f"✅ 数据源管理器已存在: {DATA_SOURCE_MANAGER}", flush=True)
     
     if GLOBAL_DATA is None:
         print("\n" + "="*80, flush=True)
@@ -2704,6 +2737,9 @@ initialize_ai_tools()
 print(f"\n{'='*80}")
 print(f"🔍 [UI渲染前检查] DATABASE_AVAILABLE = {DATABASE_AVAILABLE}")
 print(f"🔍 [UI渲染前检查] DATA_SOURCE_MANAGER = {DATA_SOURCE_MANAGER}")
+print(f"🔍 [UI渲染前检查] DATA_SOURCE_MANAGER is None: {DATA_SOURCE_MANAGER is None}")
+print(f"🔍 [UI渲染前检查] type(DATA_SOURCE_MANAGER) = {type(DATA_SOURCE_MANAGER) if DATA_SOURCE_MANAGER else 'None'}")
+print(f"🔍 [UI渲染前检查] db_available = {DATABASE_AVAILABLE and DATA_SOURCE_MANAGER is not None}")
 print(f"🔍 [UI渲染前检查] Tab将被{'启用' if DATABASE_AVAILABLE else '禁用(灰色)'}")
 if DATABASE_AVAILABLE:
     print(f"🔍 [UI渲染前检查] INITIAL_STORE_OPTIONS 数量 = {len(INITIAL_STORE_OPTIONS)}")
@@ -5344,23 +5380,6 @@ if MANTINE_AVAILABLE:
                     )
                 ]),
                 
-                # ========== Tab 2: 营销成本分析 ==========
-                dcc.Tab(label='💰 营销分析', value='tab-2', children=[
-                    dcc.Loading(
-                        id="loading-tab2-marketing",
-                        type="cube",
-                        color="#667eea",
-                        parent_className="loading-wrapper",
-                        parent_style={'minHeight': '400px', 'position': 'relative'},
-                        fullscreen=False,
-                        children=[html.Div(
-                            id='tab-2-content',
-                            className="p-3 fade-in",
-                            children=html.Div()  # ⚡ 懒加载优化: 初始为空
-                        )]
-                    )
-                ]),
-                
                 # ========== Tab 3: 商品分析 ==========
                 dcc.Tab(label='📦 商品分析(开发中)', value='tab-3', children=[
                     dcc.Loading(
@@ -5426,6 +5445,61 @@ if MANTINE_AVAILABLE:
             dbc.Button("关闭", id='close-product-modal', className="ms-auto")
         ])
     ], id='product-detail-modal', size='xl', is_open=False),
+    
+    # ========== 智能调价V3.0 Modal弹窗 ==========
+    dbc.Modal([
+        dbc.ModalHeader([
+            dbc.ModalTitle([
+                html.I(className="bi bi-calculator me-2"),
+                "💰 智能调价 V3.0"
+            ]),
+            dbc.Badge("NEW", color="success", className="ms-2")
+        ]),
+        dbc.ModalBody([
+            # 四个场景Tab
+            dbc.Tabs([
+                # Tab1: 亏损止血
+                dbc.Tab([
+                    html.Div(id='pricing-tab1-content-v3', className="mt-3")
+                ], label="🩸 亏损止血", tab_id="pricing-loss", 
+                   label_style={'color': '#dc3545'}),
+                
+                # Tab2: 利润修复
+                dbc.Tab([
+                    html.Div(id='pricing-tab2-content-v3', className="mt-3")
+                ], label="📈 利润修复", tab_id="pricing-profit",
+                   label_style={'color': '#28a745'}),
+                
+                # Tab3: 滞销清仓
+                dbc.Tab([
+                    html.Div(id='pricing-tab3-content-v3', className="mt-3")
+                ], label="📦 滞销清仓", tab_id="pricing-slow",
+                   label_style={'color': '#fd7e14'}),
+                
+                # Tab4: 促销引流
+                dbc.Tab([
+                    html.Div(id='pricing-tab4-content-v3', className="mt-3")
+                ], label="🎯 促销引流", tab_id="pricing-promo",
+                   label_style={'color': '#007bff'}),
+            ], id='pricing-tabs-v3', active_tab='pricing-loss'),
+            
+            # 调价预览统计
+            html.Hr(),
+            html.Div(id='pricing-preview-stats-v3', className="mt-3"),
+        ]),
+        dbc.ModalFooter([
+            dbc.Button([
+                html.I(className="bi bi-download me-2"),
+                "📥 导出调价方案"
+            ], id='btn-export-pricing-v3', color='success', className="me-2"),
+            dbc.Button("关闭", id='close-pricing-modal-v3', color="secondary")
+        ])
+    ], id='pricing-modal-v3', size='xl', is_open=False, scrollable=True),
+    
+    # 智能调价V3.0数据存储
+    dcc.Store(id='pricing-data-store-v3', data={}),
+    dcc.Store(id='pricing-selected-products-v3', data=[]),
+    dcc.Download(id='download-pricing-plan-v3'),
     
     # 数据存储组件
     dcc.Store(id='current-data-store', data=[]),  # 存储当前诊断结果
@@ -5603,20 +5677,6 @@ else:
                             parent_style={'minHeight': '400px', 'position': 'relative'},
                             children=[html.Div(
                                 id='tab-1-content',
-                                className="p-3 fade-in",
-                                children=create_tab_skeleton() if LOADING_COMPONENTS_AVAILABLE else html.Div()
-                            )]
-                        )
-                    ]),
-                    dcc.Tab(label='💰 成本与营销分析', value='tab-2', children=[
-                        dcc.Loading(
-                            id="loading-tab2-marketing",
-                            type="cube",
-                            color="#667eea",
-                            parent_className="loading-wrapper",
-                            parent_style={'minHeight': '400px', 'position': 'relative'},
-                            children=[html.Div(
-                                id='tab-2-content',
                                 className="p-3 fade-in",
                                 children=create_tab_skeleton() if LOADING_COMPONENTS_AVAILABLE else html.Div()
                             )]
@@ -5820,6 +5880,7 @@ def update_date_range_from_quick_buttons(yesterday, today, last_week, this_week,
         return no_update, no_update
     
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    print(f"🔍 [快捷日期] 按钮被点击: {button_id}")
     today_date = datetime.now()
     
     # ✅ 获取数据库实际日期范围
@@ -5892,6 +5953,7 @@ def update_date_range_from_quick_buttons(yesterday, today, last_week, this_week,
     if db_max_date:
         end_date = min(end_date, db_max_date.date())
     
+    print(f"✅ [快捷日期] 返回日期: {start_date} ~ {end_date}")
     return start_date, end_date
 
 
@@ -8739,6 +8801,402 @@ def update_heatmap_detail_table(data):
 
 # ==================== Modal弹窗回调函数 ====================
 
+# ========== 智能调价V3.0 Modal回调 ==========
+
+@app.callback(
+    Output('pricing-modal-v3', 'is_open'),
+    [Input('btn-open-pricing-modal-v3', 'n_clicks'),
+     Input('close-pricing-modal-v3', 'n_clicks')],
+    State('pricing-modal-v3', 'is_open'),
+    prevent_initial_call=True
+)
+def toggle_pricing_modal_v3(open_clicks, close_clicks, is_open):
+    """打开/关闭智能调价Modal"""
+    ctx = callback_context
+    if not ctx.triggered:
+        return is_open
+    
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    if trigger_id == 'btn-open-pricing-modal-v3':
+        return True
+    elif trigger_id == 'close-pricing-modal-v3':
+        return False
+    
+    return is_open
+
+
+@app.callback(
+    [Output('pricing-tab1-content-v3', 'children'),
+     Output('pricing-tab2-content-v3', 'children'),
+     Output('pricing-tab3-content-v3', 'children'),
+     Output('pricing-tab4-content-v3', 'children'),
+     Output('pricing-data-store-v3', 'data')],
+    Input('pricing-modal-v3', 'is_open'),
+    prevent_initial_call=True
+)
+def render_pricing_tabs_v3(is_open):
+    """渲染智能调价各Tab内容"""
+    if not is_open:
+        raise PreventUpdate
+    
+    if GLOBAL_DATA is None:
+        empty_alert = dbc.Alert("⚠️ 未加载数据", color="warning")
+        return empty_alert, empty_alert, empty_alert, empty_alert, {}
+    
+    df = GLOBAL_DATA.copy()
+    
+    try:
+        # 准备四个场景的数据
+        loss_df = prepare_pricing_data_v3(df, 'loss')
+        profit_df = prepare_pricing_data_v3(df, 'profit')
+        slow_df = prepare_pricing_data_v3(df, 'slow')
+        promo_df = prepare_pricing_data_v3(df, 'promo')
+        
+        # 存储数据
+        pricing_data = {
+            'loss': loss_df.to_dict('records') if len(loss_df) > 0 else [],
+            'profit': profit_df.to_dict('records') if len(profit_df) > 0 else [],
+            'slow': slow_df.to_dict('records') if len(slow_df) > 0 else [],
+            'promo': promo_df.to_dict('records') if len(promo_df) > 0 else []
+        }
+        
+        # Tab1: 亏损止血
+        tab1_content = create_pricing_tab_content(loss_df, 'loss')
+        
+        # Tab2: 利润修复
+        tab2_content = create_pricing_tab_content(profit_df, 'profit')
+        
+        # Tab3: 滞销清仓
+        tab3_content = create_pricing_tab_content(slow_df, 'slow')
+        
+        # Tab4: 促销引流
+        tab4_content = create_pricing_tab_content(promo_df, 'promo')
+        
+        return tab1_content, tab2_content, tab3_content, tab4_content, pricing_data
+        
+    except Exception as e:
+        print(f"❌ [智能调价] 数据准备失败: {e}")
+        import traceback
+        traceback.print_exc()
+        error_alert = dbc.Alert(f"❌ 数据准备失败: {e}", color="danger")
+        return error_alert, error_alert, error_alert, error_alert, {}
+
+
+def create_pricing_tab_content(df, scenario):
+    """创建调价Tab内容"""
+    sales_col = '月售' if '月售' in df.columns else '销量'
+    
+    if len(df) == 0:
+        if scenario == 'loss':
+            return dbc.Alert([
+                html.I(className="bi bi-check-circle-fill me-2 text-success"),
+                "🎉 太棒了！没有亏损商品，所有商品价格健康！"
+            ], color="success")
+        elif scenario == 'profit':
+            return dbc.Alert([
+                html.I(className="bi bi-check-circle-fill me-2 text-success"),
+                "🎉 所有商品都在最佳利润水平！"
+            ], color="success")
+        elif scenario == 'slow':
+            return dbc.Alert([
+                html.I(className="bi bi-check-circle-fill me-2 text-success"),
+                "🎉 没有滞销商品，库存周转良好！"
+            ], color="success")
+        else:
+            return dbc.Alert("请选择要促销的商品", color="info")
+    
+    # 场景统计卡片
+    if scenario == 'loss':
+        total_loss = (df['真实保本价'] - df['实收价格']).clip(lower=0).mul(df[sales_col]).sum()
+        stats_card = dbc.Alert([
+            html.H5([
+                html.I(className="bi bi-exclamation-triangle-fill me-2"),
+                f"发现 {len(df)} 个亏损商品"
+            ], className="mb-2"),
+            html.P(f"预计每月亏损: ¥{total_loss:,.2f}", className="mb-0")
+        ], color="danger")
+        
+    elif scenario == 'profit':
+        avg_gap = (df['高光利润率'] - df['当前利润率']).mean()
+        stats_card = dbc.Alert([
+            html.H5([
+                html.I(className="bi bi-graph-up-arrow me-2"),
+                f"发现 {len(df)} 个可优化商品"
+            ], className="mb-2"),
+            html.P(f"平均利润差距: {avg_gap:.1f}%", className="mb-0")
+        ], color="warning")
+        
+    elif scenario == 'slow':
+        total_stock = df['库存'].sum() if '库存' in df.columns else 0
+        stats_card = dbc.Alert([
+            html.H5([
+                html.I(className="bi bi-box-seam me-2"),
+                f"发现 {len(df)} 个滞销商品"
+            ], className="mb-2"),
+            html.P(f"积压库存: {int(total_stock)} 件", className="mb-0")
+        ], color="warning")
+        
+    else:
+        stats_card = dbc.Alert([
+            html.H5([
+                html.I(className="bi bi-megaphone me-2"),
+                f"共 {len(df)} 个可促销商品"
+            ], className="mb-2"),
+            html.P("选择商品并设置折扣", className="mb-0")
+        ], color="info")
+    
+    # 构建表格列
+    columns = [
+        {'name': '商品名称', 'id': '商品名称'},
+        {'name': '当前价格', 'id': '实收价格', 'type': 'numeric', 'format': {'specifier': ',.2f'}},
+        {'name': '单品成本', 'id': '单品成本', 'type': 'numeric', 'format': {'specifier': ',.2f'}},
+        {'name': '当前利润率', 'id': '当前利润率', 'type': 'numeric', 'format': {'specifier': '.1f'}},
+    ]
+    
+    if scenario == 'loss':
+        columns.extend([
+            {'name': '真实保本价', 'id': '真实保本价', 'type': 'numeric', 'format': {'specifier': ',.2f'}},
+            {'name': '建议调价', 'id': '建议调价', 'type': 'numeric', 'format': {'specifier': ',.2f'}},
+        ])
+    elif scenario == 'profit':
+        columns.extend([
+            {'name': '高光利润率', 'id': '高光利润率', 'type': 'numeric', 'format': {'specifier': '.1f'}},
+            {'name': '高光价格', 'id': '高光价格', 'type': 'numeric', 'format': {'specifier': ',.2f'}},
+            {'name': '建议调价', 'id': '建议调价', 'type': 'numeric', 'format': {'specifier': ',.2f'}},
+        ])
+    elif scenario == 'slow':
+        if '库存' in df.columns:
+            columns.append({'name': '库存', 'id': '库存', 'type': 'numeric'})
+        if '滞销天数' in df.columns:
+            columns.append({'name': '滞销天数', 'id': '滞销天数', 'type': 'numeric'})
+        columns.append({'name': '建议调价', 'id': '建议调价', 'type': 'numeric', 'format': {'specifier': ',.2f'}})
+    else:
+        columns.extend([
+            {'name': sales_col, 'id': sales_col, 'type': 'numeric'},
+            {'name': '建议调价', 'id': '建议调价', 'type': 'numeric', 'format': {'specifier': ',.2f'}},
+        ])
+    
+    # 添加锁定原因列
+    if '锁定原因' in df.columns:
+        columns.append({'name': '状态', 'id': '锁定原因'})
+    
+    # 构建表格数据
+    table_data = df.head(50).to_dict('records')  # 限制显示前50条
+    
+    # 表格样式
+    style_data_conditional = [
+        # 锁定商品行灰色背景
+        {
+            'if': {
+                'filter_query': '{是锁定商品} = True',
+            },
+            'backgroundColor': '#f8f9fa',
+            'color': '#6c757d',
+        },
+        # 亏损金额红色
+        {
+            'if': {
+                'filter_query': '{当前利润率} < 0',
+                'column_id': '当前利润率'
+            },
+            'color': '#dc3545',
+            'fontWeight': 'bold'
+        }
+    ]
+    
+    # 表格组件
+    table = dash_table.DataTable(
+        id=f'pricing-table-{scenario}',
+        columns=columns,
+        data=table_data,
+        row_selectable='multi',
+        selected_rows=list(range(min(len(table_data), 20))),  # 默认选前20个
+        style_table={'overflowX': 'auto', 'maxHeight': '400px', 'overflowY': 'auto'},
+        style_cell={'textAlign': 'left', 'padding': '8px', 'fontSize': '13px'},
+        style_header={'backgroundColor': '#f8f9fa', 'fontWeight': 'bold'},
+        style_data_conditional=style_data_conditional,
+        page_size=50,
+        filter_action='native',
+        sort_action='native',
+    )
+    
+    # 返回完整内容
+    return html.Div([
+        stats_card,
+        
+        # 调价参数设置（仅对降价场景显示折扣输入）
+        dbc.Row([
+            dbc.Col([
+                html.Label("统一折扣:", className="fw-bold"),
+                dbc.InputGroup([
+                    dbc.Input(
+                        id=f'pricing-discount-{scenario}',
+                        type='number',
+                        value=90 if scenario == 'promo' else 80,
+                        min=50, max=100, step=5,
+                        disabled=(scenario in ['loss', 'profit'])
+                    ),
+                    dbc.InputGroupText("%")
+                ], size="sm")
+            ], md=3),
+            dbc.Col([
+                dbc.Button(
+                    [html.I(className="bi bi-arrow-repeat me-2"), "重新计算"],
+                    id=f'btn-recalc-{scenario}',
+                    color='primary',
+                    size='sm',
+                    className='mt-4'
+                )
+            ], md=3)
+        ], className="mb-3") if scenario in ['slow', 'promo'] else html.Div(),
+        
+        # 商品表格
+        table,
+        
+        # 显示总数
+        html.Small(f"显示前50条，共{len(df)}个商品", className="text-muted mt-2")
+    ])
+
+
+@app.callback(
+    Output('pricing-preview-stats-v3', 'children'),
+    [Input('pricing-tabs-v3', 'active_tab'),
+     Input('pricing-data-store-v3', 'data')],
+    prevent_initial_call=True
+)
+def update_pricing_preview_v3(active_tab, pricing_data):
+    """更新调价预览统计"""
+    if not pricing_data:
+        return html.Div()
+    
+    scenario_map = {
+        'pricing-loss': 'loss',
+        'pricing-profit': 'profit', 
+        'pricing-slow': 'slow',
+        'pricing-promo': 'promo'
+    }
+    
+    scenario = scenario_map.get(active_tab, 'loss')
+    data = pricing_data.get(scenario, [])
+    
+    if not data:
+        return html.Div()
+    
+    df = pd.DataFrame(data)
+    sales_col = '月售' if '月售' in df.columns else '销量'
+    
+    # 计算统计
+    product_count = len(df)
+    total_sales = df[sales_col].sum() if sales_col in df.columns else 0
+    
+    if '建议调价' in df.columns and '实收价格' in df.columns:
+        price_change = (df['建议调价'] - df['实收价格']).mean()
+        profit_impact = ((df['建议调价'] - df['实收价格']) * df[sales_col]).sum() if sales_col in df.columns else 0
+    else:
+        price_change = 0
+        profit_impact = 0
+    
+    # 构建预览卡片
+    return dbc.Row([
+        dbc.Col([
+            dbc.Card([
+                dbc.CardBody([
+                    html.H6("📦 商品数", className="text-muted mb-1"),
+                    html.H4(f"{product_count}", className="mb-0")
+                ])
+            ], className="text-center")
+        ], md=3),
+        dbc.Col([
+            dbc.Card([
+                dbc.CardBody([
+                    html.H6("📊 涉及销量", className="text-muted mb-1"),
+                    html.H4(f"{int(total_sales)}", className="mb-0")
+                ])
+            ], className="text-center")
+        ], md=3),
+        dbc.Col([
+            dbc.Card([
+                dbc.CardBody([
+                    html.H6("💰 平均调价", className="text-muted mb-1"),
+                    html.H4(f"{'↑' if price_change > 0 else '↓'}¥{abs(price_change):.2f}", 
+                           className=f"mb-0 {'text-success' if price_change > 0 else 'text-danger'}")
+                ])
+            ], className="text-center")
+        ], md=3),
+        dbc.Col([
+            dbc.Card([
+                dbc.CardBody([
+                    html.H6("📈 预计利润变动", className="text-muted mb-1"),
+                    html.H4(f"{'↑' if profit_impact > 0 else '↓'}¥{abs(profit_impact):,.0f}", 
+                           className=f"mb-0 {'text-success' if profit_impact > 0 else 'text-danger'}")
+                ])
+            ], className="text-center")
+        ], md=3),
+    ])
+
+
+@app.callback(
+    Output('download-pricing-plan-v3', 'data'),
+    Input('btn-export-pricing-v3', 'n_clicks'),
+    [State('pricing-tabs-v3', 'active_tab'),
+     State('pricing-data-store-v3', 'data')],
+    prevent_initial_call=True
+)
+def export_pricing_plan_v3(n_clicks, active_tab, pricing_data):
+    """导出调价方案为Excel"""
+    if not n_clicks or not pricing_data:
+        raise PreventUpdate
+    
+    from io import BytesIO
+    from datetime import datetime
+    
+    scenario_map = {
+        'pricing-loss': ('loss', '亏损止血'),
+        'pricing-profit': ('profit', '利润修复'),
+        'pricing-slow': ('slow', '滞销清仓'),
+        'pricing-promo': ('promo', '促销引流')
+    }
+    
+    scenario_key, scenario_name = scenario_map.get(active_tab, ('loss', '亏损止血'))
+    data = pricing_data.get(scenario_key, [])
+    
+    if not data:
+        raise PreventUpdate
+    
+    df = pd.DataFrame(data)
+    
+    # 选择导出列
+    export_cols = ['商品名称', '实收价格', '单品成本', '当前利润率', '建议调价']
+    if scenario_key == 'loss':
+        export_cols.insert(4, '真实保本价')
+    elif scenario_key == 'profit':
+        export_cols.insert(4, '高光利润率')
+        export_cols.insert(5, '高光价格')
+    elif scenario_key == 'slow' and '库存' in df.columns:
+        export_cols.insert(4, '库存')
+    
+    # 过滤存在的列
+    export_cols = [c for c in export_cols if c in df.columns]
+    export_df = df[export_cols].copy()
+    
+    # 添加调价变动列
+    if '建议调价' in df.columns and '实收价格' in df.columns:
+        export_df['价格变动'] = (df['建议调价'] - df['实收价格']).round(2)
+        export_df['变动率(%)'] = ((df['建议调价'] - df['实收价格']) / df['实收价格'] * 100).round(2)
+    
+    # 生成Excel
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        export_df.to_excel(writer, sheet_name=f'{scenario_name}调价方案', index=False)
+    
+    output.seek(0)
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f"智能调价_{scenario_name}_{timestamp}.xlsx"
+    
+    return dcc.send_bytes(output.getvalue(), filename)
+
+
 # 打开/关闭Modal
 @app.callback(
     Output('product-modal', 'is_open'),
@@ -10499,6 +10957,13 @@ def create_category_trend_chart_echarts(df, order_agg, selected_channel='all'):
         ])
     
     # ==================== 1. 准备订单级数据并添加分类信息 ====================
+    # 🔴 剔除耗材分类（非销售商品）- 在聚合前剔除
+    if '一级分类名' in df.columns:
+        consumable_count = len(df[df['一级分类名'] == '耗材'])
+        if consumable_count > 0:
+            df = df[df['一级分类名'] != '耗材'].copy()
+            print(f"📌 [一级分类图表] 剔除耗材: {consumable_count} 条记录")
+    
     # 🔧 修复：从原始df按订单ID聚合，确保每个订单的分类、销售额、利润正确关联
     # 先获取每个订单的一级分类（一个订单可能有多个商品，取第一个分类）
     order_category_map = df.groupby('订单ID')['一级分类名'].first().reset_index()
@@ -10506,6 +10971,12 @@ def create_category_trend_chart_echarts(df, order_agg, selected_channel='all'):
     
     # 将分类信息合并到订单聚合数据
     order_agg_with_category = order_agg.merge(order_category_map, on='订单ID', how='left')
+    
+    # 🔴 剔除order_agg中耗材分类的订单
+    if '一级分类名' in order_agg_with_category.columns:
+        order_agg_with_category = order_agg_with_category[
+            order_agg_with_category['一级分类名'] != '耗材'
+        ].copy()
     
     # 🔍 调试：查看order_agg中的关键字段
     print(f"\n🔍 [一级分类] order_agg可用字段: {order_agg.columns.tolist()}")
@@ -10621,40 +11092,17 @@ def create_category_trend_chart_echarts(df, order_agg, selected_channel='all'):
             stock_col = col
             break
     
-    # ==================== 4. 获取商品最新库存状态 (🔴 双重判断逻辑) ====================
+    # ==================== 4. 获取商品最新库存状态 (🔧 使用统一函数) ====================
     if stock_col:
-        # 步骤1: 获取源数据的最后一天
-        max_date = df['日期'].max() if '日期' in df.columns else df['下单时间'].max()
+        # 使用统一的库存获取函数
+        date_col = '日期' if '日期' in df.columns else '下单时间'
+        stock_map = get_product_latest_stock(df, stock_col=stock_col, date_col=date_col)
         
-        # 步骤2: 获取每个商品在最后一天的库存(如果存在)
-        last_day_data = df[df['日期'] == max_date] if '日期' in df.columns else df[df['下单时间'] == max_date]
-        if len(last_day_data) > 0:
-            last_day_stock_map = last_day_data.groupby('商品名称')[stock_col].last().to_dict()
-        else:
-            last_day_stock_map = {}
-        
-        # 步骤3: 获取每个商品最后一次售卖记录的库存
-        last_sale_stock = df.sort_values('日期' if '日期' in df.columns else '下单时间').groupby('商品名称').agg({
-            stock_col: 'last',
-            '日期' if '日期' in df.columns else '下单时间': 'last'
-        })
-        
-        # 步骤4: 双重判断,优先使用最后一天的库存
-        def get_final_stock(product_name):
-            # 优先使用最后一天的库存
-            if product_name in last_day_stock_map:
-                return last_day_stock_map[product_name]
-            # 否则使用最后售卖时的库存
-            elif product_name in last_sale_stock.index:
-                return last_sale_stock.loc[product_name, stock_col]
-            else:
-                return 0
-        
-        # 构建最终库存DataFrame
+        # 构建库存DataFrame
         all_products = df['商品名称'].unique()
         last_stock = pd.DataFrame({
             '商品名称': all_products,
-            stock_col: [get_final_stock(p) for p in all_products]
+            stock_col: [stock_map.get(p, 0) for p in all_products]
         })
         
         # 添加分类信息
@@ -11325,6 +11773,75 @@ def get_actual_date_range(df):
         return None, None
 
 
+def get_product_latest_stock(df, stock_col='库存', date_col='日期'):
+    """
+    🔧 统一的商品库存获取函数
+    
+    核心逻辑:
+    1. 优先使用【数据最新日期】的库存 (商品在最后一天有销售记录)
+    2. 如果商品在最后一天没有销售记录，使用该商品【最后一条记录】的库存
+    
+    ⚠️ 之前的问题:
+    - 使用 groupby().agg({'库存': 'last'}) 会取到商品最后一次销售时的库存
+    - 如果该商品最后一次销售是在很久之前，那个库存值可能是0（售罄时的状态）
+    - 但实际上商品可能已经补货，当前库存不为0
+    
+    正确做法:
+    - 数据最新日期的库存才是当前真实库存
+    - 如果商品在最新日期没有销售，取其最后一条记录的库存作为近似值
+    
+    Args:
+        df: 原始数据DataFrame
+        stock_col: 库存字段名
+        date_col: 日期字段名
+        
+    Returns:
+        dict: {商品名称: 库存数量}
+    """
+    if stock_col not in df.columns:
+        print(f"⚠️ [get_product_latest_stock] 未找到库存字段: {stock_col}")
+        return {}
+    
+    # 检测日期字段
+    actual_date_col = date_col
+    if date_col not in df.columns:
+        if '下单时间' in df.columns:
+            actual_date_col = '下单时间'
+        else:
+            print(f"⚠️ [get_product_latest_stock] 未找到日期字段，使用最后一条记录的库存")
+            return df.groupby('商品名称')[stock_col].last().to_dict()
+    
+    # 确保日期格式正确
+    df = df.copy()
+    df[actual_date_col] = pd.to_datetime(df[actual_date_col])
+    
+    # 步骤1: 获取数据最新日期
+    max_date = df[actual_date_col].max()
+    
+    # 步骤2: 获取每个商品在最新日期的库存
+    last_day_data = df[df[actual_date_col] == max_date]
+    last_day_stock_map = last_day_data.groupby('商品名称')[stock_col].last().to_dict()
+    
+    # 步骤3: 对于最新日期没有销售记录的商品，取其最后一条记录的库存
+    all_products = df['商品名称'].unique()
+    products_without_last_day = set(all_products) - set(last_day_stock_map.keys())
+    
+    if len(products_without_last_day) > 0:
+        # 按日期排序后取每个商品的最后一条记录
+        sorted_df = df.sort_values(actual_date_col)
+        last_records = sorted_df.groupby('商品名称')[stock_col].last()
+        
+        for product in products_without_last_day:
+            if product in last_records.index:
+                last_day_stock_map[product] = last_records.loc[product]
+    
+    print(f"📦 [get_product_latest_stock] 最新日期: {max_date.date()}, "
+          f"最新日期有销售: {len(last_day_stock_map) - len(products_without_last_day)} 商品, "
+          f"取历史记录: {len(products_without_last_day)} 商品")
+    
+    return last_day_stock_map
+
+
 def calculate_order_metrics(df, calc_mode: Optional[str] = None):
     """
     统一的订单指标计算函数（Tab 1和Tab 2共用）
@@ -11750,6 +12267,368 @@ def _calculate_profit_formula(order_agg, calc_mode: Optional[str] = None):
     print(f"  订单实际利润总和: ¥{result.sum():,.2f}")
     
     return result
+
+
+# ==================== 智能调价 V3.0 核心计算函数 ====================
+# 📋 业务逻辑详见: 【权威】业务逻辑与数据字典完整手册.md 附录A
+
+# 固定平台费率
+PLATFORM_FEE_RATE = 0.08  # 8%
+
+def calculate_product_marketing_cost(df):
+    """
+    🔧 计算商品分摊营销成本
+    
+    业务逻辑：
+    - 营销成本（满减、商品减免、代金券等）是订单级字段
+    - 需要按商品销售额占比分摊到每个商品
+    
+    Args:
+        df: 原始数据DataFrame（包含订单ID、商品名称、实收价格、销量等）
+    
+    Returns:
+        DataFrame: 添加了分摊营销成本的数据
+    """
+    df = df.copy()
+    
+    # 确定销量字段名
+    sales_col = '月售' if '月售' in df.columns else '销量'
+    if sales_col not in df.columns:
+        print("⚠️ [营销成本分摊] 缺少销量字段，无法计算")
+        df['商品销售额'] = df.get('实收价格', 0)
+        df['分摊营销成本'] = 0
+        return df
+    
+    # Step 1: 计算每个商品的销售额（单价 × 销量）
+    df['商品销售额'] = df['实收价格'] * df[sales_col]
+    
+    # Step 2: 计算每个订单的总销售额
+    order_sales = df.groupby('订单ID')['商品销售额'].sum().reset_index()
+    order_sales.columns = ['订单ID', '订单总销售额']
+    df = df.merge(order_sales, on='订单ID', how='left')
+    
+    # Step 3: 计算商品占订单的销售额比例
+    df['销售额占比'] = (df['商品销售额'] / df['订单总销售额']).fillna(0)
+    
+    # Step 4: 计算订单营销成本
+    # 营销成本 = 满减金额 + 商品减免金额 + 商家代金券 + 商家承担部分券 + 满赠金额 + 商家其他优惠
+    marketing_fields = ['满减金额', '商品减免金额', '商家代金券', '商家承担部分券', '满赠金额', '商家其他优惠']
+    df['订单营销成本'] = sum(df.get(field, 0) for field in marketing_fields)
+    
+    # Step 5: 按比例分摊营销成本到商品
+    df['分摊营销成本'] = df['订单营销成本'] * df['销售额占比']
+    
+    print(f"✅ [营销成本分摊] 完成，总营销成本: ¥{df['分摊营销成本'].sum():,.2f}")
+    
+    return df
+
+
+def calculate_real_breakeven_price(product_df):
+    """
+    🔧 计算真实保本价
+    
+    公式推导：
+    售价 ≥ 成本 + 售价×平台费率 + 售价×营销费率
+    售价 × (1 - 平台费率 - 营销费率) ≥ 成本
+    售价 ≥ 成本 / (1 - 平台费率 - 营销费率)
+    
+    Args:
+        product_df: 商品聚合数据（需包含单品成本、商品营销费率）
+    
+    Returns:
+        Series: 真实保本价
+    """
+    # 计算分母（防止过小）
+    divisor = 1 - PLATFORM_FEE_RATE - product_df['商品营销费率']
+    divisor = divisor.clip(lower=0.1)  # 最小10%，防止除以过小的数
+    
+    # 真实保本价 = 单品成本 / (1 - 平台费率 - 营销费率)
+    breakeven_price = (product_df['单品成本'] / divisor).round(2)
+    
+    return breakeven_price
+
+
+def calculate_peak_profit_rate(df):
+    """
+    🔧 计算高光利润率（商品历史最高实收利润率）
+    
+    Args:
+        df: 原始数据DataFrame（包含实收价格、单品成本）
+    
+    Returns:
+        dict: {商品名称: 高光利润率}
+    """
+    df = df.copy()
+    
+    # 确定销量字段名和成本字段名
+    sales_col = '月售' if '月售' in df.columns else '销量'
+    cost_col = '商品采购成本' if '商品采购成本' in df.columns else '成本'
+    
+    # 计算单品成本（总成本 / 销量）
+    if sales_col in df.columns and cost_col in df.columns:
+        df['单品成本_temp'] = (df[cost_col] / df[sales_col].replace(0, 1)).round(2)
+    else:
+        df['单品成本_temp'] = df.get(cost_col, 0)
+    
+    # 计算每条记录的实收利润率
+    # 实收利润率 = (实收价格 - 单品成本) / 实收价格 × 100
+    df['实收利润率'] = (
+        (df['实收价格'] - df['单品成本_temp']) / df['实收价格'].replace(0, np.nan) * 100
+    ).fillna(0)
+    
+    # 按商品取最大值（高光利润率）
+    peak_rates = df.groupby('商品名称')['实收利润率'].max().round(2)
+    
+    print(f"✅ [高光利润率] 计算完成，平均高光利润率: {peak_rates.mean():.2f}%")
+    
+    return peak_rates.to_dict()
+
+
+def identify_special_products(product_df):
+    """
+    🔧 识别特殊商品（引流款、特价款）
+    
+    识别规则：
+    - 引流款：售价≤2元 或 售价<成本×0.5
+    - 特价款：折扣力度超过30% 或 有商品减免
+    
+    Args:
+        product_df: 商品聚合数据
+    
+    Returns:
+        DataFrame: 添加了特殊商品标记的数据
+    """
+    product_df = product_df.copy()
+    
+    # 识别引流款
+    # 条件1: 售价≤2元
+    # 条件2: 售价<成本×0.5（售价不到成本一半）
+    is_traffic_product = (
+        (product_df['实收价格'] <= 2) |
+        (product_df['实收价格'] < product_df['单品成本'] * 0.5)
+    )
+    
+    # 识别特价款
+    # 条件: 有折扣且折扣力度超过30%
+    has_discount = product_df.get('商品减免金额', 0) > 0
+    if '商品原价' in product_df.columns:
+        discount_rate = (product_df['商品原价'] - product_df['实收价格']) / product_df['商品原价'].replace(0, np.nan)
+        is_heavy_discount = discount_rate > 0.3
+    else:
+        is_heavy_discount = False
+    
+    is_promo_product = has_discount | is_heavy_discount
+    
+    # 添加标记
+    product_df['是引流款'] = is_traffic_product
+    product_df['是特价款'] = is_promo_product
+    product_df['是锁定商品'] = is_traffic_product | is_promo_product
+    
+    # 添加标签说明
+    def get_lock_reason(row):
+        if row['是引流款']:
+            return '🔒 引流款-不建议调价'
+        elif row['是特价款']:
+            return '🔒 特价促销中'
+        else:
+            return ''
+    
+    product_df['锁定原因'] = product_df.apply(get_lock_reason, axis=1)
+    
+    lock_count = product_df['是锁定商品'].sum()
+    print(f"✅ [特殊商品识别] 引流款: {is_traffic_product.sum()}个, 特价款: {(is_promo_product & ~is_traffic_product).sum()}个, 共锁定: {lock_count}个")
+    
+    return product_df
+
+
+def prepare_pricing_data_v3(df, scenario='loss'):
+    """
+    🔧 智能调价V3.0 - 准备调价数据
+    
+    Args:
+        df: 原始数据DataFrame
+        scenario: 场景类型
+            - 'loss': 亏损止血（实收价格 < 真实保本价）
+            - 'profit': 利润修复（当前利润率 < 高光利润率）
+            - 'slow': 滞销清仓（库存>0 且 滞销≥7天）
+            - 'promo': 促销引流（用户自选）
+    
+    Returns:
+        DataFrame: 调价商品列表（包含计算字段）
+    """
+    print(f"\n{'='*60}")
+    print(f"🔧 [智能调价V3.0] 场景: {scenario}")
+    print(f"{'='*60}")
+    
+    # Step 1: 计算分摊营销成本
+    df_with_marketing = calculate_product_marketing_cost(df)
+    
+    # Step 2: 按商品聚合
+    # 确定字段名
+    sales_col = '月售' if '月售' in df.columns else '销量'
+    cost_col = '商品采购成本' if '商品采购成本' in df.columns else '成本'
+    
+    # ✅ v2.9确认的聚合规则
+    agg_dict = {
+        '实收价格': 'mean',      # 单价，用mean（可能有促销价差异）
+        '商品原价': 'max',       # 单价，用max（固定定价）
+        cost_col: 'sum',         # 总成本，用sum
+        sales_col: 'sum',        # 销量，用sum
+        '利润额': 'sum',         # 总利润，用sum
+        '商品销售额': 'sum',     # 分摊后的销售额
+        '分摊营销成本': 'sum',   # 分摊后的营销成本
+    }
+    
+    # 可选字段
+    if '库存' in df_with_marketing.columns:
+        agg_dict['库存'] = 'last'
+    if '一级分类名' in df_with_marketing.columns:
+        agg_dict['一级分类名'] = 'first'
+    if '三级分类名' in df_with_marketing.columns:
+        agg_dict['三级分类名'] = 'first'
+    if '店内码' in df_with_marketing.columns:
+        agg_dict['店内码'] = 'first'
+    if '商品减免金额' in df_with_marketing.columns:
+        agg_dict['商品减免金额'] = 'first'  # 订单级字段
+    
+    product_df = df_with_marketing.groupby('商品名称').agg(agg_dict).reset_index()
+    
+    # Step 3: 计算单品成本
+    product_df['单品成本'] = (product_df[cost_col] / product_df[sales_col].replace(0, 1)).round(2)
+    
+    # Step 4: 计算商品营销费率
+    product_df['商品营销费率'] = (
+        product_df['分摊营销成本'] / product_df['商品销售额'].replace(0, np.nan)
+    ).fillna(0).clip(0, 0.5)  # 上限50%
+    
+    # Step 5: 计算真实保本价
+    product_df['真实保本价'] = calculate_real_breakeven_price(product_df)
+    
+    # Step 6: 计算当前利润率
+    product_df['当前利润率'] = (
+        (product_df['实收价格'] - product_df['单品成本']) / product_df['实收价格'].replace(0, np.nan) * 100
+    ).fillna(0).round(2)
+    
+    # Step 7: 获取高光利润率
+    peak_rates = calculate_peak_profit_rate(df)
+    product_df['高光利润率'] = product_df['商品名称'].map(peak_rates).fillna(0)
+    
+    # Step 8: 计算高光价格（达到高光利润率需要的价格）
+    # 高光利润率 = (价格 - 成本) / 价格 → 价格 = 成本 / (1 - 高光利润率/100)
+    product_df['高光价格'] = (
+        product_df['单品成本'] / (1 - product_df['高光利润率'] / 100).clip(lower=0.1)
+    ).round(2)
+    
+    # Step 9: 识别特殊商品
+    product_df = identify_special_products(product_df)
+    
+    # Step 10: 根据场景筛选商品
+    if scenario == 'loss':
+        # 亏损止血：实收价格 < 真实保本价
+        mask = product_df['实收价格'] < product_df['真实保本价']
+        product_df = product_df[mask].copy()
+        product_df['亏损金额'] = (product_df['真实保本价'] - product_df['实收价格']) * product_df[sales_col]
+        product_df['建议调价'] = product_df['真实保本价']
+        product_df['调价方向'] = '涨价'
+        print(f"📊 [亏损止血] 筛选出 {len(product_df)} 个亏损商品")
+        
+    elif scenario == 'profit':
+        # 利润修复：当前利润率 < 高光利润率（且不亏损）
+        mask = (
+            (product_df['当前利润率'] < product_df['高光利润率']) &
+            (product_df['实收价格'] >= product_df['真实保本价'])
+        )
+        product_df = product_df[mask].copy()
+        product_df['利润差距'] = product_df['高光利润率'] - product_df['当前利润率']
+        product_df['建议调价'] = product_df['高光价格']
+        product_df['调价方向'] = '涨价'
+        print(f"📊 [利润修复] 筛选出 {len(product_df)} 个可修复商品")
+        
+    elif scenario == 'slow':
+        # 滞销清仓：库存>0 且 滞销≥7天
+        if '库存' in product_df.columns and '滞销天数' in product_df.columns:
+            mask = (product_df['库存'] > 0) & (product_df['滞销天数'] >= 7)
+            product_df = product_df[mask].copy()
+        elif '库存' in product_df.columns:
+            # 如果没有滞销天数，只看库存
+            mask = product_df['库存'] > 0
+            product_df = product_df[mask].copy()
+            print("⚠️ [滞销清仓] 缺少滞销天数字段，仅按库存>0筛选")
+        else:
+            print("⚠️ [滞销清仓] 缺少库存字段，返回空结果")
+            return product_df.head(0)
+        
+        product_df['建议调价'] = (product_df['实收价格'] * 0.8).round(2)  # 默认8折
+        product_df['调价方向'] = '降价'
+        print(f"📊 [滞销清仓] 筛选出 {len(product_df)} 个滞销商品")
+        
+    elif scenario == 'promo':
+        # 促销引流：所有商品（排除耗材）
+        if '一级分类名' in product_df.columns:
+            mask = product_df['一级分类名'] != '耗材'
+            product_df = product_df[mask].copy()
+        product_df['建议调价'] = (product_df['实收价格'] * 0.9).round(2)  # 默认9折
+        product_df['调价方向'] = '降价'
+        print(f"📊 [促销引流] 共 {len(product_df)} 个可选商品")
+    
+    # Step 11: 计算调价影响
+    if len(product_df) > 0:
+        product_df['价格变动'] = product_df['建议调价'] - product_df['实收价格']
+        product_df['价格变动率'] = (product_df['价格变动'] / product_df['实收价格'] * 100).round(2)
+        product_df['预计利润变动'] = product_df['价格变动'] * product_df[sales_col]
+    
+    # 排序
+    if scenario == 'loss':
+        product_df = product_df.sort_values('亏损金额', ascending=False)
+    elif scenario == 'profit':
+        product_df = product_df.sort_values('利润差距', ascending=False)
+    elif scenario == 'slow' and '滞销天数' in product_df.columns:
+        product_df = product_df.sort_values('滞销天数', ascending=False)
+    
+    print(f"✅ [智能调价V3.0] 数据准备完成，共 {len(product_df)} 个商品")
+    
+    return product_df
+
+
+def calculate_pricing_preview(product_df, target_prices):
+    """
+    🔧 计算调价预览效果
+    
+    Args:
+        product_df: 商品数据
+        target_prices: dict {商品名称: 目标价格}
+    
+    Returns:
+        dict: 预览统计
+    """
+    df = product_df.copy()
+    sales_col = '月售' if '月售' in df.columns else '销量'
+    
+    # 应用目标价格
+    df['目标价格'] = df['商品名称'].map(target_prices).fillna(df['建议调价'])
+    
+    # 计算新利润率
+    df['新利润率'] = (
+        (df['目标价格'] - df['单品成本']) / df['目标价格'].replace(0, np.nan) * 100
+    ).fillna(0).round(2)
+    
+    # 计算利润变动
+    df['单品利润变动'] = df['目标价格'] - df['实收价格']
+    df['总利润变动'] = df['单品利润变动'] * df[sales_col]
+    
+    # 统计
+    preview = {
+        '商品数': len(df),
+        '涉及销量': df[sales_col].sum(),
+        '当前销售额': (df['实收价格'] * df[sales_col]).sum(),
+        '调整后销售额': (df['目标价格'] * df[sales_col]).sum(),
+        '销售额变动': ((df['目标价格'] - df['实收价格']) * df[sales_col]).sum(),
+        '当前利润': (df['利润额']).sum(),
+        '预计利润变动': df['总利润变动'].sum(),
+        '平均利润率变化': df['新利润率'].mean() - df['当前利润率'].mean(),
+    }
+    
+    return preview
 
 
 # ==================== 性能优化: 缓存管理回调 (阶段3) ====================
@@ -12494,6 +13373,586 @@ def async_load_tab1_aov_section(channel_content, trigger, cached_agg, cache_vers
     
     print(f"✅ [异步加载] Tab1客单价分析渲染完成", flush=True)
     return result
+
+
+# ==================== 🆕 Tab 1: 导出经营分析报告 ====================
+@app.callback(
+    Output('download-tab1-order-report', 'data'),
+    Input('export-tab1-order-report-btn', 'n_clicks'),
+    [State('cached-order-agg', 'data'),
+     State('cached-comparison-data', 'data')],
+    prevent_initial_call=True
+)
+def export_tab1_order_report(n_clicks, cached_agg, cached_comparison):
+    """
+    导出Tab1订单数据概览的经营分析报告（Excel多Sheet格式）
+    
+    Sheet结构:
+    - Sheet1: 经营概览汇总（6个KPI卡片 + 环比）
+    - Sheet2: 渠道表现明细（各渠道订单数、销售额、利润额、利润率）
+    - Sheet3: 客单价分析（客单价分布）
+    - Sheet4: 商品销售TOP50
+    - Sheet5: 日趋势数据
+    """
+    if not n_clicks:
+        return None
+    
+    try:
+        print(f"\n{'='*60}")
+        print(f"📊 [Tab1导出] 开始生成经营分析报告...")
+        
+        if GLOBAL_DATA is None or GLOBAL_DATA.empty:
+            print(f"❌ [Tab1导出] 数据不可用")
+            return None
+        
+        df = GLOBAL_DATA.copy()
+        
+        # 获取门店名称（兼容多种字段名）
+        store_name = "未知门店"
+        store_field_candidates = ['门店名称', '门店', 'store_name', '店铺名称']
+        for field in store_field_candidates:
+            if field in df.columns:
+                store_names = df[field].dropna().unique()
+                if len(store_names) > 0:
+                    store_name = store_names[0]
+                    print(f"   ✅ 门店名称来源: '{field}' = {store_name}")
+                    break
+        
+        if store_name == "未知门店":
+            print(f"   ⚠️ 未找到门店字段，可用字段: {df.columns.tolist()[:10]}...")
+        
+        # 获取日期范围
+        date_range_str = ""
+        if '日期' in df.columns:
+            df_dates = pd.to_datetime(df['日期'])
+            start_date = df_dates.min().strftime('%Y-%m-%d')
+            end_date = df_dates.max().strftime('%Y-%m-%d')
+            date_range_str = f"{start_date}~{end_date}"
+        
+        # ========== 获取或重新计算order_agg ==========
+        if cached_agg is not None:
+            order_agg = pd.DataFrame(cached_agg)
+            # 检查缓存完整性
+            if '配送净成本' not in order_agg.columns:
+                order_agg = calculate_order_metrics(df, calc_mode='all_no_fallback')
+        else:
+            order_agg = calculate_order_metrics(df, calc_mode='all_no_fallback')
+        
+        print(f"   order_agg行数: {len(order_agg)}")
+        
+        # ========== Sheet1: 经营概览汇总 ==========
+        total_orders = len(order_agg)
+        
+        # 商品实收额 = 订单总收入（实收价格×月售 的聚合）
+        if '订单总收入' in order_agg.columns:
+            total_actual_sales = order_agg['订单总收入'].sum()
+        elif '实收价格' in order_agg.columns:
+            total_actual_sales = order_agg['实收价格'].sum()
+        else:
+            total_actual_sales = order_agg['商品实售价'].sum() if '商品实售价' in order_agg.columns else 0
+        
+        # 总利润 = 订单实际利润
+        total_profit = order_agg['订单实际利润'].sum() if '订单实际利润' in order_agg.columns else 0
+        
+        # 平均客单价 = 商品实收额 / 订单数
+        avg_order_value = total_actual_sales / total_orders if total_orders > 0 else 0
+        
+        # 总利润率 = 总利润 / 商品实收额 × 100
+        profit_rate = (total_profit / total_actual_sales * 100) if total_actual_sales > 0 else 0
+        
+        # 动销商品数
+        if '商品名称' in df.columns and '月售' in df.columns:
+            total_products = df[df['月售'] > 0]['商品名称'].nunique()
+        else:
+            total_products = df['商品名称'].nunique() if '商品名称' in df.columns else 0
+        
+        # 预计零售额
+        total_expected_revenue = order_agg['预计订单收入'].sum() if '预计订单收入' in order_agg.columns else total_actual_sales
+        
+        # 获取环比数据
+        comparison_metrics = {}
+        if cached_comparison:
+            comparison_metrics = cached_comparison.get('comparison_metrics', {})
+        
+        # 构建Sheet1数据（添加门店名称）
+        summary_data = [
+            {
+                '门店': store_name,
+                '指标': '📦 订单总数',
+                '数值': f"{total_orders:,}",
+                '单位': '笔',
+                '环比变化': comparison_metrics.get('订单数', {}).get('change_text', '-'),
+                '变化率': comparison_metrics.get('订单数', {}).get('change_pct_text', '-')
+            },
+            {
+                '门店': store_name,
+                '指标': '💰 商品实收额',
+                '数值': f"¥{total_actual_sales:,.2f}",
+                '单位': '元',
+                '环比变化': comparison_metrics.get('商品实收额', {}).get('change_text', '-'),
+                '变化率': comparison_metrics.get('商品实收额', {}).get('change_pct_text', '-')
+            },
+            {
+                '门店': store_name,
+                '指标': '💎 总利润',
+                '数值': f"¥{total_profit:,.2f}",
+                '单位': '元',
+                '环比变化': comparison_metrics.get('总利润', {}).get('change_text', '-'),
+                '变化率': comparison_metrics.get('总利润', {}).get('change_pct_text', '-')
+            },
+            {
+                '门店': store_name,
+                '指标': '🛒 平均客单价',
+                '数值': f"¥{avg_order_value:.2f}",
+                '单位': '元/单',
+                '环比变化': comparison_metrics.get('客单价', {}).get('change_text', '-'),
+                '变化率': comparison_metrics.get('客单价', {}).get('change_pct_text', '-')
+            },
+            {
+                '门店': store_name,
+                '指标': '📈 总利润率',
+                '数值': f"{profit_rate:.2f}%",
+                '单位': '%',
+                '环比变化': comparison_metrics.get('总利润率', {}).get('change_text', '-'),
+                '变化率': '-'
+            },
+            {
+                '门店': store_name,
+                '指标': '🏷️ 动销商品数',
+                '数值': f"{total_products:,}",
+                '单位': '个',
+                '环比变化': comparison_metrics.get('动销商品数', {}).get('change_text', '-'),
+                '变化率': comparison_metrics.get('动销商品数', {}).get('change_pct_text', '-')
+            }
+        ]
+        summary_df = pd.DataFrame(summary_data)
+        print(f"   ✅ Sheet1 经营概览: 6个指标")
+        
+        # ========== Sheet2: 渠道表现明细 ==========
+        channel_df = pd.DataFrame()
+        print(f"   🔍 order_agg列: {order_agg.columns.tolist()}")
+        print(f"   🔍 order_agg行数: {len(order_agg)}")
+        
+        # 尝试从order_agg或原始df获取渠道数据
+        if '渠道' in order_agg.columns:
+            source_df = order_agg
+            print(f"   ✅ 使用order_agg作为渠道数据源")
+        elif '渠道' in df.columns:
+            # 从原始df计算渠道统计
+            source_df = df
+            print(f"   ⚠️ order_agg无渠道字段，使用原始df")
+        else:
+            source_df = None
+            print(f"   ❌ 无法找到渠道字段")
+        
+        if source_df is not None and '渠道' in source_df.columns:
+            # 排除特定渠道
+            excluded_channels = ['收银机订单', '闪购小程序']
+            channel_data = source_df[~source_df['渠道'].isin(excluded_channels)].copy()
+            
+            # 根据数据源选择不同的聚合方式
+            if source_df is order_agg:
+                # order_agg已经是订单级，直接聚合
+                agg_dict = {'订单ID': 'count'}
+                if '订单总收入' in channel_data.columns:
+                    agg_dict['订单总收入'] = 'sum'
+                if '订单实际利润' in channel_data.columns:
+                    agg_dict['订单实际利润'] = 'sum'
+                channel_stats = channel_data.groupby('渠道').agg(agg_dict).reset_index()
+                rename_map = {'订单ID': '订单数', '订单总收入': '销售额', '订单实际利润': '利润额'}
+            else:
+                # 原始df是商品级，需要按订单聚合后再按渠道聚合
+                agg_dict = {'订单ID': 'nunique'}
+                if '实收价格' in channel_data.columns and '月售' in channel_data.columns:
+                    channel_data['_销售额'] = channel_data['实收价格'] * channel_data['月售']
+                    agg_dict['_销售额'] = 'sum'
+                if '利润额' in channel_data.columns:
+                    agg_dict['利润额'] = 'sum'
+                channel_stats = channel_data.groupby('渠道').agg(agg_dict).reset_index()
+                rename_map = {'订单ID': '订单数', '_销售额': '销售额'}
+            
+            channel_stats = channel_stats.rename(columns=rename_map)
+            
+            # 确保必要列存在
+            if '销售额' not in channel_stats.columns:
+                channel_stats['销售额'] = 0
+            if '利润额' not in channel_stats.columns:
+                channel_stats['利润额'] = 0
+            
+            channel_stats['门店'] = store_name
+            channel_stats['利润率(%)'] = ((channel_stats['利润额'] / channel_stats['销售额'].replace(0, np.nan)) * 100).fillna(0).round(2)
+            
+            # 排序并格式化
+            channel_stats = channel_stats.sort_values('销售额', ascending=False)
+            channel_stats['销售额'] = channel_stats['销售额'].apply(lambda x: f"¥{x:,.2f}")
+            channel_stats['利润额'] = channel_stats['利润额'].apply(lambda x: f"¥{x:,.2f}")
+            
+            # 精简为核心指标
+            final_cols = ['门店', '渠道', '订单数', '销售额', '利润额', '利润率(%)']
+            channel_df = channel_stats[[c for c in final_cols if c in channel_stats.columns]].copy()
+            print(f"   ✅ Sheet2 渠道表现: {len(channel_df)}行, {len(channel_df.columns)}列: {channel_df.columns.tolist()}")
+        
+        # ========== 获取渠道列表 ==========
+        channels = ['全部']
+        if '渠道' in df.columns:
+            excluded_channels = ['收银机订单', '闪购小程序']
+            valid_channels = df[~df['渠道'].isin(excluded_channels)]['渠道'].dropna().unique().tolist()
+            channels.extend(sorted(valid_channels))
+        
+        # ========== Sheet3: 客单价分析（分渠道） ==========
+        aov_df = pd.DataFrame()
+        if ('订单总收入' in order_agg.columns or '实收价格' in order_agg.columns) and '渠道' in order_agg.columns:
+            price_col = '订单总收入' if '订单总收入' in order_agg.columns else '实收价格'
+            bins = [0, 20, 50, 100, 200, float('inf')]
+            labels = ['0-20元', '20-50元', '50-100元', '100-200元', '200元以上']
+            
+            aov_results = []
+            for channel in channels:
+                if channel == '全部':
+                    channel_data = order_agg.copy()
+                else:
+                    channel_data = order_agg[order_agg['渠道'] == channel].copy()
+                
+                if len(channel_data) == 0:
+                    continue
+                
+                order_aov = channel_data[[price_col]].copy()
+                order_aov.columns = ['订单金额']
+                order_aov['客单价区间'] = pd.cut(order_aov['订单金额'], bins=bins, labels=labels)
+                
+                aov_stats = order_aov.groupby('客单价区间', observed=True).agg(
+                    订单数=('订单金额', 'count'),
+                    总金额=('订单金额', 'sum'),
+                    平均金额=('订单金额', 'mean')
+                ).reset_index()
+                
+                aov_stats['门店'] = store_name  # 添加门店列
+                aov_stats['渠道'] = channel
+                aov_stats['订单占比(%)'] = (aov_stats['订单数'] / aov_stats['订单数'].sum() * 100).round(2)
+                aov_stats['金额占比(%)'] = (aov_stats['总金额'] / aov_stats['总金额'].sum() * 100).round(2)
+                aov_results.append(aov_stats)
+            
+            if aov_results:
+                aov_df = pd.concat(aov_results, ignore_index=True)
+                aov_df['总金额'] = aov_df['总金额'].apply(lambda x: f"¥{x:,.2f}")
+                aov_df['平均金额'] = aov_df['平均金额'].apply(lambda x: f"¥{x:.2f}")
+                aov_df = aov_df[['门店', '渠道', '客单价区间', '订单数', '订单占比(%)', '总金额', '金额占比(%)', '平均金额']]
+                print(f"   ✅ Sheet3 客单价分析: {len(aov_df)}条记录（含{len(channels)}个渠道）")
+        
+        # ========== 商品TOP50/BOTTOM50辅助函数 ==========
+        def build_product_ranking(df_input, sort_by, top_n=50, ascending=False):
+            """
+            构建商品排行数据
+            Args:
+                df_input: 输入数据
+                sort_by: 排序维度（销量/销售额/利润额/利润率）
+                top_n: 取多少条
+                ascending: True=升序(BOTTOM), False=降序(TOP)
+            """
+            if '商品名称' not in df_input.columns:
+                return pd.DataFrame()
+            
+            # 计算销售额
+            df_calc = df_input.copy()
+            if '实收价格' in df_calc.columns and '月售' in df_calc.columns:
+                df_calc['_商品销售额'] = df_calc['实收价格'] * df_calc['月售']
+            
+            # 商品级聚合
+            agg_cols = {'商品名称': 'first'}
+            if '月售' in df_calc.columns:
+                agg_cols['月售'] = 'sum'
+            if '_商品销售额' in df_calc.columns:
+                agg_cols['_商品销售额'] = 'sum'
+            if '利润额' in df_calc.columns:
+                agg_cols['利润额'] = 'sum'
+            if '一级分类名' in df_calc.columns:
+                agg_cols['一级分类名'] = 'first'
+            if '三级分类名' in df_calc.columns:
+                agg_cols['三级分类名'] = 'first'
+            
+            product_stats = df_calc.groupby('商品名称').agg(agg_cols).reset_index(drop=True)
+            
+            # 计算利润率
+            if '_商品销售额' in product_stats.columns and '利润额' in product_stats.columns:
+                product_stats['利润率'] = ((product_stats['利润额'] / product_stats['_商品销售额'].replace(0, np.nan)) * 100).fillna(0).round(2)
+                # 限制利润率范围
+                product_stats['利润率'] = product_stats['利润率'].clip(-100, 100)
+            
+            # 排序字段映射
+            sort_col_map = {
+                '销量': '月售',
+                '销售额': '_商品销售额',
+                '利润额': '利润额',
+                '利润率': '利润率'
+            }
+            actual_sort_col = sort_col_map.get(sort_by, '_商品销售额')
+            
+            if actual_sort_col not in product_stats.columns:
+                return pd.DataFrame()
+            
+            # 过滤条件
+            if sort_by == '利润率':
+                # 利润率排序需要有销售额
+                if '_商品销售额' in product_stats.columns:
+                    if ascending:
+                        # BOTTOM: 找低利润率但有一定销售额的商品（至少50元）
+                        product_stats = product_stats[product_stats['_商品销售额'] > 50]
+                    else:
+                        # TOP: 找高利润率且销售额较好的商品（至少100元）
+                        product_stats = product_stats[product_stats['_商品销售额'] > 100]
+            elif sort_by == '销量' and ascending:
+                # BOTTOM销量: 只看有销售记录的（销量>0），排除完全没卖的
+                if '月售' in product_stats.columns:
+                    product_stats = product_stats[product_stats['月售'] > 0]
+            
+            # 排序
+            product_stats = product_stats.sort_values(actual_sort_col, ascending=ascending).head(top_n)
+            
+            # 重命名
+            rename_cols = {'_商品销售额': '销售额', '月售': '销量', '一级分类名': '一级分类', 
+                          '三级分类名': '三级分类', '利润率': '利润率(%)'}
+            product_stats = product_stats.rename(columns={k: v for k, v in rename_cols.items() if k in product_stats.columns})
+            
+            return product_stats
+        
+        # ========== Sheet4-11: 商品TOP50和BOTTOM50（4个维度×2，分渠道） ==========
+        # 正向TOP50
+        top50_sales_volume = []  # 销量TOP50
+        top50_sales_amount = []  # 销售额TOP50
+        top50_profit_amount = []  # 利润额TOP50
+        top50_profit_rate = []  # 利润率TOP50
+        
+        # 负向BOTTOM50
+        bottom50_sales_volume = []  # 销量最低50（滞销）
+        bottom50_sales_amount = []  # 销售额最低50
+        bottom50_profit_amount = []  # 利润额最低50（含亏损）
+        bottom50_profit_rate = []  # 利润率最低50（定价问题）
+        
+        for channel in channels:
+            if channel == '全部':
+                channel_data_for_top = df.copy()  # 改名避免覆盖channel_df
+            else:
+                channel_data_for_top = df[df['渠道'] == channel].copy()
+            
+            if len(channel_data_for_top) == 0:
+                continue
+            
+            # ===== 正向TOP50 =====
+            # 销量TOP50
+            top_volume = build_product_ranking(channel_data_for_top, '销量', ascending=False)
+            if not top_volume.empty:
+                top_volume['渠道'] = channel
+                top50_sales_volume.append(top_volume)
+            
+            # 销售额TOP50
+            top_amount = build_product_ranking(channel_data_for_top, '销售额', ascending=False)
+            if not top_amount.empty:
+                top_amount['渠道'] = channel
+                top50_sales_amount.append(top_amount)
+            
+            # 利润额TOP50
+            top_profit = build_product_ranking(channel_data_for_top, '利润额', ascending=False)
+            if not top_profit.empty:
+                top_profit['渠道'] = channel
+                top50_profit_amount.append(top_profit)
+            
+            # 利润率TOP50
+            top_rate = build_product_ranking(channel_data_for_top, '利润率', ascending=False)
+            if not top_rate.empty:
+                top_rate['渠道'] = channel
+                top50_profit_rate.append(top_rate)
+            
+            # ===== 负向BOTTOM50 =====
+            # 销量BOTTOM50（滞销商品）
+            bottom_volume = build_product_ranking(channel_data_for_top, '销量', ascending=True)
+            if not bottom_volume.empty:
+                bottom_volume['渠道'] = channel
+                bottom50_sales_volume.append(bottom_volume)
+            
+            # 销售额BOTTOM50
+            bottom_amount = build_product_ranking(channel_data_for_top, '销售额', ascending=True)
+            if not bottom_amount.empty:
+                bottom_amount['渠道'] = channel
+                bottom50_sales_amount.append(bottom_amount)
+            
+            # 利润额BOTTOM50（亏损商品）
+            bottom_profit = build_product_ranking(channel_data_for_top, '利润额', ascending=True)
+            if not bottom_profit.empty:
+                bottom_profit['渠道'] = channel
+                bottom50_profit_amount.append(bottom_profit)
+            
+            # 利润率BOTTOM50（定价问题商品）
+            bottom_rate = build_product_ranking(channel_data_for_top, '利润率', ascending=True)
+            if not bottom_rate.empty:
+                bottom_rate['渠道'] = channel
+                bottom50_profit_rate.append(bottom_rate)
+        
+        # 合并并格式化（添加门店列）
+        def format_product_df(df_list, dimension_name):
+            if not df_list:
+                return pd.DataFrame()
+            result = pd.concat(df_list, ignore_index=True)
+            
+            # 添加门店列
+            result['门店'] = store_name
+            
+            # 格式化金额列
+            if '销售额' in result.columns:
+                result['销售额'] = result['销售额'].apply(lambda x: f"¥{x:,.2f}" if pd.notna(x) else '-')
+            if '利润额' in result.columns:
+                result['利润额'] = result['利润额'].apply(lambda x: f"¥{x:,.2f}" if pd.notna(x) else '-')
+            
+            # 调整列顺序（门店在最前）
+            cols = ['门店', '渠道', '商品名称']
+            for col in ['一级分类', '三级分类', '销量', '销售额', '利润额', '利润率(%)']:
+                if col in result.columns:
+                    cols.append(col)
+            result = result[[c for c in cols if c in result.columns]]
+            
+            print(f"   ✅ {dimension_name}: {len(result)}条记录")
+            return result
+        
+        # 正向TOP50
+        top50_volume_df = format_product_df(top50_sales_volume, 'Sheet4 销量TOP50')
+        top50_amount_df = format_product_df(top50_sales_amount, 'Sheet5 销售额TOP50')
+        top50_profit_df = format_product_df(top50_profit_amount, 'Sheet6 利润额TOP50')
+        top50_rate_df = format_product_df(top50_profit_rate, 'Sheet7 利润率TOP50')
+        
+        # 负向BOTTOM50
+        bottom50_volume_df = format_product_df(bottom50_sales_volume, 'Sheet8 滞销商品')
+        bottom50_amount_df = format_product_df(bottom50_sales_amount, 'Sheet9 低销售额商品')
+        bottom50_profit_df = format_product_df(bottom50_profit_amount, 'Sheet10 亏损商品')
+        bottom50_rate_df = format_product_df(bottom50_profit_rate, 'Sheet11 低利润率商品')
+        
+        # ========== Sheet8: 日趋势数据（分渠道） ==========
+        trend_df = pd.DataFrame()
+        if '日期' in df.columns and '渠道' in df.columns:
+            df_for_trend = df.copy()
+            df_for_trend['日期'] = pd.to_datetime(df_for_trend['日期']).dt.date
+            
+            if '实收价格' in df_for_trend.columns and '月售' in df_for_trend.columns:
+                df_for_trend['_日销售额'] = df_for_trend['实收价格'] * df_for_trend['月售']
+            
+            trend_results = []
+            for channel in channels:
+                if channel == '全部':
+                    channel_data = df_for_trend.copy()
+                else:
+                    channel_data = df_for_trend[df_for_trend['渠道'] == channel].copy()
+                
+                if len(channel_data) == 0:
+                    continue
+                
+                daily_agg_cols = {}
+                if '订单ID' in channel_data.columns:
+                    daily_agg_cols['订单ID'] = 'nunique'
+                if '_日销售额' in channel_data.columns:
+                    daily_agg_cols['_日销售额'] = 'sum'
+                if '利润额' in channel_data.columns:
+                    daily_agg_cols['利润额'] = 'sum'
+                
+                if daily_agg_cols:
+                    daily_stats = channel_data.groupby('日期').agg(daily_agg_cols).reset_index()
+                    col_names = ['日期']
+                    for c in daily_agg_cols.keys():
+                        if c == '订单ID':
+                            col_names.append('订单数')
+                        elif c == '_日销售额':
+                            col_names.append('销售额')
+                        else:
+                            col_names.append('利润额')
+                    daily_stats.columns = col_names
+                    
+                    daily_stats['渠道'] = channel
+                    
+                    # 计算利润率和客单价（保持数值用于后续格式化）
+                    if '销售额' in daily_stats.columns and '利润额' in daily_stats.columns:
+                        daily_stats['利润率(%)'] = ((daily_stats['利润额'] / daily_stats['销售额'].replace(0, np.nan)) * 100).fillna(0).round(2)
+                    if '销售额' in daily_stats.columns and '订单数' in daily_stats.columns:
+                        daily_stats['客单价'] = (daily_stats['销售额'] / daily_stats['订单数']).round(2)
+                    
+                    trend_results.append(daily_stats)
+            
+            if trend_results:
+                trend_df = pd.concat(trend_results, ignore_index=True)
+                trend_df['门店'] = store_name  # 添加门店列
+                trend_df = trend_df.sort_values(['日期', '渠道'])
+                
+                # 格式化金额列
+                if '销售额' in trend_df.columns:
+                    trend_df['销售额'] = trend_df['销售额'].apply(lambda x: f"¥{x:,.2f}")
+                if '利润额' in trend_df.columns:
+                    trend_df['利润额'] = trend_df['利润额'].apply(lambda x: f"¥{x:,.2f}")
+                if '客单价' in trend_df.columns:
+                    trend_df['客单价'] = trend_df['客单价'].apply(lambda x: f"¥{x:.2f}")
+                
+                # 调整列顺序（门店在最前）
+                trend_df = trend_df[['门店', '日期', '渠道', '订单数', '销售额', '利润额', '利润率(%)', '客单价']]
+                print(f"   ✅ Sheet12 日趋势: {len(trend_df)}条记录（含{len(channels)}个渠道）")
+        
+        # ========== 生成Excel文件 ==========
+        output = BytesIO()
+        
+        # 🔍 写入前最终检查
+        print(f"   🔍 [写入前检查] channel_df类型: {type(channel_df)}")
+        print(f"   🔍 [写入前检查] channel_df.empty: {channel_df.empty}")
+        print(f"   🔍 [写入前检查] channel_df.shape: {channel_df.shape if not channel_df.empty else 'N/A'}")
+        if not channel_df.empty:
+            print(f"   🔍 [写入前检查] channel_df列: {channel_df.columns.tolist()}")
+        
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            # Sheet1: 经营概览
+            summary_df.to_excel(writer, sheet_name='1_经营概览', index=False)
+            
+            # Sheet2: 渠道表现
+            if not channel_df.empty:
+                print(f"   📝 正在写入Sheet2, 列数: {len(channel_df.columns)}")
+                channel_df.to_excel(writer, sheet_name='2_渠道表现', index=False)
+            
+            # Sheet3: 客单价分析（分渠道）
+            if not aov_df.empty:
+                aov_df.to_excel(writer, sheet_name='3_客单价分析', index=False)
+            
+            # Sheet4-7: 正向TOP50（优秀商品）
+            if not top50_volume_df.empty:
+                top50_volume_df.to_excel(writer, sheet_name='4_销量TOP50', index=False)
+            if not top50_amount_df.empty:
+                top50_amount_df.to_excel(writer, sheet_name='5_销售额TOP50', index=False)
+            if not top50_profit_df.empty:
+                top50_profit_df.to_excel(writer, sheet_name='6_利润额TOP50', index=False)
+            if not top50_rate_df.empty:
+                top50_rate_df.to_excel(writer, sheet_name='7_利润率TOP50', index=False)
+            
+            # Sheet8-11: 负向BOTTOM50（问题商品）
+            if not bottom50_volume_df.empty:
+                bottom50_volume_df.to_excel(writer, sheet_name='8_滞销商品TOP50', index=False)
+            if not bottom50_amount_df.empty:
+                bottom50_amount_df.to_excel(writer, sheet_name='9_低销售额TOP50', index=False)
+            if not bottom50_profit_df.empty:
+                bottom50_profit_df.to_excel(writer, sheet_name='10_亏损商品TOP50', index=False)
+            if not bottom50_rate_df.empty:
+                bottom50_rate_df.to_excel(writer, sheet_name='11_低利润率TOP50', index=False)
+            
+            # Sheet12: 日趋势（分渠道）
+            if not trend_df.empty:
+                trend_df.to_excel(writer, sheet_name='12_日趋势数据', index=False)
+        
+        output.seek(0)
+        
+        # 生成文件名
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"{store_name}_经营分析报告_{date_range_str}_{timestamp}.xlsx"
+        
+        print(f"✅ [Tab1导出] 成功生成: {filename}")
+        print(f"{'='*60}\n")
+        
+        return dcc.send_bytes(output.getvalue(), filename)
+        
+    except Exception as e:
+        print(f"❌ [Tab1导出] 错误: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 
 # Tab 1 详细分析 (⚡ 优化: 添加渐进式加载,避免闪屏)
@@ -13589,6 +15048,288 @@ def update_category_trend_by_channel(selected_channel):
         return dbc.Alert(f"图表更新失败: {str(e)}", color="danger")
 
 
+# 🆕 Tab 1: 一级分类销售趋势数据导出
+@app.callback(
+    Output('download-category-trend-data', 'data'),
+    Input('export-category-trend-btn', 'n_clicks'),
+    State('category-trend-data-store', 'data'),
+    State('category-trend-channel-filter', 'value'),
+    prevent_initial_call=True
+)
+def export_category_trend_data(n_clicks, category_data, selected_channel):
+    """导出一级分类销售趋势数据
+    
+    导出内容:
+    - Sheet1: 分类汇总数据 - 销售额、利润额、利润率、库存等
+    - Sheet2: 售罄商品明细 - 库存=0且近7天有销量的商品
+    - Sheet3: 滞销商品明细 - 按滞销程度分级
+    - Sheet4: 正常在售商品 - 库存>0且有销量
+    
+    ⚠️ 注意: 剔除"耗材"分类（非销售商品）
+    """
+    if not n_clicks:
+        return None
+    
+    try:
+        from io import BytesIO
+        from datetime import datetime, timedelta
+        
+        print(f"\n📤 [一级分类导出] 开始导出, 渠道={selected_channel}")
+        
+        # 获取全局数据
+        if GLOBAL_DATA is None or GLOBAL_DATA.empty:
+            print("❌ [一级分类导出] 全局数据为空")
+            return None
+        
+        df = GLOBAL_DATA.copy()
+        
+        # 🔴 剔除耗材分类（非销售商品）
+        if '一级分类名' in df.columns:
+            consumable_count = len(df[df['一级分类名'] == '耗材'])
+            df = df[df['一级分类名'] != '耗材']
+            print(f"📌 [一级分类导出] 剔除耗材: {consumable_count} 条记录")
+        
+        # 按渠道筛选
+        if selected_channel and selected_channel != 'all' and '渠道' in df.columns:
+            df = df[df['渠道'] == selected_channel]
+            if len(df) == 0:
+                print(f"❌ [一级分类导出] 渠道 '{selected_channel}' 无数据")
+                return None
+        
+        # 获取门店名称
+        store_name = df['门店名称'].iloc[0] if '门店名称' in df.columns else "未知门店"
+        
+        # 检测日期字段
+        date_col = '日期' if '日期' in df.columns else '下单时间'
+        if date_col in df.columns:
+            df[date_col] = pd.to_datetime(df[date_col])
+            last_date = df[date_col].max()
+            seven_days_ago = last_date - timedelta(days=7)
+            date_range_days = max((last_date - df[date_col].min()).days + 1, 1)
+        else:
+            last_date = datetime.now()
+            seven_days_ago = last_date - timedelta(days=7)
+            date_range_days = 30
+        
+        # 检测库存字段
+        stock_col = None
+        for col in ['库存', '剩余库存', 'stock', 'remaining_stock', '期末库存']:
+            if col in df.columns:
+                stock_col = col
+                break
+        
+        print(f"📌 [一级分类导出] 库存字段: {stock_col}, 最新日期: {last_date}")
+        
+        # ==================== 🔴 修正库存获取逻辑 ====================
+        # 关键: 获取每个商品在【数据最新日期】的库存，而非最后销售日期的库存
+        if stock_col and date_col in df.columns:
+            max_date = df[date_col].max()
+            # 获取最新日期的数据
+            last_day_data = df[df[date_col] == max_date]
+            # 每个商品在最新日期的库存
+            last_day_stock_map = last_day_data.groupby('商品名称')[stock_col].last().to_dict()
+            
+            print(f"📌 [一级分类导出] 最新日期商品数: {len(last_day_stock_map)}")
+            
+            # 对于最新日期没有销售记录的商品，取其最后一条记录的库存
+            all_products = df['商品名称'].unique()
+            products_without_last_day = set(all_products) - set(last_day_stock_map.keys())
+            
+            if products_without_last_day:
+                # 这些商品在最新日期没有销售，取最后一次的库存
+                for product in products_without_last_day:
+                    product_data = df[df['商品名称'] == product].sort_values(date_col)
+                    if len(product_data) > 0:
+                        last_day_stock_map[product] = product_data[stock_col].iloc[-1]
+                        
+            print(f"📌 [一级分类导出] 补充无最新日期销售的商品: {len(products_without_last_day)} 个")
+        else:
+            last_day_stock_map = {}
+        
+        # ==================== 按商品聚合数据 ====================
+        agg_dict = {
+            '门店名称': 'first',
+            '一级分类名': 'first',
+        }
+        
+        if '三级分类名' in df.columns:
+            agg_dict['三级分类名'] = 'first'
+        if '商品原价' in df.columns:
+            agg_dict['商品原价'] = 'first'
+        if '实收价格' in df.columns:
+            agg_dict['实收价格'] = 'mean'  # 平均单价
+        if '店内码' in df.columns:
+            agg_dict['店内码'] = 'first'
+        
+        # 销量字段
+        sales_col = '月售' if '月售' in df.columns else ('销量' if '销量' in df.columns else None)
+        if sales_col:
+            agg_dict[sales_col] = 'sum'
+        
+        # 利润字段
+        if '利润额' in df.columns:
+            agg_dict['利润额'] = 'sum'
+        
+        if date_col in df.columns:
+            agg_dict[date_col] = 'max'
+        
+        product_agg = df.groupby('商品名称').agg(agg_dict).reset_index()
+        
+        # 计算销售额
+        if sales_col and '实收价格' in df.columns:
+            product_sales = df.groupby('商品名称').apply(
+                lambda x: (x['实收价格'] * x[sales_col]).sum() if sales_col in x.columns else x['实收价格'].sum()
+            )
+            product_agg['销售额'] = product_agg['商品名称'].map(product_sales)
+        elif '实收价格' in product_agg.columns:
+            product_agg['销售额'] = product_agg['实收价格']
+        else:
+            product_agg['销售额'] = 0
+        
+        # 重命名销量列
+        if sales_col and sales_col in product_agg.columns:
+            product_agg.rename(columns={sales_col: '月售'}, inplace=True)
+        if '月售' not in product_agg.columns:
+            product_agg['月售'] = 1
+        
+        # 利润率
+        if '利润额' in product_agg.columns:
+            product_agg['利润率'] = (product_agg['利润额'] / product_agg['销售额'].replace(0, np.nan) * 100).fillna(0).round(2)
+        else:
+            product_agg['利润额'] = 0
+            product_agg['利润率'] = 0
+        
+        # 最后售卖日期
+        if date_col in product_agg.columns:
+            product_agg.rename(columns={date_col: '最后售卖日期'}, inplace=True)
+        else:
+            product_agg['最后售卖日期'] = last_date
+        
+        # ==================== 🔴 使用修正后的库存Map ====================
+        if last_day_stock_map:
+            product_agg['剩余库存'] = product_agg['商品名称'].map(last_day_stock_map).fillna(0).astype(int)
+        else:
+            product_agg['剩余库存'] = 0
+        
+        # 日均销量和库存周转天数
+        product_agg['日均销量'] = (product_agg['月售'] / date_range_days).round(2)
+        product_agg['库存周转天数'] = (product_agg['剩余库存'] / product_agg['日均销量'].replace(0, np.nan)).fillna(0).replace([np.inf, -np.inf], 999).round(1)
+        
+        # 滞销天数
+        product_agg['滞销天数'] = (last_date - product_agg['最后售卖日期']).dt.days.fillna(0).astype(int)
+        
+        # ==================== 按业务动作分类 ====================
+        
+        # 近7天有销量的商品
+        if date_col in df.columns:
+            recent_products = set(df[df[date_col] >= seven_days_ago]['商品名称'].unique())
+        else:
+            recent_products = set(product_agg['商品名称'].tolist())
+        
+        # 🔴 Sheet2: 售罄商品 (剩余库存=0 且 近7天有销量)
+        # 关键修正: 使用修正后的剩余库存判断
+        sellout_df = product_agg[
+            (product_agg['剩余库存'] == 0) & 
+            (product_agg['商品名称'].isin(recent_products))
+        ].copy()
+        sellout_df = sellout_df.sort_values('月售', ascending=False)
+        sellout_df['业务动作'] = '立即补货'
+        
+        print(f"📌 [一级分类导出] 售罄商品: {len(sellout_df)} 个")
+        
+        # Sheet3: 滞销商品 (库存>0 且 滞销)
+        stagnant_df = product_agg[product_agg['剩余库存'] > 0].copy()
+        stagnant_df['滞销等级'] = ''
+        stagnant_df.loc[stagnant_df['滞销天数'] == 7, '滞销等级'] = '轻度滞销'
+        stagnant_df.loc[(stagnant_df['滞销天数'] >= 8) & (stagnant_df['滞销天数'] <= 15), '滞销等级'] = '中度滞销'
+        stagnant_df.loc[(stagnant_df['滞销天数'] >= 16) & (stagnant_df['滞销天数'] <= 30), '滞销等级'] = '重度滞销'
+        stagnant_df.loc[stagnant_df['滞销天数'] > 30, '滞销等级'] = '超重度滞销'
+        stagnant_df = stagnant_df[stagnant_df['滞销等级'] != ''].copy()
+        stagnant_df = stagnant_df.sort_values('库存周转天数', ascending=False)
+        stagnant_df['业务动作'] = '清仓或下架'
+        
+        # Sheet4: 正常在售商品
+        normal_df = product_agg[
+            (product_agg['剩余库存'] > 0) & 
+            (~product_agg['商品名称'].isin(stagnant_df['商品名称']))
+        ].copy()
+        normal_df = normal_df.sort_values('销售额', ascending=False)
+        normal_df['业务动作'] = '持续监控'
+        
+        # ==================== Sheet1: 分类汇总数据 ====================
+        if category_data:
+            category_summary = pd.DataFrame(category_data)
+            # 🔴 剔除耗材分类
+            if '分类' in category_summary.columns:
+                category_summary = category_summary[category_summary['分类'] != '耗材']
+            elif '一级分类名' in category_summary.columns:
+                category_summary = category_summary[category_summary['一级分类名'] != '耗材']
+        else:
+            # 如果没有store数据，手动计算（已剔除耗材）
+            category_summary = product_agg.groupby('一级分类名').agg({
+                '销售额': 'sum',
+                '利润额': 'sum',
+                '月售': 'sum',
+                '剩余库存': 'sum'
+            }).reset_index()
+            category_summary.rename(columns={'一级分类名': '分类'}, inplace=True)
+            category_summary['利润率'] = (category_summary['利润额'] / category_summary['销售额'].replace(0, np.nan) * 100).fillna(0).round(2)
+        
+        # ==================== 导出字段定义 ====================
+        export_fields = [
+            '门店名称', '商品名称', '一级分类名', '三级分类名',
+            '商品原价', '实收价格', '店内码', '月售',
+            '剩余库存', '库存周转天数', '日均销量', '最后售卖日期',
+            '销售额', '利润额', '利润率', '业务动作'
+        ]
+        
+        stagnant_export_fields = export_fields + ['滞销等级', '滞销天数']
+        
+        # ==================== 创建Excel文件 ====================
+        output = BytesIO()
+        
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            # Sheet1: 分类汇总
+            if len(category_summary) > 0:
+                category_export_cols = [col for col in category_summary.columns if col in category_summary.columns]
+                category_summary[category_export_cols].to_excel(writer, sheet_name='分类汇总_管理层视角', index=False)
+                print(f"✅ [导出] 分类汇总: {len(category_summary)} 个分类")
+            
+            # Sheet2: 售罄商品
+            if len(sellout_df) > 0:
+                sellout_export = sellout_df[[col for col in export_fields if col in sellout_df.columns]].copy()
+                sellout_export.to_excel(writer, sheet_name='售罄商品明细_需补货', index=False)
+                print(f"✅ [导出] 售罄商品: {len(sellout_df)} 个商品")
+            
+            # Sheet3: 滞销商品
+            if len(stagnant_df) > 0:
+                stagnant_export = stagnant_df[[col for col in stagnant_export_fields if col in stagnant_df.columns]].copy()
+                stagnant_export.to_excel(writer, sheet_name='滞销商品明细_需清仓', index=False)
+                print(f"✅ [导出] 滞销商品: {len(stagnant_df)} 个商品")
+            
+            # Sheet4: 正常在售商品
+            if len(normal_df) > 0:
+                normal_export = normal_df[[col for col in export_fields if col in normal_df.columns]].copy()
+                normal_export.to_excel(writer, sheet_name='正常在售商品_监控', index=False)
+                print(f"✅ [导出] 正常在售: {len(normal_df)} 个商品")
+        
+        output.seek(0)
+        
+        # 生成文件名
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        channel_suffix = f"_{selected_channel}" if selected_channel and selected_channel != 'all' else ""
+        filename = f"{store_name}_一级分类销售分析{channel_suffix}_{timestamp}.xlsx"
+        
+        print(f"✅ [一级分类导出] 成功，文件名: {filename}")
+        return dcc.send_bytes(output.getvalue(), filename)
+        
+    except Exception as e:
+        print(f"❌ [一级分类导出] 错误: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
 # 🆕 Tab 1: 客单价分析渠道下拉框选项初始化
 @app.callback(
     Output('aov-analysis-channel-filter', 'options'),
@@ -13887,17 +15628,27 @@ def calculate_time_period_quadrants(df, period='week', profit_threshold=30.0, st
         for p in periods:
             period_df = df[df['周期'] == p].copy()
             
+            # 🔧 使用统一的库存获取函数获取该周期的最新库存
+            date_col = '日期' if '日期' in period_df.columns else '下单时间'
+            stock_col = '库存' if '库存' in period_df.columns else None
+            if stock_col:
+                period_stock_map = get_product_latest_stock(period_df, stock_col=stock_col, date_col=date_col)
+            else:
+                period_stock_map = {}
+            
             # 商品聚合(简化版,只计算关键指标)
             product_agg = period_df.groupby('商品名称').agg({
                 '预计订单收入': 'sum',
                 '实收价格': 'sum' if '实收价格' in period_df.columns else lambda x: period_df['预计订单收入'].sum(),
                 '利润额': 'sum',
                 '月售': 'sum',
-                '库存': 'last',
                 '订单ID': 'nunique'
             }).reset_index()
             
-            product_agg.columns = ['商品名称', '销售额', '实收价格_sum', '实际利润', '总销量', '库存', '订单数']
+            product_agg.columns = ['商品名称', '销售额', '实收价格_sum', '实际利润', '总销量', '订单数']
+            
+            # 🔧 使用统一函数的库存数据
+            product_agg['库存'] = product_agg['商品名称'].map(period_stock_map).fillna(0).astype(int)
             
             # 计算利润率
             if '实收价格' in period_df.columns:
@@ -14769,12 +16520,19 @@ def render_tab3_content(active_tab, data_trigger, tabs_status):
         else:
             print("✅ [四象限分析] 检测到'实收价格'字段，将用于计算实收利润率")
         
+        # 🔧 使用统一的库存获取函数获取每个商品的最新库存
+        date_col = '日期' if '日期' in df.columns else '下单时间'
+        stock_col = '库存' if '库存' in df.columns else None
+        if stock_col:
+            stock_map = get_product_latest_stock(df, stock_col=stock_col, date_col=date_col)
+        else:
+            stock_map = {}
+        
         agg_dict = {
             '预计订单收入': 'sum',         # ✅ 销售额（使用Y列预计订单收入，更真实）
             '商品采购成本': 'sum',         # 成本
             '利润额': 'sum',               # ✅ 商品毛利（N列，分析商品本身盈利能力）
             '月售': 'sum',                 # 销量（整个周期累计）
-            '库存': 'last',                # ✅ 库存（取最后一天的库存，反映当前状态）
             '订单ID': 'nunique',            # 订单数
             '店内码': 'first',              # ✅ 新增：店内码
             '一级分类名': 'first',          # ✅ 新增：一级分类
@@ -14789,9 +16547,12 @@ def render_tab3_content(active_tab, data_trigger, tabs_status):
         
         # 设置列名
         if has_actual_price:
-            product_agg.columns = ['商品名称', '销售额', '成本', '实际利润', '总销量', '库存', '订单数', '店内码', '一级分类名', '三级分类名', '实收价格']
+            product_agg.columns = ['商品名称', '销售额', '成本', '实际利润', '总销量', '订单数', '店内码', '一级分类名', '三级分类名', '实收价格']
         else:
-            product_agg.columns = ['商品名称', '销售额', '成本', '实际利润', '总销量', '库存', '订单数', '店内码', '一级分类名', '三级分类名']
+            product_agg.columns = ['商品名称', '销售额', '成本', '实际利润', '总销量', '订单数', '店内码', '一级分类名', '三级分类名']
+        
+        # 🔧 使用统一函数的库存数据（而不是聚合时的last）
+        product_agg['库存'] = product_agg['商品名称'].map(stock_map).fillna(0).astype(int)
         
         print(f"✅ [商品聚合] 使用'利润额'(N列商品毛利)，总利润: ¥{product_agg['实际利润'].sum():,.2f}")
         
@@ -15020,16 +16781,23 @@ def render_tab3_content(active_tab, data_trigger, tabs_status):
         dbc.Row([
             dbc.Col([
                 html.H4("🎯 商品四象限智能分析", className="mb-0")
-            ], md=8),
+            ], md=6),
             dbc.Col([
+                # 智能调价按钮
+                dbc.Button(
+                    [html.I(className="bi bi-calculator me-2"), "💰 智能调价V3.0"],
+                    id='btn-open-pricing-modal-v3',
+                    color='warning',
+                    size='sm',
+                    className='me-2'
+                ),
                 dbc.Button(
                     [html.I(className="bi bi-download me-2"), "📥 导出分析数据"],
                     id='btn-export-quadrant',
                     color='primary',
                     size='sm',
-                    className='float-end'
                 )
-            ], md=4)
+            ], md=6, className="text-end")
         ], className="mb-3"),
         
         # 象限统计卡片
@@ -18699,3502 +20467,6 @@ app.clientside_callback(
     prevent_initial_call=True
 )
 
-
-# ==================== Tab 2: 营销成本分析 ====================
-
-@app.callback(
-    Output('tab-2-content', 'children'),
-    [Input('main-tabs', 'value'),
-     Input('data-update-trigger', 'data')],  # 🔴 监听数据更新
-    [State('current-store-id', 'data'),
-     State('store-data', 'data'),
-     State('tabs-loaded-status', 'data')],
-    prevent_initial_call=True
-)
-def render_tab2_marketing_content(active_tab, data_trigger, store_id, store_data, tabs_status):
-    """Tab 2: 营销成本异常分析
-    
-    ⚡ 懒加载优化: 首次显示骨架屏
-    """
-    if active_tab != 'tab-2':
-        raise PreventUpdate
-    
-    # ⚡ 懒加载: 首次加载时先显示骨架屏
-    if tabs_status and not tabs_status.get('tab-2', False):
-        skeleton = create_tab_skeleton() if LOADING_COMPONENTS_AVAILABLE else html.Div("加载中...")
-        return skeleton
-    
-    # 🔍 增强调试日志
-    global_len = len(GLOBAL_DATA) if GLOBAL_DATA is not None else 0
-    store_len = len(store_data) if store_data else 0
-    print(f"[Tab7渲染] 门店ID: {store_id}, 触发值: {data_trigger}")
-    print(f"[Tab7渲染] GLOBAL_DATA: {global_len}行, store_data: {store_len}行", flush=True)
-    
-    try:
-        # 检查分析器是否可用
-        if not TAB7_ANALYZERS_AVAILABLE:
-            return dbc.Alert([
-                html.H4("⚠️ 功能不可用", className="alert-heading"),
-                html.P("营销成本八象限分析功能需要安装相关分析器模块。"),
-                html.Hr(),
-                html.P("请确保以下文件存在：", className="mb-0"),
-                html.Ul([
-                    html.Li("科学八象限分析器.py"),
-                    html.Li("评分模型分析器.py")
-                ])
-            ], color="warning", className="m-3")
-        
-        # ✅ 2025-12-02: 直接使用GLOBAL_DATA保证数据一致性
-        # （store_data可能因回调顺序问题导致数据不同步）
-        if GLOBAL_DATA is not None and len(GLOBAL_DATA) > 0:
-            df = GLOBAL_DATA.copy()
-            print(f"[Tab7] ✅ 使用GLOBAL_DATA: {len(df)} 行", flush=True)
-        elif store_data and len(store_data) > 0:
-            df = pd.DataFrame(store_data)
-            print(f"[Tab7] ⚠️ 回退使用store_data: {len(df)} 行", flush=True)
-        else:
-            df = None
-        
-        if df is None or len(df) == 0:
-            return dbc.Alert("📊 暂无数据，请先加载数据", color="warning", className="text-center")
-        
-        # ❌ 2025-11-18: 禁用耗材剔除,保留真实成本数据
-        # if '一级分类名' in df.columns:
-        #     original_len = len(df)
-        #     df = df[df['一级分类名'] != '耗材'].copy()
-        #     removed = original_len - len(df)
-        #     if removed > 0:
-        #         print(f"[Tab7] 已剔除耗材数据: {removed} 行", flush=True)
-        print(f"[Tab7] ✅ 保留耗材数据 (包含购物袋等成本)", flush=True)
-        
-        # 🔴 按渠道筛选(只排除咖啡渠道)
-        if '渠道' in df.columns:
-            excluded_channels = CHANNELS_TO_REMOVE  # 只排除咖啡渠道
-            if excluded_channels:  # 只有在有需要排除的渠道时才过滤
-                original_len = len(df)
-                df = df[~df['渠道'].isin(excluded_channels)].copy()
-                removed = original_len - len(df)
-                if removed > 0:
-                    print(f"[Tab7] 已剔除渠道数据: {removed} 行 ({', '.join(excluded_channels)})", flush=True)
-        
-        # ✅ 检查必需字段
-        required_fields = ['商品名称', '实收价格', '利润额', '订单ID', '月售']
-        missing_fields = [f for f in required_fields if f not in df.columns]
-        if missing_fields:
-            return dbc.Alert(f"❌ 缺失必需字段: {', '.join(missing_fields)}", color="danger", className="text-center")
-        
-        # 初始化科学方法分析器
-        scientific_analyzer = ScientificQuadrantAnalyzer(df, use_category_threshold=True)
-        scientific_result = scientific_analyzer.analyze_with_confidence()
-        
-        # 初始化评分模型分析器
-        scoring_analyzer = ScoringModelAnalyzer(df)
-        scoring_result = scoring_analyzer.analyze_with_scoring({
-            '营销效率': 0.25,
-            '盈利能力': 0.45,
-            '动销健康': 0.3
-        })
-        
-        # ==================== 创建双维度分析布局 ====================
-        layout = html.Div([
-            # 页面标题
-            dbc.Row([
-                dbc.Col([
-                    html.H3([
-                        html.I(className="bi bi-grid-3x3-gap me-2"),
-                        "营销效率分析看板"
-                    ], className="text-primary mb-2"),
-                    html.P("双维度商品分析与营销效率评估", 
-                          className="text-muted")
-                ], md=6),
-                dbc.Col([
-                    html.Label("筛选条件:", className="fw-bold"),
-                    dcc.Dropdown(
-                        id='tab7-channel-filter',
-                        options=[{'label': '📊 全部渠道', 'value': 'ALL'}] + 
-                                ([{'label': ch, 'value': ch} for ch in sorted(df['渠道'].dropna().unique())] if '渠道' in df.columns else []),
-                        value='ALL',
-                        placeholder="选择渠道",
-                        clearable=False,
-                        className="mb-2"
-                    ),
-                    dcc.Dropdown(
-                        id='tab7-category-filter',
-                        options=[{'label': '📦 全部品类', 'value': 'ALL'}] + 
-                                ([{'label': cat, 'value': cat} for cat in sorted(df['一级分类名'].dropna().unique())] if '一级分类名' in df.columns else []),
-                        value='ALL',
-                        placeholder="选择品类",
-                        clearable=False
-                    )
-                ], md=3),
-                dbc.Col([
-                    dbc.Button([
-                        html.I(className="bi bi-search me-2"),
-                        "查看差异对比"
-                    ], id="btn-show-difference", color="info", size="lg", className="w-100 mb-1"),
-                    dbc.Modal([
-                        dbc.ModalHeader("🔍 双方法分类差异对比"),
-                        dbc.ModalBody(id='difference-comparison-content'),
-                        dbc.ModalFooter(
-                            dbc.Button("关闭", id="close-difference-modal", className="ms-auto")
-                        )
-                    ], id="difference-comparison-modal", size="xl", scrollable=True)
-                ], md=3)
-            ], className="mb-4"),
-            
-            # 双维度对比区 - 左右分栏
-            dbc.Row([
-                # 左侧: 科学方法(品类动态阈值)
-                dbc.Col([
-                    dbc.Card([
-                        dbc.CardHeader([
-                            html.I(className="bi bi-diagram-3 me-2"),
-                            html.Strong("🔬 科学方法(品类动态阈值)")
-                        ], className="bg-primary text-white"),
-                        dbc.CardBody([
-                            html.P("特点: 品类自适应、风险控制、置信度评估", className="text-muted small mb-3"),
-                            
-                            # 关键指标
-                            dbc.Row([
-                                dbc.Col([
-                                    html.Div([
-                                        html.H6("黄金商品", className="mb-1"),
-                                        html.H4(id='scientific-golden-count', className="text-success mb-0")
-                                    ], className="text-center p-2 border rounded")
-                                ], md=4),
-                                dbc.Col([
-                                    html.Div([
-                                        html.H6("淘汰区", className="mb-1"),
-                                        html.H4(id='scientific-eliminate-count', className="text-danger mb-0")
-                                    ], className="text-center p-2 border rounded")
-                                ], md=4),
-                                dbc.Col([
-                                    html.Div([
-                                        html.H6("低置信商品", className="mb-1"),
-                                        html.H4(id='scientific-low-confidence-count', className="text-warning mb-0")
-                                    ], className="text-center p-2 border rounded")
-                                ], md=4)
-                            ], className="mb-3"),
-                            
-                            # 象限分布饼图 - 改为动态容器
-                            html.Div(id='scientific-quadrant-pie-container', className="mb-3"),
-                            
-                            # 置信度分布图 - 改为动态容器
-                            html.Div(id='scientific-confidence-bar-container', className="mb-3"),
-                            
-                            # 品类阈值信息(筛选品类时显示)
-                            html.Div(id='scientific-category-threshold-info'),
-                            
-                            # 导出按钮
-                            html.Div([
-                                dbc.Button([
-                                    html.I(className="bi bi-file-earmark-excel me-2"),
-                                    "导出科学分析报告"
-                                ], id="export-scientific-btn", color="primary", className="w-100"),
-                                dcc.Download(id="download-scientific-data")
-                            ])
-                        ])
-                    ], className="shadow-sm h-100")
-                ], md=6),
-                
-                # 右侧: 评分模型
-                dbc.Col([
-                    dbc.Card([
-                        dbc.CardHeader([
-                            html.I(className="bi bi-star-fill me-2"),
-                            html.Strong("📝 评分模型(综合评估)")
-                        ], className="bg-success text-white"),
-                        dbc.CardBody([
-                            html.P("特点: 快速排名、KPI友好、连续评分", className="text-muted small mb-3"),
-                            
-                            # 关键指标
-                            dbc.Row([
-                                dbc.Col([
-                                    html.Div([
-                                        html.H6("平均分", className="mb-1"),
-                                        html.H4(id='scoring-avg-score', className="text-info mb-0")
-                                    ], className="text-center p-2 border rounded")
-                                ], md=4),
-                                dbc.Col([
-                                    html.Div([
-                                        html.H6("优秀商品", className="mb-1"),
-                                        html.H4(id='scoring-excellent-count', className="text-success mb-0")
-                                    ], className="text-center p-2 border rounded")
-                                ], md=4),
-                                dbc.Col([
-                                    html.Div([
-                                        html.H6("需优化", className="mb-1"),
-                                        html.H4(id='scoring-poor-count', className="text-danger mb-0")
-                                    ], className="text-center p-2 border rounded")
-                                ], md=4)
-                            ], className="mb-3"),
-                            
-                            # 评分分布柱状图 - 改为动态容器
-                            html.Div(id='scoring-distribution-bar-container', className="mb-3"),
-                            
-                            # 品类平均分(筛选品类时显示)
-                            html.Div(id='scoring-category-avg-info'),
-                            
-                            # 导出按钮
-                            html.Div([
-                                dbc.Button([
-                                    html.I(className="bi bi-file-earmark-excel me-2"),
-                                    "导出评分排名报告"
-                                ], id="export-scoring-btn", color="success", className="w-100"),
-                                dcc.Download(id="download-scoring-data")
-                            ])
-                        ])
-                    ], className="shadow-sm h-100")
-                ], md=6)
-            ], className="mb-4"),
-            
-            # ==================== AI智能洞察区域 ====================
-            dbc.Card([
-                dbc.CardHeader([
-                    dbc.Row([
-                        dbc.Col([
-                            html.I(className="bi bi-robot me-2"),
-                            html.Strong("🤖 AI智能洞察 (通义千问)")
-                        ], md=8),
-                        dbc.Col([
-                            dbc.Button([
-                                html.I(className="bi bi-lightning-charge me-2"),
-                                "生成AI分析"
-                            ], id="btn-generate-ai-insight", color="warning", size="sm", 
-                               className="float-end", disabled=not AI_QWEN_AVAILABLE)
-                        ], md=4)
-                    ], align="center")
-                ], className="bg-gradient bg-warning bg-opacity-75 text-dark"),
-                dbc.CardBody([
-                    # AI状态提示
-                    html.Div(id='ai-insight-status', children=[
-                        dbc.Alert([
-                            html.I(className="bi bi-info-circle me-2"),
-                            "点击「生成AI分析」按钮，AI将基于商品数据为您提供智能洞察和优化建议"
-                        ], color="info", className="mb-0") if AI_QWEN_AVAILABLE else
-                        dbc.Alert([
-                            html.I(className="bi bi-exclamation-triangle me-2"),
-                            "AI服务未配置，请确保ai_qwen_service.py模块已正确安装"
-                        ], color="warning", className="mb-0")
-                    ]),
-                    
-                    # AI整体洞察结果
-                    html.Div(id='ai-overall-insight', className="mt-3"),
-                    
-                    # AI问题商品建议
-                    html.Div(id='ai-problem-products-advice', className="mt-3"),
-                    
-                    # 加载状态
-                    dbc.Spinner(
-                        html.Div(id='ai-loading-indicator'),
-                        color="warning",
-                        type="grow",
-                        size="sm"
-                    )
-                ])
-            ], className="shadow-sm mb-4 border-warning"),
-            
-            # 底部: 两种分析模型的定义说明
-            dbc.Card([
-                dbc.CardHeader([
-                    html.I(className="bi bi-book me-2"),
-                    html.Strong("📚 两种分析模型说明")
-                ], className="bg-info text-white"),
-                dbc.CardBody([
-                    # 科学方法说明
-                    html.Div([
-                        html.H5([
-                            html.I(className="bi bi-diagram-3 me-2 text-primary"),
-                            "🔬 科学方法（品类动态阈值）"
-                        ], className="mb-3"),
-                        html.P([
-                            html.Strong("核心思想："),
-                            "不同品类的商品特性不同，不应该用统一标准来评判。"
-                        ], className="mb-2"),
-                        html.P([
-                            html.Strong("工作原理："),
-                            html.Br(),
-                            "• 根据每个品类的历史数据，自动计算该品类的合理利润率和售罄率",
-                            html.Br(),
-                            "• 用这个品类专属的标准来判断商品好坏",
-                            html.Br(),
-                            "• 给出置信度评分，告诉你这个判断有多可靠"
-                        ], className="mb-3"),
-                        html.Div([
-                            html.Small([
-                                html.Strong("📌 关于售罄率：", className="text-info"),
-                                "订单数据本身已经是卖出的商品，售罄率 = 销量 ÷ (销量 + 剩余库存)，反映商品的销售进度"
-                            ], className="d-block mb-2 p-2 bg-info bg-opacity-10 rounded")
-                        ]),
-                        html.Div([
-                            html.Strong("💡 举个例子：", className="text-primary"),
-                            html.Div([
-                                html.P("饮料类商品：平均利润率20%，售罄率60%", className="mb-1 ms-3"),
-                                html.P("生鲜类商品：平均利润率10%，售罄率80%", className="mb-1 ms-3"),
-                                html.Br(),
-                                html.P("如果一瓶饮料利润率25%、售罄率65% → ", className="mb-1 ms-3", style={'display': 'inline'}),
-                                html.Strong("判定为优质商品", className="text-success"),
-                                html.Br(),
-                                html.P("如果一份生鲜利润率25%、售罄率65% → ", className="mb-1 ms-3", style={'display': 'inline'}),
-                                html.Strong("利润好但售罄一般", className="text-warning"),
-                                html.Br(),
-                                html.P("→ 同样25%利润率，在不同品类中的评价不同！", className="mb-1 ms-3 fst-italic text-muted")
-                            ], className="p-3 bg-light rounded mb-3")
-                        ]),
-                        html.P([
-                            html.Strong("适用场景："),
-                            "品类多样、需要精细化管理、关注风险控制"
-                        ], className="mb-1 text-muted small")
-                    ], className="mb-4"),
-                    
-                    html.Hr(),
-                    
-                    # 评分模型说明
-                    html.Div([
-                        html.H5([
-                            html.I(className="bi bi-star-fill me-2 text-success"),
-                            "📝 评分模型（综合评估）"
-                        ], className="mb-3"),
-                        html.P([
-                            html.Strong("核心思想："),
-                            "用一个综合分数快速排名，找出表现最好和最差的商品。"
-                        ], className="mb-2"),
-                        html.P([
-                            html.Strong("工作原理："),
-                            html.Br(),
-                            "• 把利润率、动销率、销售额等指标都转换成0-100分",
-                            html.Br(),
-                            "• 按照权重加权平均（盈利能力45%、动销健康30%、销售规模25%）",
-                            html.Br(),
-                            "• 得出每个商品的综合得分，直接排名"
-                        ], className="mb-3"),
-                        html.Div([
-                            html.Strong("💡 举个例子：", className="text-success"),
-                            html.Div([
-                                html.P("可口可乐：", className="mb-1 ms-3"),
-                                html.P("  • 盈利能力得分：75分（利润率中等）", className="mb-1 ms-4"),
-                                html.P("  • 动销健康得分：90分（卖得很好）", className="mb-1 ms-4"),
-                                html.P("  • 销售规模得分：95分（销量大）", className="mb-1 ms-4"),
-                                html.P("  → 综合得分 = 75×0.45 + 90×0.30 + 95×0.25 = ", className="mb-1 ms-3", style={'display': 'inline'}),
-                                html.Strong("84.5分", className="text-success"),
-                                html.Br(),
-                                html.Br(),
-                                html.P("小众饮料：", className="mb-1 ms-3"),
-                                html.P("  • 盈利能力得分：85分（利润率高）", className="mb-1 ms-4"),
-                                html.P("  • 动销健康得分：40分（动销慢）", className="mb-1 ms-4"),
-                                html.P("  • 销售规模得分：30分（销量小）", className="mb-1 ms-4"),
-                                html.P("  → 综合得分 = 85×0.45 + 40×0.30 + 30×0.25 = ", className="mb-1 ms-3", style={'display': 'inline'}),
-                                html.Strong("58.8分", className="text-warning"),
-                                html.Br(),
-                                html.P("→ 虽然利润率高，但综合表现一般", className="mb-1 ms-3 fst-italic text-muted")
-                            ], className="p-3 bg-light rounded mb-3")
-                        ]),
-                        html.P([
-                            html.Strong("适用场景："),
-                            "快速决策、商品表现评比、排名对比、整体分析"
-                        ], className="mb-1 text-muted small")
-                    ]),
-                    
-                    html.Hr(className="my-4"),
-                    
-                    # 两种方法对比
-                    html.Div([
-                        html.H6("🔄 如何选择？", className="text-center mb-3"),
-                        dbc.Row([
-                            dbc.Col([
-                                html.Div([
-                                    html.Strong("选科学方法", className="text-primary d-block mb-2"),
-                                    html.Ul([
-                                        html.Li("品类差异大"),
-                                        html.Li("需要精细化分析"),
-                                        html.Li("关注判断的可靠性")
-                                    ], className="small")
-                                ], className="p-3 border border-primary rounded")
-                            ], md=6),
-                            dbc.Col([
-                                html.Div([
-                                    html.Strong("选评分模型", className="text-success d-block mb-2"),
-                                    html.Ul([
-                                        html.Li("需要快速排名"),
-                                        html.Li("评比商品表现"),
-                                        html.Li("找出TOP/底部商品")
-                                    ], className="small")
-                                ], className="p-3 border border-success rounded")
-                            ], md=6)
-                        ])
-                    ])
-                ])
-            ], className="shadow-sm mb-4"),
-            
-            # 隐藏的存储组件
-            dcc.Store(id='tab7-scientific-data', data=scientific_result.to_dict('records')),
-            dcc.Store(id='tab7-scoring-data', data=scoring_result.to_dict('records')),
-            dcc.Store(id='tab7-raw-data', data=df.to_dict('records')),
-            dcc.Store(id='tab7-analyzer-data', data=None)  # 用于存储渠道筛选后的分析数据
-        ])
-        
-        return layout
-        
-    except Exception as e:
-        print(f"❌ Tab 7渲染失败: {e}")
-        import traceback
-        traceback.print_exc()
-        return dbc.Alert(f"渲染失败: {str(e)}", color="danger")
-
-
-# Tab 7 子组件回调
-
-@app.callback(
-    Output('tab7-analyzer-data', 'data'),
-    [Input('tab7-channel-filter', 'value')],
-    State('tab7-raw-data', 'data'),
-    prevent_initial_call=True
-)
-def update_tab7_by_channel(channel, raw_data):
-    """根据渠道筛选更新营销分析数据"""
-    if not raw_data:
-        raise PreventUpdate
-    
-    try:
-        from 营销异常分析器 import MarketingAnomalyAnalyzer
-        
-        df = pd.DataFrame(raw_data)
-        
-        # 🔴 应用渠道筛选
-        if channel != 'ALL' and '渠道' in df.columns:
-            df = df[df['渠道'] == channel].copy()
-            print(f"[Tab7] 渠道筛选: {channel}, 剩余数据: {len(df)} 行", flush=True)
-        
-        if len(df) == 0:
-            return {
-                'anomalies': [],
-                'activities': [],
-                'top_products': [],
-                'quadrants': []
-            }
-        
-        # 重新分析
-        analyzer = MarketingAnomalyAnalyzer(df)
-        anomalies = analyzer.identify_anomalies(ratio_threshold=0.5, roi_threshold=1.0)
-        activities = analyzer.analyze_marketing_activities()
-        top_products = analyzer.get_top_marketing_products(n=20)
-        quadrant_df = analyzer.analyze_eight_quadrants(
-            marketing_threshold=0.5,
-            margin_threshold=0.3,
-            turnover_method='ratio'
-        )
-        
-        return {
-            'anomalies': anomalies.to_dict('records') if len(anomalies) > 0 else [],
-            'activities': activities.to_dict('records'),
-            'top_products': top_products.to_dict('records'),
-            'quadrants': quadrant_df.to_dict('records')
-        }
-        
-    except Exception as e:
-        print(f"❌ Tab7渠道筛选失败: {e}", flush=True)
-        import traceback
-        traceback.print_exc()
-        raise PreventUpdate
-
-
-# 🆕 Tab 2 (营销分析): 渠道筛选更新科学分析和评分分析
-@app.callback(
-    [Output('scientific-golden-count', 'children'),
-     Output('scientific-eliminate-count', 'children'),
-     Output('scientific-low-confidence-count', 'children'),
-     Output('scientific-quadrant-pie-container', 'children'),
-     Output('scientific-confidence-bar-container', 'children'),
-     Output('tab7-scientific-data', 'data'),
-     Output('scoring-avg-score', 'children'),
-     Output('scoring-excellent-count', 'children'),
-     Output('scoring-poor-count', 'children'),
-     Output('scoring-distribution-bar-container', 'children'),
-     Output('tab7-scoring-data', 'data')],
-    [Input('tab7-channel-filter', 'value'),
-     Input('tab7-category-filter', 'value')],
-    [State('tab7-raw-data', 'data')],
-    prevent_initial_call=False  # 初始加载时也要执行
-)
-def update_scientific_and_scoring_by_filter(channel, category, raw_data):
-    """根据渠道和品类筛选更新科学分析和评分分析"""
-    # 初始化默认返回值
-    empty_returns = (
-        "0", "0", "0", html.Div("加载中..."), html.Div("加载中..."), [],
-        "0", "0", "0", html.Div("加载中..."), []
-    )
-    
-    if not raw_data:
-        return empty_returns
-    
-    try:
-        df = pd.DataFrame(raw_data)
-        print(f"[营销分析] 筛选条件: 渠道={channel}, 品类={category}, 原始数据={len(df)}行", flush=True)
-        
-        # 🔴 应用渠道筛选
-        if channel and channel != 'ALL' and '渠道' in df.columns:
-            df = df[df['渠道'] == channel].copy()
-            print(f"[营销分析] 渠道筛选后: {len(df)}行", flush=True)
-        
-        # 🔴 应用品类筛选
-        if category and category != 'ALL' and '一级分类名' in df.columns:
-            df = df[df['一级分类名'] == category].copy()
-            print(f"[营销分析] 品类筛选后: {len(df)}行", flush=True)
-        
-        if len(df) == 0:
-            return (
-                "0", "0", "0", 
-                dbc.Alert("该筛选条件下无数据", color="warning"),
-                html.Div(),
-                [],
-                "0", "0", "0",
-                dbc.Alert("该筛选条件下无数据", color="warning"),
-                []
-            )
-        
-        # 重新计算科学分析
-        scientific_analyzer = ScientificQuadrantAnalyzer(df, use_category_threshold=True)
-        scientific_result = scientific_analyzer.analyze_with_confidence()
-        
-        # 统计科学分析指标
-        golden_count = len(scientific_result[scientific_result['象限'] == '黄金商品']) if '象限' in scientific_result.columns else 0
-        eliminate_count = len(scientific_result[scientific_result['象限'] == '淘汰区']) if '象限' in scientific_result.columns else 0
-        low_conf_count = len(scientific_result[scientific_result['置信度'] == '低']) if '置信度' in scientific_result.columns else 0
-        
-        # 创建科学分析图表
-        scientific_pie = create_scientific_quadrant_pie_echarts(scientific_result.to_dict('records'))
-        scientific_bar = create_scientific_confidence_bar_echarts(scientific_result.to_dict('records'))
-        
-        # 重新计算评分分析
-        scoring_analyzer = ScoringModelAnalyzer(df)
-        scoring_result = scoring_analyzer.analyze_with_scoring({
-            '营销效率': 0.25,
-            '盈利能力': 0.45,
-            '动销健康': 0.3
-        })
-        
-        # 统计评分分析指标
-        avg_score = f"{scoring_result['综合评分'].mean():.1f}" if '综合评分' in scoring_result.columns else "0"
-        excellent_count = len(scoring_result[scoring_result['综合评分'] >= 70]) if '综合评分' in scoring_result.columns else 0
-        poor_count = len(scoring_result[scoring_result['综合评分'] < 40]) if '综合评分' in scoring_result.columns else 0
-        
-        # 创建评分分析图表
-        scoring_bar = create_scoring_distribution_bar_echarts(scoring_result.to_dict('records'))
-        
-        print(f"[营销分析] 更新完成: 黄金商品={golden_count}, 淘汰区={eliminate_count}, 平均分={avg_score}", flush=True)
-        
-        return (
-            str(golden_count),
-            str(eliminate_count), 
-            str(low_conf_count),
-            scientific_pie,
-            scientific_bar,
-            scientific_result.to_dict('records'),
-            avg_score,
-            str(excellent_count),
-            str(poor_count),
-            scoring_bar,
-            scoring_result.to_dict('records')
-        )
-        
-    except Exception as e:
-        print(f"❌ 营销分析筛选更新失败: {e}", flush=True)
-        import traceback
-        traceback.print_exc()
-        return empty_returns
-
-
-@app.callback(
-    Output('anomaly-products-table', 'children'),
-    Input('tab7-analyzer-data', 'data'),
-    Input('anomaly-level-filter', 'value'),
-    Input('ratio-threshold-slider', 'value')
-)
-def update_anomaly_table(analyzer_data, level_filter, ratio_threshold):
-    """更新异常商品表格"""
-    if not analyzer_data or not analyzer_data.get('anomalies'):
-        return dbc.Alert("未发现异常商品", color="success")
-    
-    anomalies_df = pd.DataFrame(analyzer_data['anomalies'])
-    
-    # 应用筛选: 同时使用异常级别和营销占比阈值
-    filtered = anomalies_df[
-        (anomalies_df['异常级别'] >= level_filter) & 
-        (anomalies_df['营销占比'] >= ratio_threshold)
-    ].copy()
-    
-    # 格式化显示
-    display_cols = ['商品名称', '月售', '实收价格', '利润额', '营销总成本', 
-                    '营销占比', '营销ROI', '异常类型', '异常级别']
-    
-    if len(filtered) == 0:
-        return dbc.Alert(
-            f"未发现符合条件的异常商品(级别≥{level_filter}, 营销占比≥{ratio_threshold*100:.0f}%)", 
-            color="info"
-        )
-    
-    # 格式化数值
-    filtered_display = filtered[display_cols].copy()
-    filtered_display['实收价格'] = filtered_display['实收价格'].apply(lambda x: f"¥{x:,.2f}")
-    filtered_display['利润额'] = filtered_display['利润额'].apply(lambda x: f"¥{x:,.2f}")
-    filtered_display['营销总成本'] = filtered_display['营销总成本'].apply(lambda x: f"¥{x:,.2f}")
-    filtered_display['营销占比'] = filtered_display['营销占比'].apply(lambda x: f"{x*100:.1f}%")
-    filtered_display['营销ROI'] = filtered_display['营销ROI'].apply(lambda x: f"{x:.2f}" if pd.notna(x) else "N/A")
-    
-    return html.Div([
-        dbc.Alert(
-            f"发现 {len(filtered)} 个异常商品 (级别≥{level_filter}, 营销占比≥{ratio_threshold*100:.0f}%)", 
-            color="warning", 
-            className="mb-3"
-        ),
-        dbc.Table.from_dataframe(
-            filtered_display.head(20),
-            striped=True,
-            bordered=True,
-            hover=True,
-            size='sm',
-            className='table-responsive'
-        )
-    ])
-
-
-@app.callback(
-    [Output('marketing-activity-pie', 'children'),
-     Output('marketing-roi-bar', 'children'),
-     Output('activity-details-table', 'children')],
-    Input('tab7-analyzer-data', 'data')
-)
-def update_activity_analysis(analyzer_data):
-    """更新营销活动分析图表"""
-    if not analyzer_data or not analyzer_data.get('activities'):
-        return [dbc.Alert("无活动数据", color="warning")] * 3
-    
-    activities_df = pd.DataFrame(analyzer_data['activities'])
-    
-    # 1. 饼图:活动成本分布
-    pie_fig = go.Figure(data=[go.Pie(
-        labels=activities_df['活动类型'],
-        values=activities_df['总成本'],
-        hole=0.3,
-        textinfo='label+percent',
-        hovertemplate='<b>%{label}</b><br>成本: ¥%{value:,.2f}<br>占比: %{percent}<extra></extra>'
-    )])
-    pie_fig.update_layout(
-        title='营销活动成本分布',
-        height=350,
-        showlegend=True
-    )
-    pie_chart = dcc.Graph(figure=pie_fig, config={'displayModeBar': False})
-    
-    # 2. 柱状图:活动ROI对比
-    bar_fig = go.Figure(data=[go.Bar(
-        x=activities_df['活动类型'],
-        y=activities_df['平均ROI'],
-        marker_color=activities_df['平均ROI'].apply(lambda x: '#28a745' if x >= 1 else '#dc3545'),
-        text=[f"{x:.2f}" for x in activities_df['平均ROI']],
-        textposition='outside'
-    )])
-    bar_fig.add_hline(y=1.0, line_dash="dash", line_color="red",
-                     annotation_text="盈亏平衡线 (ROI=1.0)")
-    bar_fig.update_layout(
-        title='各活动平均ROI',
-        xaxis_title='活动类型',
-        yaxis_title='ROI',
-        height=350
-    )
-    roi_chart = dcc.Graph(figure=bar_fig, config={'displayModeBar': False})
-    
-    # 3. 活动详细表格
-    table = dbc.Table.from_dataframe(
-        activities_df,
-        striped=True,
-        bordered=True,
-        hover=True,
-        size='sm'
-    )
-    
-    return pie_chart, roi_chart, table
-
-
-@app.callback(
-    [Output('marketing-bubble-chart', 'children'),
-     Output('top-marketing-products-table', 'children')],
-    Input('tab7-analyzer-data', 'data')
-)
-def update_top_products(analyzer_data):
-    """更新TOP商品营销分析"""
-    if not analyzer_data or not analyzer_data.get('top_products'):
-        return [dbc.Alert("无商品数据", color="warning")] * 2
-    
-    top_df = pd.DataFrame(analyzer_data['top_products'])
-    
-    # 1. 气泡图
-    bubble_fig = go.Figure(data=[go.Scatter(
-        x=top_df['月售'],
-        y=top_df['营销占比'] * 100,  # 转换为百分比
-        mode='markers',
-        marker=dict(
-            size=top_df['营销总成本'] / 10,  # 气泡大小
-            color=top_df['营销ROI'],  # 颜色表示ROI
-            colorscale='RdYlGn',  # 红-黄-绿色阶
-            showscale=True,
-            colorbar=dict(title="ROI"),
-            line=dict(width=1, color='white')
-        ),
-        text=top_df['商品名称'],
-        hovertemplate='<b>%{text}</b><br>' +
-                     '销量: %{x}<br>' +
-                     '营销占比: %{y:.1f}%<br>' +
-                     '营销成本: ¥%{marker.size:.2f}<br>' +
-                     '<extra></extra>'
-    )])
-    bubble_fig.add_hline(y=50, line_dash="dash", line_color="red",
-                        annotation_text="异常阈值 (50%)")
-    bubble_fig.update_layout(
-        title='营销效率气泡图 (气泡越大=成本越高,越绿=ROI越高)',
-        xaxis_title='销量',
-        yaxis_title='营销占比 (%)',
-        height=500,
-        hovermode='closest'
-    )
-    bubble_chart = dcc.Graph(figure=bubble_fig, config={'displayModeBar': False})
-    
-    # 2. TOP商品表格
-    display_cols = ['商品名称', '月售', '实收价格', '利润额', '营销总成本', 
-                    '营销占比', '营销ROI', '主要营销方式']
-    top_display = top_df[display_cols].copy()
-    
-    # 格式化
-    top_display['实收价格'] = top_display['实收价格'].apply(lambda x: f"¥{x:,.2f}")
-    top_display['利润额'] = top_display['利润额'].apply(lambda x: f"¥{x:,.2f}")
-    top_display['营销总成本'] = top_display['营销总成本'].apply(lambda x: f"¥{x:,.2f}")
-    top_display['营销占比'] = top_display['营销占比'].apply(lambda x: f"{x*100:.1f}%")
-    top_display['营销ROI'] = top_display['营销ROI'].apply(lambda x: f"{x:.2f}" if pd.notna(x) else "N/A")
-    
-    table = dbc.Table.from_dataframe(
-        top_display,
-        striped=True,
-        bordered=True,
-        hover=True,
-        size='sm',
-        className='table-responsive'
-    )
-    
-    return bubble_chart, table
-
-
-@app.callback(
-    Output('marketing-suggestions', 'children'),
-    Input('tab7-analyzer-data', 'data')
-)
-def generate_marketing_suggestions(analyzer_data):
-    """生成营销优化建议"""
-    if not analyzer_data:
-        return dbc.Alert("数据加载中...", color="info")
-    
-    anomalies_df = pd.DataFrame(analyzer_data.get('anomalies', []))
-    activities_df = pd.DataFrame(analyzer_data.get('activities', []))
-    
-    suggestions = []
-    
-    # 建议1:针对异常商品
-    if len(anomalies_df) > 0:
-        high_ratio_count = len(anomalies_df[anomalies_df['营销占比'] > 0.5])
-        suggestions.append(
-            dbc.Card([
-                dbc.CardHeader([
-                    html.I(className="bi bi-exclamation-triangle-fill me-2 text-warning"),
-                    f"发现 {high_ratio_count} 个高营销占比商品"
-                ], className="bg-light"),
-                dbc.CardBody([
-                    html.P("这些商品的营销成本超过销售额的50%，建议:"),
-                    html.Ul([
-                        html.Li("降低配送补贴力度，或设置免配送费门槛"),
-                        html.Li("减少商品折扣，改为满减或赠品策略"),
-                        html.Li("评估是否为引流商品，若是则控制总量"),
-                        html.Li("对比竞品定价，适当提高售价")
-                    ])
-                ])
-            ], className="mb-3")
-        )
-    
-    # 建议2:针对低ROI活动
-    if len(activities_df) > 0:
-        low_roi_activities = activities_df[activities_df['平均ROI'] < 1.0]
-        if len(low_roi_activities) > 0:
-            suggestions.append(
-                dbc.Card([
-                    dbc.CardHeader([
-                        html.I(className="bi bi-graph-down me-2 text-danger"),
-                        f"{len(low_roi_activities)} 类营销活动ROI<1.0"
-                    ], className="bg-light"),
-                    dbc.CardBody([
-                        html.P("以下活动投入产出比不佳:"),
-                        html.Ul([html.Li(f"{row['活动类型']}: ROI={row['平均ROI']:.2f}") 
-                                for _, row in low_roi_activities.iterrows()]),
-                        html.P("优化建议:", className="mt-3 fw-bold"),
-                        html.Ul([
-                            html.Li("设置使用门槛(如满减改为满80减10)"),
-                            html.Li("精准投放给高价值客户"),
-                            html.Li("A/B测试不同优惠力度"),
-                            html.Li("限制单个用户使用次数")
-                        ])
-                    ])
-                ], className="mb-3")
-            )
-    
-    # 建议3:配送补贴优化(通常是最大成本项)
-    if len(activities_df) > 0:
-        delivery_activity = activities_df[activities_df['活动类型'] == '配送补贴']
-        if len(delivery_activity) > 0:
-            delivery_cost_ratio = delivery_activity.iloc[0]['成本占比']
-            suggestions.append(
-                dbc.Card([
-                    dbc.CardHeader([
-                        html.I(className="bi bi-truck me-2 text-info"),
-                        f"配送补贴占营销成本的{delivery_cost_ratio}"
-                    ], className="bg-light"),
-                    dbc.CardBody([
-                        html.P("配送补贴是最大营销成本项，建议:"),
-                        html.Ul([
-                            html.Li("设置免配送费门槛(如满39元免配送费)"),
-                            html.Li("对近距离订单(如<1km)降低补贴"),
-                            html.Li("高峰时段适当降低配送补贴"),
-                            html.Li("引导用户自提或到店消费")
-                        ])
-                    ])
-                ], className="mb-3")
-            )
-    
-    # 总结建议
-    suggestions.append(
-        dbc.Card([
-            dbc.CardHeader([
-                html.I(className="bi bi-lightbulb-fill me-2 text-success"),
-                "数据驱动的营销策略"
-            ], className="bg-light"),
-            dbc.CardBody([
-                html.P("基于当前数据分析，优先级排序:"),
-                html.Ol([
-                    html.Li([html.Strong("高优先级: "), "优化配送补贴策略(成本占比最高)"]),
-                    html.Li([html.Strong("中优先级: "), "调整低ROI活动的使用规则"]),
-                    html.Li([html.Strong("持续监控: "), "异常商品的营销成本变化"]),
-                    html.Li([html.Strong("长期目标: "), "提升整体营销ROI至1.5以上"])
-                ]),
-                dbc.Alert([
-                    html.I(className="bi bi-info-circle me-2"),
-                    "建议每周复查一次营销数据,及时调整策略"
-                ], color="info", className="mt-3 mb-0")
-            ])
-        ])
-    )
-    
-    return html.Div(suggestions)
-
-
-# 八象限分析回调
-
-@app.callback(
-    [Output('quadrant-summary-cards', 'children'),
-     Output('quadrant-products-table', 'children')],
-    [Input('tab7-analyzer-data', 'data'),
-     Input('quadrant-filter', 'value')]
-)
-def update_quadrant_analysis(analyzer_data, selected_quadrant):
-    """更新八象限分析"""
-    if not analyzer_data or not analyzer_data.get('quadrants'):
-        return dbc.Alert("数据加载中...", color="info"), None
-    
-    quadrant_df = pd.DataFrame(analyzer_data['quadrants'])
-    
-    # 筛选数据
-    if selected_quadrant != 'ALL':
-        filtered_df = quadrant_df[quadrant_df['象限编号'] == selected_quadrant].copy()
-    else:
-        filtered_df = quadrant_df.copy()
-    
-    # 生成统计卡片
-    summary_cards = []
-    
-    # 按象限统计
-    quadrant_stats = quadrant_df.groupby(['象限编号', '象限名称', '优先级']).agg({
-        '商品名称': 'count',
-        '营销总成本': 'sum',
-        '实收价格': 'sum',
-        '利润额': 'sum'
-    }).reset_index()
-    quadrant_stats.columns = ['象限编号', '象限名称', '优先级', '商品数', '营销总成本', '销售额', '利润额']
-    
-    # 只显示筛选的象限或全部
-    if selected_quadrant != 'ALL':
-        display_stats = quadrant_stats[quadrant_stats['象限编号'] == selected_quadrant]
-    else:
-        # 按优先级排序显示
-        priority_order = {'P0': 0, 'P1': 1, 'P2': 2, 'P3': 3, 'P4': 4, 'OK': 5}
-        quadrant_stats['排序'] = quadrant_stats['优先级'].map(priority_order)
-        display_stats = quadrant_stats.sort_values('排序').drop(columns=['排序'])
-    
-    for _, row in display_stats.iterrows():
-        color = 'danger' if row['优先级'] == 'P0' else ('warning' if row['优先级'] in ['P1','P2'] else 'success')
-        card = dbc.Col([
-            dbc.Card([
-                dbc.CardBody([
-                    html.H6(row['象限名称'], className="mb-2"),
-                    html.P([
-                        html.Small(f"商品数: {row['商品数']}", className="d-block"),
-                        html.Small(f"营销成本: ¥{row['营销总成本']:,.0f}", className="d-block"),
-                        html.Small(f"营销占比: {row['营销总成本']/row['销售额']*100:.1f}%", className="d-block")
-                    ], className="mb-0")
-                ])
-            ], color=color, outline=True)
-        ], md=3, className="mb-2")
-        summary_cards.append(card)
-    
-    # 生成商品列表
-    if len(filtered_df) == 0:
-        table = dbc.Alert(f"未找到{selected_quadrant}象限的商品", color="info")
-    else:
-        # 准备显示数据 - 包含用户要求的字段
-        display_cols = ['商品名称', '象限名称', '优先级', '优化建议',
-                       '实收价格', '利润额', '月售', '营销总成本', 
-                       '营销占比', '毛利率', '营销ROI']
-        
-        display_df = filtered_df[display_cols].copy()
-        
-        # 格式化数值
-        display_df['实收价格'] = display_df['实收价格'].apply(lambda x: f"¥{x:,.2f}")
-        display_df['利润额'] = display_df['利润额'].apply(lambda x: f"¥{x:,.2f}")
-        display_df['营销总成本'] = display_df['营销总成本'].apply(lambda x: f"¥{x:,.2f}")
-        display_df['营销占比'] = display_df['营销占比'].apply(lambda x: f"{x*100:.1f}%")
-        display_df['毛利率'] = display_df['毛利率'].apply(lambda x: f"{x*100:.1f}%")
-        display_df['营销ROI'] = display_df['营销ROI'].apply(lambda x: f"{x:.2f}" if pd.notna(x) else "N/A")
-        display_df['月售'] = display_df['月售'].apply(lambda x: f"{x:.0f}")
-        
-        # 限制显示前50条
-        table = html.Div([
-            dbc.Alert(f"共 {len(filtered_df)} 个商品，显示前50条", color="info", className="mb-2"),
-            dbc.Table.from_dataframe(
-                display_df.head(50),
-                striped=True,
-                bordered=True,
-                hover=True,
-                size='sm',
-                className='table-responsive'
-            )
-        ])
-    
-    return dbc.Row(summary_cards), table
-
-
-@app.callback(
-    Output('download-category-trend-data', 'data'),
-    Input('export-category-trend-btn', 'n_clicks'),
-    State('category-trend-data-store', 'data'),
-    State('store-data', 'data'),
-    State('current-store-id', 'data'),
-    prevent_initial_call=True
-)
-def export_category_trend_data(n_clicks, category_data, store_data, store_id):
-    """导出一级分类销售趋势数据 - 按业务动作分组导出
-    
-    业务逻辑:
-    - Sheet1: 售罄商品明细 (需补货) - 库存=0且近7天有销量
-    - Sheet2: 滞销商品明细 (需清仓/下架) - 按滞销程度分级
-    - Sheet3: 正常在售商品 (监控) - 库存>0且有销量
-    - Sheet4: 分类汇总数据 (管理层视角)
-    
-    导出字段:
-    - 门店名称、商品名称、一级分类名、三级分类名、商品原价、商品实售价、店内码、月售
-    - 剩余库存、库存周转天数、日均销量、最后售卖日期、销售额、利润额、利润率
-    """
-    if not category_data or not store_data:
-        return None
-    
-    import io
-    from datetime import datetime, timedelta
-    
-    # 获取原始数据
-    df = pd.DataFrame(store_data)
-    
-    if len(df) == 0:
-        return None
-    
-    # 获取门店名称
-    store_name = df['门店名称'].iloc[0] if '门店名称' in df.columns else "未知门店"
-    
-    # ==================== 准备商品级别数据 ====================
-    
-    # 🔧 检测库存字段(兼容中英文)
-    stock_col = None
-    for col in ['库存', '剩余库存', 'stock', 'remaining_stock', '期末库存']:
-        if col in df.columns:
-            stock_col = col
-            break
-    
-    # 检测日期字段
-    date_col = '日期' if '日期' in df.columns else '下单时间'
-    
-    if date_col not in df.columns:
-        return None
-    
-    # 确保日期格式正确
-    df[date_col] = pd.to_datetime(df[date_col])
-    last_date = df[date_col].max()
-    seven_days_ago = last_date - timedelta(days=7)
-    
-    # 按商品聚合数据
-    product_agg = df.groupby('商品名称').agg({
-        '门店名称': 'first',
-        '一级分类名': 'first',
-        '三级分类名': 'first' if '三级分类名' in df.columns else lambda x: '',
-        '商品原价': 'first' if '商品原价' in df.columns else lambda x: 0,
-        '实收价格': 'first',
-        '店内码': 'first' if '店内码' in df.columns else lambda x: '',
-        '月售': 'sum',
-        '实收价格': 'sum',  # 销售额
-        '利润额': 'sum' if '利润额' in df.columns else lambda x: 0,
-        date_col: 'max'  # 最后售卖日期
-    }).reset_index()
-    
-    # 重命名列
-    product_agg.rename(columns={
-        '实收价格': '销售额',
-        date_col: '最后售卖日期'
-    }, inplace=True)
-    
-    # 计算利润率
-    product_agg['利润率'] = (product_agg['利润额'] / product_agg['销售额'] * 100).fillna(0).round(2)
-    
-    # ==================== 添加库存信息（双重判断逻辑） ====================
-    
-    if stock_col:
-        # 步骤1: 获取源数据最后一天
-        max_date = df[date_col].max()
-        
-        # 步骤2: 获取商品在最后一天的库存
-        last_day_data = df[df[date_col] == max_date]
-        last_day_stock_map = last_day_data.groupby('商品名称')[stock_col].last().to_dict()
-        
-        # 步骤3: 获取商品最后售卖时的库存
-        last_sale_stock = df.sort_values(date_col).groupby('商品名称')[stock_col].last()
-        
-        # 步骤4: 双重判断，优先使用最后一天库存
-        def get_final_stock(product_name):
-            if product_name in last_day_stock_map:
-                return last_day_stock_map[product_name]
-            elif product_name in last_sale_stock.index:
-                return last_sale_stock.loc[product_name]
-            else:
-                return 0
-        
-        product_agg['剩余库存'] = product_agg['商品名称'].apply(get_final_stock)
-    else:
-        product_agg['剩余库存'] = 0
-    
-    # ==================== 计算日均销量和库存周转天数 ====================
-    
-    date_range_days = (df[date_col].max() - df[date_col].min()).days + 1
-    product_agg['日均销量'] = (product_agg['月售'] / date_range_days).round(2)
-    product_agg['库存周转天数'] = (product_agg['剩余库存'] / product_agg['日均销量'].replace(0, np.nan)).fillna(0).replace([np.inf, -np.inf], 999).round(1)
-    
-    # ==================== 计算滞销天数 ====================
-    
-    product_agg['滞销天数'] = (last_date - product_agg['最后售卖日期']).dt.days
-    
-    # ==================== 按业务动作分类 ====================
-    
-    # 近7天有销量的商品
-    recent_products = set(df[df[date_col] >= seven_days_ago]['商品名称'].unique())
-    
-    # Sheet1: 售罄商品 (库存=0 且 近7天有销量)
-    sellout_df = product_agg[
-        (product_agg['剩余库存'] == 0) & 
-        (product_agg['商品名称'].isin(recent_products))
-    ].copy()
-    sellout_df = sellout_df.sort_values('月售', ascending=False)  # 按月售降序
-    sellout_df['业务动作'] = '立即补货'
-    
-    # Sheet2: 滞销商品 (库存>0 且 滞销)
-    stagnant_df = product_agg[product_agg['剩余库存'] > 0].copy()
-    
-    # 滞销分级
-    stagnant_df['滞销等级'] = ''
-    stagnant_df.loc[stagnant_df['滞销天数'] == 7, '滞销等级'] = '轻度滞销'
-    stagnant_df.loc[(stagnant_df['滞销天数'] >= 8) & (stagnant_df['滞销天数'] <= 15), '滞销等级'] = '中度滞销'
-    stagnant_df.loc[(stagnant_df['滞销天数'] >= 16) & (stagnant_df['滞销天数'] <= 30), '滞销等级'] = '重度滞销'
-    stagnant_df.loc[stagnant_df['滞销天数'] > 30, '滞销等级'] = '超重度滞销'
-    
-    # 只保留有滞销等级的商品
-    stagnant_df = stagnant_df[stagnant_df['滞销等级'] != ''].copy()
-    stagnant_df = stagnant_df.sort_values('库存周转天数', ascending=False)  # 按库存周转天数降序
-    stagnant_df['业务动作'] = '制定清仓方案或下架'
-    
-    # Sheet3: 正常在售商品 (库存>0 且 非滞销)
-    normal_df = product_agg[
-        (product_agg['剩余库存'] > 0) & 
-        (~product_agg['商品名称'].isin(stagnant_df['商品名称']))
-    ].copy()
-    normal_df = normal_df.sort_values('销售额', ascending=False)  # 按销售额降序
-    normal_df['业务动作'] = '持续监控'
-    
-    # Sheet4: 分类汇总数据
-    category_summary = pd.DataFrame(category_data)
-    
-    # ==================== 定义导出字段 ====================
-    
-    export_fields = [
-        '门店名称', '商品名称', '一级分类名', '三级分类名',
-        '商品原价', '商品实售价', '店内码', '月售',
-        '剩余库存', '库存周转天数', '日均销量', '最后售卖日期',
-        '销售额', '利润额', '利润率', '业务动作'
-    ]
-    
-    # 为滞销商品添加额外字段
-    stagnant_export_fields = export_fields + ['滞销等级', '滞销天数']
-    
-    # ==================== 创建Excel文件 ====================
-    
-    output = io.BytesIO()
-    
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # Sheet1: 售罄商品
-        if len(sellout_df) > 0:
-            sellout_export = sellout_df[[col for col in export_fields if col in sellout_df.columns]].copy()
-            sellout_export.to_excel(writer, sheet_name='售罄商品明细_需补货', index=False)
-        
-        # Sheet2: 滞销商品
-        if len(stagnant_df) > 0:
-            stagnant_export = stagnant_df[[col for col in stagnant_export_fields if col in stagnant_df.columns]].copy()
-            stagnant_export.to_excel(writer, sheet_name='滞销商品明细_需清仓', index=False)
-        
-        # Sheet3: 正常在售商品
-        if len(normal_df) > 0:
-            normal_export = normal_df[[col for col in export_fields if col in normal_df.columns]].copy()
-            normal_export.to_excel(writer, sheet_name='正常在售商品_监控', index=False)
-        
-        # Sheet4: 分类汇总
-        if len(category_summary) > 0:
-            category_export_cols = [
-                '分类', '销售额', '总利润', '利润率',
-                '总销量', '当前库存', '日均销量', '库存周转天数',
-                '售罄品数', 
-                '轻度滞销', '中度滞销', '重度滞销', '超重度滞销', '滞销品总数'
-            ]
-            category_export_cols = [col for col in category_export_cols if col in category_summary.columns]
-            category_export = category_summary[category_export_cols].copy()
-            category_export.to_excel(writer, sheet_name='分类汇总_管理层视角', index=False)
-    
-    output.seek(0)
-    
-    # 生成文件名
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"{store_name}_一级分类销售分析_{timestamp}.xlsx"
-    
-    return dcc.send_bytes(output.getvalue(), filename)
-
-
-@app.callback(
-    Output('download-quadrant-data-tab7', 'data'),
-    Input('export-quadrant-btn', 'n_clicks'),
-    State('tab7-analyzer-data', 'data'),
-    State('quadrant-filter', 'value'),
-    State('tab7-channel-filter', 'value'),  # 🔴 添加渠道参数
-    prevent_initial_call=True
-)
-def export_quadrant_data_tab7(n_clicks, analyzer_data, selected_quadrant, channel):
-    """导出八象限分析数据（支持渠道区分）"""
-    if not analyzer_data or not analyzer_data.get('quadrants'):
-        return None
-    
-    quadrant_df = pd.DataFrame(analyzer_data['quadrants'])
-    
-    # 筛选数据
-    if selected_quadrant != 'ALL':
-        export_df = quadrant_df[quadrant_df['象限编号'] == selected_quadrant].copy()
-    else:
-        export_df = quadrant_df.copy()
-    
-    # 选择导出字段 - 包含用户要求的所有字段
-    export_cols = [
-        '商品名称', '象限编号', '象限名称', '优先级', '优化建议',
-        '营销等级', '毛利等级', '动销等级',
-        '商品原价', '实收价格', '利润额', '毛利率',
-        '月售', '剩余库存', '营销总成本', '营销占比', '营销ROI'
-    ]
-    
-    # 只保留存在的列
-    export_cols = [col for col in export_cols if col in export_df.columns]
-    export_df = export_df[export_cols]
-    
-    # 生成文件名（包含渠道信息）
-    from datetime import datetime
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    
-    # 🔴 文件名中包含渠道信息
-    channel_suffix = "全部渠道" if channel == 'ALL' else channel
-    quadrant_suffix = selected_quadrant if selected_quadrant != 'ALL' else '全部象限'
-    filename = f"营销分析_{channel_suffix}_{quadrant_suffix}_{timestamp}.xlsx"
-    
-    return dcc.send_data_frame(export_df.to_excel, filename, index=False, sheet_name='八象限分析')
-
-
-@app.callback(
-    Output('download-scientific-data', 'data'),
-    Input('export-scientific-btn', 'n_clicks'),
-    [State('tab7-scientific-data', 'data'),
-     State('tab7-channel-filter', 'value'),
-     State('tab7-raw-data', 'data')],  # 🆕 添加原始数据以获取门店名称
-    prevent_initial_call=True
-)
-def export_scientific_analysis(n_clicks, scientific_data, channel, raw_data):
-    """导出科学分析报告（品类动态阈值方法）- 既要完整数据又要多维度分析"""
-    print(f"[导出科学分析] 点击次数: {n_clicks}, 数据量: {len(scientific_data) if scientific_data else 0}")
-    
-    if not scientific_data:
-        print("[导出科学分析] ❌ 无数据")
-        return None
-    
-    import io
-    from datetime import datetime
-    
-    quadrant_df = pd.DataFrame(scientific_data)
-    
-    # 🆕 获取门店名称和渠道信息
-    store_name = "未知门店"
-    if raw_data:
-        raw_df = pd.DataFrame(raw_data)
-        if '门店名称' in raw_df.columns:
-            store_name = raw_df['门店名称'].iloc[0] if len(raw_df) > 0 else "未知门店"
-    
-    # 🆕 在导出数据开头添加门店和渠道字段
-    channel_name = "全部渠道" if channel == 'ALL' or not channel else channel
-    quadrant_df.insert(0, '渠道', channel_name)
-    quadrant_df.insert(0, '门店名称', store_name)
-    
-    print(f"[导出科学分析] ✅ 准备导出 {len(quadrant_df)} 条数据，门店: {store_name}, 渠道: {channel_name}")
-    
-    # 生成文件名
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"科学分析报告_{store_name}_{channel_name}_{timestamp}.xlsx"
-    
-    # 准备导出数据 - 既要完整数据又要多维度分析
-    output = io.BytesIO()
-    
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # Sheet1: 完整的29字段数据（总表）
-        quadrant_df.to_excel(writer, sheet_name='科学分析报告', index=False)
-        
-        # Sheet2: 八象限分布汇总
-        if '象限编号' in quadrant_df.columns and '象限名称' in quadrant_df.columns:
-            quadrant_summary = quadrant_df.groupby(['象限编号', '象限名称']).agg({
-                '商品名称': 'count',
-                '利润额': 'sum',
-                '月售': 'sum',
-                '营销总成本': 'sum'
-            }).reset_index()
-            quadrant_summary.columns = ['象限编号', '象限名称', '商品数', '总利润', '总销量', '总营销成本']
-            quadrant_summary['平均利润'] = quadrant_summary['总利润'] / quadrant_summary['商品数']
-            quadrant_summary['营销ROI'] = quadrant_summary['总利润'] / quadrant_summary['总营销成本']
-            quadrant_summary = quadrant_summary.sort_values('象限编号')
-            quadrant_summary.to_excel(writer, sheet_name='象限分布汇总', index=False)
-        
-        # Sheet3-6: 四维置信度分析
-        confidence_dims = [
-            ('营销置信度', '营销维度分析'),
-            ('毛利置信度', '毛利维度分析'),
-            ('动销置信度', '动销维度分析'),
-            ('分类置信度', '分类维度分析')
-        ]
-        
-        for conf_col, sheet_name in confidence_dims:
-            if conf_col in quadrant_df.columns:
-                # 动态选择存在的字段
-                base_cols = ['商品名称', conf_col, '象限名称', '优先级',
-                            '商品原价', '实收价格', '利润额', '月售', '营销总成本']
-                available_cols = [col for col in base_cols if col in quadrant_df.columns]
-                
-                # 按置信度降序排序
-                conf_df = quadrant_df[available_cols].copy()
-                conf_df = conf_df.sort_values(conf_col, ascending=False)
-                conf_df.to_excel(writer, sheet_name=sheet_name, index=False)
-        
-        # Sheet7: 优先级分组统计
-        if '优先级' in quadrant_df.columns:
-            priority_stats = quadrant_df.groupby('优先级').agg({
-                '商品名称': 'count',
-                '利润额': 'sum',
-                '月售': 'sum',
-                '营销总成本': 'sum'
-            }).reset_index()
-            priority_stats.columns = ['优先级', '商品数', '总利润', '总销量', '总营销成本']
-            priority_stats['平均利润'] = priority_stats['总利润'] / priority_stats['商品数']
-            priority_stats.to_excel(writer, sheet_name='优先级统计', index=False)
-    
-    output.seek(0)
-    return dcc.send_bytes(output.getvalue(), filename)
-
-
-@app.callback(
-    Output('download-scoring-data', 'data'),
-    Input('export-scoring-btn', 'n_clicks'),
-    [State('tab7-scoring-data', 'data'),
-     State('tab7-channel-filter', 'value'),
-     State('tab7-raw-data', 'data')],  # 🆕 添加原始数据以获取门店名称
-    prevent_initial_call=True
-)
-def export_scoring_analysis(n_clicks, scoring_data, channel, raw_data):
-    """导出评分排名报告（通用阈值评分方法）- 既要完整数据又要多维度分析"""
-    print(f"[导出评分排名] 点击次数: {n_clicks}, 数据量: {len(scoring_data) if scoring_data else 0}")
-    
-    if not scoring_data:
-        print("[导出评分排名] ❌ 无数据")
-        return None
-    
-    import io
-    from datetime import datetime
-    
-    quadrant_df = pd.DataFrame(scoring_data)
-    
-    # 🆕 获取门店名称和渠道信息
-    store_name = "未知门店"
-    if raw_data:
-        raw_df = pd.DataFrame(raw_data)
-        if '门店名称' in raw_df.columns:
-            store_name = raw_df['门店名称'].iloc[0] if len(raw_df) > 0 else "未知门店"
-    
-    # 🆕 在导出数据开头添加门店和渠道字段
-    channel_name = "全部渠道" if channel == 'ALL' or not channel else channel
-    quadrant_df.insert(0, '渠道', channel_name)
-    quadrant_df.insert(0, '门店名称', store_name)
-    
-    print(f"[导出评分排名] ✅ 准备导出 {len(quadrant_df)} 条数据，门店: {store_name}, 渠道: {channel_name}")
-    
-    # 按综合得分排序（如果有综合得分字段）
-    if '综合得分' in quadrant_df.columns:
-        quadrant_df = quadrant_df.sort_values('综合得分', ascending=False)
-    
-    # 生成文件名
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"评分排名报告_{store_name}_{channel_name}_{timestamp}.xlsx"
-    
-    # 准备导出数据 - 既要完整数据又要多维度分析
-    output = io.BytesIO()
-    
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # Sheet1: 完整的28字段数据（总表）
-        quadrant_df.to_excel(writer, sheet_name='评分排名报告', index=False)
-        
-        # Sheet2: 综合排名TOP100
-        if '综合得分' in quadrant_df.columns:
-            # 动态选择存在的字段
-            base_cols = ['商品名称', '综合得分', '营销效率分', '盈利能力分', '动销健康分',
-                        '象限名称', '优先级', '利润额', '月售', '营销总成本']
-            available_cols = [col for col in base_cols if col in quadrant_df.columns]
-            
-            top_products = quadrant_df.head(100)[available_cols].copy()
-            top_products['排名'] = range(1, len(top_products) + 1)
-            cols = ['排名'] + [col for col in top_products.columns if col != '排名']
-            top_products[cols].to_excel(writer, sheet_name='综合排名TOP100', index=False)
-        
-        # Sheet3-5: 三维评分分析
-        score_dims = [
-            ('营销效率分', '营销效率维度'),
-            ('盈利能力分', '盈利能力维度'),
-            ('动销健康分', '动销健康维度')
-        ]
-        
-        for score_col, sheet_name in score_dims:
-            if score_col in quadrant_df.columns:
-                # 动态选择存在的字段
-                base_cols = ['商品名称', score_col, '综合得分', '象限名称', '优先级',
-                            '商品原价', '实收价格', '利润额', '月售', '营销总成本']
-                available_cols = [col for col in base_cols if col in quadrant_df.columns]
-                
-                # 按该维度评分降序排序
-                score_df = quadrant_df[available_cols].copy()
-                score_df = score_df.sort_values(score_col, ascending=False)
-                score_df.to_excel(writer, sheet_name=sheet_name, index=False)
-        
-        # Sheet6: 按象限分组
-        if '象限编号' in quadrant_df.columns and '象限名称' in quadrant_df.columns:
-            quadrant_stats = quadrant_df.groupby(['象限编号', '象限名称']).agg({
-                '商品名称': 'count',
-                '综合得分': 'mean',
-                '利润额': 'sum',
-                '月售': 'sum',
-                '营销总成本': 'sum'
-            }).reset_index()
-            quadrant_stats.columns = ['象限编号', '象限名称', '商品数', '平均综合得分', '总利润', '总销量', '总营销成本']
-            quadrant_stats = quadrant_stats.sort_values('象限编号')
-            quadrant_stats.to_excel(writer, sheet_name='象限分组统计', index=False)
-        
-        # Sheet7: 评级分布统计
-        if '综合得分' in quadrant_df.columns:
-            # 按综合得分分段统计
-            def get_grade(score):
-                if score >= 80:
-                    return '⭐优秀(80-100)'
-                elif score >= 60:
-                    return '✅良好(60-80)'
-                elif score >= 40:
-                    return '📊中等(40-60)'
-                elif score >= 20:
-                    return '⚠️待改进(20-40)'
-                else:
-                    return '❌需优化(0-20)'
-            
-            quadrant_df['评级'] = quadrant_df['综合得分'].apply(get_grade)
-            grade_stats = quadrant_df.groupby('评级').agg({
-                '商品名称': 'count',
-                '综合得分': 'mean',
-                '利润额': 'sum',
-                '月售': 'sum'
-            }).reset_index()
-            grade_stats.columns = ['评级', '商品数', '平均得分', '总利润', '总销量']
-            # 按评级排序
-            grade_order = ['⭐优秀(80-100)', '✅良好(60-80)', '📊中等(40-60)', '⚠️待改进(20-40)', '❌需优化(0-20)']
-            grade_stats['排序'] = grade_stats['评级'].apply(lambda x: grade_order.index(x) if x in grade_order else 99)
-            grade_stats = grade_stats.sort_values('排序').drop('排序', axis=1)
-            grade_stats.to_excel(writer, sheet_name='评级分布统计', index=False)
-    
-    output.seek(0)
-    return dcc.send_bytes(output.getvalue(), filename)
-
-
-# ==================== AI智能洞察回调 ====================
-
-@app.callback(
-    [Output('ai-overall-insight', 'children'),
-     Output('ai-problem-products-advice', 'children'),
-     Output('ai-loading-indicator', 'children')],
-    Input('btn-generate-ai-insight', 'n_clicks'),
-    [State('tab7-scientific-data', 'data'),
-     State('tab7-scoring-data', 'data'),
-     State('tab7-channel-filter', 'value'),
-     State('tab7-category-filter', 'value')],
-    prevent_initial_call=True
-)
-def generate_ai_insight(n_clicks, scientific_data, scoring_data, channel, category):
-    """生成AI智能洞察 - 按象限维度深度分析
-    
-    功能:
-    1. 整体健康度评估
-    2. 按象限分别解读（重点分析问题象限）
-    3. 具体行动建议（精确到商品+数值）
-    """
-    if not n_clicks or not AI_QWEN_AVAILABLE:
-        raise PreventUpdate
-    
-    try:
-        # 初始化AI服务
-        ai_service = QwenAIService()
-        
-        # 使用评分模型数据（包含象限信息）
-        if not scoring_data or len(scoring_data) == 0:
-            return (
-                dbc.Alert("暂无数据，请先加载商品数据", color="warning"),
-                None,
-                None
-            )
-        
-        # 调用象限深度分析
-        analysis_result = ai_service.analyze_all_quadrants_sync(scoring_data)
-        
-        # ========== 1. 整体健康度卡片 ==========
-        health_score = analysis_result.get('overall_health', 0)
-        total_products = analysis_result.get('total_products', 0)
-        quadrant_dist = analysis_result.get('quadrant_distribution', {})
-        
-        # 健康度颜色
-        if health_score >= 80:
-            health_color = "success"
-            health_icon = "bi-emoji-smile"
-            health_text = "优秀"
-        elif health_score >= 60:
-            health_color = "info"
-            health_icon = "bi-emoji-neutral"
-            health_text = "良好"
-        elif health_score >= 40:
-            health_color = "warning"
-            health_icon = "bi-emoji-frown"
-            health_text = "需改进"
-        else:
-            health_color = "danger"
-            health_icon = "bi-emoji-angry"
-            health_text = "较差"
-        
-        # 象限分布统计
-        quadrant_badges = []
-        quadrant_order = ['Q5', 'Q7', 'Q6', 'Q1', 'Q2', 'Q3', 'Q4', 'Q8']
-        quadrant_colors = {
-            'Q5': 'success', 'Q7': 'info', 'Q6': 'primary',
-            'Q1': 'warning', 'Q2': 'warning', 'Q3': 'danger', 
-            'Q4': 'danger', 'Q8': 'secondary'
-        }
-        quadrant_names = {
-            'Q5': '⭐黄金', 'Q7': '🎯引流', 'Q6': '💎潜力',
-            'Q1': '💰过度', 'Q2': '⚠️蓄客', 'Q3': '🔴亏损',
-            'Q4': '❌双输', 'Q8': '🗑️淘汰'
-        }
-        
-        for q in quadrant_order:
-            count = quadrant_dist.get(q, 0)
-            if count > 0:
-                quadrant_badges.append(
-                    dbc.Badge(f"{quadrant_names.get(q, q)}: {count}", 
-                             color=quadrant_colors.get(q, 'secondary'),
-                             className="me-1 mb-1")
-                )
-        
-        overall_card = dbc.Card([
-            dbc.CardHeader([
-                html.I(className=f"bi {health_icon} me-2"),
-                html.Strong(f"商品组合健康度: {health_score:.0f}分 ({health_text})")
-            ], className=f"bg-{health_color} text-white"),
-            dbc.CardBody([
-                html.P(f"共分析 {total_products} 个商品，象限分布:", className="mb-2"),
-                html.Div(quadrant_badges, className="mb-0")
-            ])
-        ], className="mb-3")
-        
-        # ========== 2. 象限深度分析卡片 ==========
-        quadrant_cards = []
-        quadrant_analyses = analysis_result.get('quadrant_analyses', {})
-        
-        # 按优先级排序显示（问题象限优先）
-        display_order = ['Q4', 'Q3', 'Q8', 'Q2', 'Q1', 'Q5', 'Q6', 'Q7']
-        
-        for q_code in display_order:
-            if q_code not in quadrant_analyses:
-                continue
-            
-            qa = quadrant_analyses[q_code]
-            q_name = qa.get('quadrant_name', q_code)
-            q_count = qa.get('product_count', 0)
-            q_profit = qa.get('total_profit', 0)
-            q_summary = qa.get('quadrant_summary', '')
-            key_findings = qa.get('key_findings', [])
-            action_items = qa.get('action_items', [])
-            priority_products = qa.get('priority_products', [])
-            
-            # 象限卡片颜色
-            card_color = quadrant_colors.get(q_code, 'secondary')
-            
-            # 构建发现列表
-            findings_list = []
-            for finding in key_findings[:3]:
-                findings_list.append(html.Li(finding, className="small"))
-            
-            # 构建行动建议列表
-            action_list = []
-            for action in action_items[:2]:
-                priority_badge_color = {'紧急': 'danger', '重要': 'warning', '一般': 'info'}.get(
-                    action.get('priority', '一般'), 'info'
-                )
-                action_list.append(
-                    html.Div([
-                        dbc.Badge(action.get('priority', '一般'), color=priority_badge_color, className="me-2"),
-                        html.Span(action.get('action', ''), className="small fw-bold"),
-                        html.Br(),
-                        html.Small(f"→ {action.get('expected_result', '')}", className="text-muted")
-                    ], className="mb-2 p-2 bg-light rounded")
-                )
-            
-            quadrant_cards.append(
-                dbc.Card([
-                    dbc.CardHeader([
-                        html.Span(f"{q_name}", className="fw-bold"),
-                        dbc.Badge(f"{q_count}个商品", color="light", text_color="dark", className="ms-2"),
-                        dbc.Badge(f"利润¥{q_profit:,.0f}", 
-                                 color="success" if q_profit > 0 else "danger", 
-                                 className="ms-2")
-                    ], className=f"bg-{card_color} bg-opacity-25"),
-                    dbc.CardBody([
-                        # 概述
-                        html.P(q_summary, className="mb-2 fst-italic text-muted small"),
-                        
-                        # 关键发现
-                        html.Div([
-                            html.Strong("🔍 关键发现:", className="small"),
-                            html.Ul(findings_list, className="mb-2 ps-3")
-                        ]) if findings_list else None,
-                        
-                        # 行动建议
-                        html.Div([
-                            html.Strong("📋 行动建议:", className="small"),
-                            html.Div(action_list)
-                        ]) if action_list else None,
-                        
-                        # 优先处理商品
-                        html.Div([
-                            html.Strong("⚡ 优先处理: ", className="small text-danger"),
-                            html.Span(", ".join(priority_products[:3]), className="small")
-                        ], className="mt-2") if priority_products else None
-                    ])
-                ], className=f"mb-2 border-start border-4 border-{card_color}")
-            )
-        
-        # ========== 3. TOP行动建议汇总 ==========
-        top_actions = analysis_result.get('top_actions', [])
-        
-        top_actions_card = None
-        if top_actions:
-            action_rows = []
-            for i, action in enumerate(top_actions[:3], 1):
-                priority = action.get('priority', '一般')
-                p_color = {'紧急': 'danger', '重要': 'warning', '一般': 'info'}.get(priority, 'info')
-                from_q = action.get('from_quadrant', '')
-                
-                action_rows.append(
-                    html.Tr([
-                        html.Td(dbc.Badge(f"#{i}", color=p_color)),
-                        html.Td(action.get('action', ''), className="small"),
-                        html.Td(action.get('expected_result', ''), className="small text-muted"),
-                        html.Td(dbc.Badge(from_q, color="secondary", className="small"))
-                    ])
-                )
-            
-            top_actions_card = dbc.Card([
-                dbc.CardHeader([
-                    html.I(className="bi bi-lightning-charge me-2 text-warning"),
-                    html.Strong("🎯 最优先行动 TOP3")
-                ], className="bg-warning bg-opacity-25"),
-                dbc.CardBody([
-                    dbc.Table([
-                        html.Thead(html.Tr([
-                            html.Th("优先级", style={'width': '60px'}),
-                            html.Th("具体操作"),
-                            html.Th("预期效果"),
-                            html.Th("来源", style={'width': '50px'})
-                        ])),
-                        html.Tbody(action_rows)
-                    ], bordered=True, hover=True, size="sm", className="mb-0")
-                ])
-            ], className="mt-3")
-        
-        # 组合所有内容
-        overall_content = html.Div([
-            overall_card,
-            top_actions_card
-        ])
-        
-        quadrant_content = html.Div([
-            html.H6([
-                html.I(className="bi bi-grid-3x3-gap me-2"),
-                "各象限深度分析"
-            ], className="mb-3 mt-2"),
-            html.Div(quadrant_cards)
-        ])
-        
-        return (
-            overall_content,
-            quadrant_content,
-            None  # 清除加载指示器
-        )
-        
-    except Exception as e:
-        print(f"❌ AI洞察生成失败: {e}")
-        import traceback
-        traceback.print_exc()
-        return (
-            dbc.Alert(f"AI分析失败: {str(e)}", color="danger"),
-            None,
-            None
-        )
-
-
-@app.callback(
-    Output('download-tab7-full-report', 'data'),
-    Input('export-tab7-full-report-btn', 'n_clicks'),
-    State('tab7-analyzer-data', 'data'),
-    State('tab7-channel-filter', 'value'),
-    State('tab7-raw-data', 'data'),
-    State('current-store-id', 'data'),
-    prevent_initial_call=True
-)
-def export_tab7_full_report(n_clicks, analyzer_data, channel, raw_data, store_id):
-    """导出完整营销分析报告 - 按业务动作分组的多Sheet导出
-    
-    业务逻辑:
-    - Sheet1: 异常商品明细_需优化 (按优先级分组)
-
-    - Sheet2: 营销活动效率分析 (各活动ROI对比)
-    - Sheet3: TOP营销成本商品 (按营销总成本降序)
-    - Sheet4: 八象限分析 (按象限和优先级分组)
-    - Sheet5: 营销策略建议汇总
-    """
-    if not analyzer_data or not raw_data:
-        return None
-    
-    import io
-    from datetime import datetime
-    
-    # 获取原始数据
-    df = pd.DataFrame(raw_data)
-    
-    if len(df) == 0:
-        return None
-    
-    # 获取门店名称和日期范围
-    store_name = df['门店名称'].iloc[0] if '门店名称' in df.columns else "未知门店"
-    
-    date_col = '日期' if '日期' in df.columns else '下单时间'
-    if date_col in df.columns:
-        df[date_col] = pd.to_datetime(df[date_col])
-        date_start = df[date_col].min().strftime('%Y%m%d')
-        date_end = df[date_col].max().strftime('%Y%m%d')
-        date_range_str = f"{date_start}-{date_end}"
-    else:
-        date_range_str = "未知日期"
-    
-    # 应用渠道筛选（与界面一致）
-    if channel != 'ALL' and '渠道' in df.columns:
-        df = df[df['渠道'] == channel].copy()
-    
-    # ==================== Sheet1: 异常商品明细_需优化 ====================
-    
-    anomalies_df = pd.DataFrame(analyzer_data.get('anomalies', []))
-    
-    if len(anomalies_df) > 0:
-        # 按优先级分组
-        anomalies_df['优先级排序'] = anomalies_df['异常级别'].map({
-            10: 'P0-高危', 7: 'P1-严重', 5: 'P2-中等', 3: 'P3-轻微'
-        })
-        anomalies_df = anomalies_df.sort_values(['异常级别', '营销占比'], ascending=[False, False])
-        
-        anomalies_export_cols = [
-            '商品名称', '异常级别', '优先级排序', '异常类型',
-            '营销占比', '营销ROI', '月售', '商品原价', '商品实售价', '实收价格', '利润额',
-            '营销总成本', '优化建议'
-        ]
-        
-        # 添加渠道列（如果有）
-        if '渠道' in df.columns:
-            product_channel = df.groupby('商品名称')['渠道'].first().to_dict()
-            anomalies_df['渠道'] = anomalies_df['商品名称'].map(product_channel)
-            anomalies_export_cols.insert(1, '渠道')
-        
-        # 添加店内码列（如果有）
-        if '店内码' in df.columns:
-            product_code = df.groupby('商品名称')['店内码'].first().to_dict()
-            anomalies_df['店内码'] = anomalies_df['商品名称'].map(product_code)
-            anomalies_export_cols.insert(1, '店内码')
-        
-        # 添加商品原价和商品实售价（从原始数据映射）
-        if '商品原价' in df.columns:
-            product_original_price = df.groupby('商品名称')['商品原价'].first().to_dict()
-            anomalies_df['商品原价'] = anomalies_df['商品名称'].map(product_original_price)
-        
-        if '商品实售价' in df.columns:
-            product_sale_price = df.groupby('商品名称')['商品实售价'].first().to_dict()
-            anomalies_df['商品实售价'] = anomalies_df['商品名称'].map(product_sale_price)
-        
-        anomalies_export_cols = [col for col in anomalies_export_cols if col in anomalies_df.columns]
-        anomalies_export = anomalies_df[anomalies_export_cols].copy()
-        
-        # 添加业务动作列
-        anomalies_export['业务动作'] = '立即优化营销策略'
-    else:
-        anomalies_export = pd.DataFrame()
-    
-    # ==================== Sheet2: 营销活动效率分析 ====================
-    
-    activities_df = pd.DataFrame(analyzer_data.get('activities', []))
-    
-    if len(activities_df) > 0:
-        activities_export_cols = [
-            '活动类型', '使用次数', '使用率', '总成本', '成本占比',
-            '带来销售额', '带来利润', '平均ROI', '平均单次成本', '最高单次成本'
-        ]
-        activities_export_cols = [col for col in activities_export_cols if col in activities_df.columns]
-        activities_export = activities_df[activities_export_cols].copy()
-        
-        # 添加建议列
-        activities_export['优化建议'] = activities_export.apply(
-            lambda row: f"ROI={row['平均ROI']:.2f}, {'建议加大投入' if row['平均ROI'] > 2 else '建议优化成本'}" if pd.notna(row.get('平均ROI')) else '',
-            axis=1
-        )
-    else:
-        activities_export = pd.DataFrame()
-    
-    # ==================== Sheet3: TOP营销成本商品 ====================
-    
-    top_products_df = pd.DataFrame(analyzer_data.get('top_products', []))
-    
-    if len(top_products_df) > 0:
-        top_products_export_cols = [
-            '商品名称', '营销总成本', '营销占比', '营销ROI',
-            '月售', '商品原价', '商品实售价', '实收价格', '利润额', '主要营销方式', '订单ID'
-        ]
-        
-        # 添加渠道列（如果有）
-        if '渠道' in df.columns:
-            product_channel = df.groupby('商品名称')['渠道'].first().to_dict()
-            top_products_df['渠道'] = top_products_df['商品名称'].map(product_channel)
-            top_products_export_cols.insert(1, '渠道')
-        
-        # 添加店内码列（如果有）
-        if '店内码' in df.columns:
-            product_code = df.groupby('商品名称')['店内码'].first().to_dict()
-            top_products_df['店内码'] = top_products_df['商品名称'].map(product_code)
-            top_products_export_cols.insert(1, '店内码')
-        
-        # 添加商品原价和商品实售价（从原始数据映射）
-        if '商品原价' in df.columns:
-            product_original_price = df.groupby('商品名称')['商品原价'].first().to_dict()
-            top_products_df['商品原价'] = top_products_df['商品名称'].map(product_original_price)
-        
-        if '商品实售价' in df.columns:
-            product_sale_price = df.groupby('商品名称')['商品实售价'].first().to_dict()
-            top_products_df['商品实售价'] = top_products_df['商品名称'].map(product_sale_price)
-        
-        top_products_export_cols = [col for col in top_products_export_cols if col in top_products_df.columns]
-        top_products_export = top_products_df[top_products_export_cols].copy()
-        
-        # 重命名订单ID列
-        if '订单ID' in top_products_export.columns:
-            top_products_export.rename(columns={'订单ID': '订单数'}, inplace=True)
-    else:
-        top_products_export = pd.DataFrame()
-    
-    # ==================== Sheet4: 八象限分析 ====================
-    
-    quadrants_df = pd.DataFrame(analyzer_data.get('quadrants', []))
-    
-    if len(quadrants_df) > 0:
-        quadrants_export_cols = [
-            '商品名称', '象限编号', '象限名称', '优先级', '优化建议',
-            '营销等级', '毛利等级', '动销等级',
-            '商品原价', '商品实售价', '实收价格', '利润额', '毛利率',
-            '月售', '剩余库存', '营销总成本', '营销占比', '营销ROI'
-        ]
-        
-        # 添加渠道列（如果有）
-        if '渠道' in df.columns:
-            product_channel = df.groupby('商品名称')['渠道'].first().to_dict()
-            quadrants_df['渠道'] = quadrants_df['商品名称'].map(product_channel)
-            quadrants_export_cols.insert(1, '渠道')
-        
-        # 添加店内码列（如果有）
-        if '店内码' in df.columns:
-            product_code = df.groupby('商品名称')['店内码'].first().to_dict()
-            quadrants_df['店内码'] = quadrants_df['商品名称'].map(product_code)
-            quadrants_export_cols.insert(1, '店内码')
-        
-        # 添加商品实售价（从原始数据映射，商品原价在quadrants分析时已包含）
-        if '商品实售价' in df.columns:
-            product_sale_price = df.groupby('商品名称')['商品实售价'].first().to_dict()
-            quadrants_df['商品实售价'] = quadrants_df['商品名称'].map(product_sale_price)
-        
-        quadrants_export_cols = [col for col in quadrants_export_cols if col in quadrants_df.columns]
-        quadrants_export = quadrants_df[quadrants_export_cols].copy()
-        
-        # 按优先级和营销占比排序
-        priority_order = {'P0': 0, 'P1': 1, 'P2': 2, 'P3': 3, 'P4': 4, 'OK': 5}
-        quadrants_export['排序'] = quadrants_export['优先级'].map(priority_order)
-        quadrants_export = quadrants_export.sort_values(['排序', '营销占比'], ascending=[True, False])
-        quadrants_export = quadrants_export.drop(columns=['排序'])
-    else:
-        quadrants_export = pd.DataFrame()
-    
-    # ==================== Sheet5: 营销策略建议汇总 ====================
-    
-    suggestions = []
-    
-    # 1. 异常商品建议
-    if len(anomalies_df) > 0:
-        p0_count = len(anomalies_df[anomalies_df['异常级别'] >= 10])
-        p1_count = len(anomalies_df[anomalies_df['异常级别'] >= 7])
-        suggestions.append({
-            '类别': '异常商品',
-            '数量': len(anomalies_df),
-            '重点关注': f"P0高危{p0_count}个, P1严重{p1_count}个",
-            '建议': '立即优化营销策略，降低营销占比或提升利润率'
-        })
-    
-    # 2. 营销活动建议
-    if len(activities_df) > 0:
-        best_activity = activities_df.iloc[0] if '平均ROI' in activities_df.columns else None
-        if best_activity is not None and pd.notna(best_activity.get('平均ROI')):
-            suggestions.append({
-                '类别': '营销活动',
-                '数量': len(activities_df),
-                '重点关注': f"最优活动: {best_activity['活动类型']} (ROI={best_activity['平均ROI']:.2f})",
-                '建议': f"建议加大{best_activity['活动类型']}投入，总成本¥{activities_df['总成本'].sum():,.2f}"
-            })
-    
-    # 3. 八象限建议
-    if len(quadrants_df) > 0:
-        p0_quadrants = quadrants_df[quadrants_df['优先级'] == 'P0']
-        if len(p0_quadrants) > 0:
-            suggestions.append({
-                '类别': '八象限分析',
-                '数量': len(quadrants_df),
-                '重点关注': f"P0优先级{len(p0_quadrants)}个商品需立即处理",
-                '建议': f"重点优化{p0_quadrants.iloc[0]['象限名称']}象限商品"
-            })
-    
-    # 4. 整体ROI建议
-    if len(df) > 0:
-        total_marketing = df['营销总成本'].sum() if '营销总成本' in df.columns else 0
-        total_profit = df['利润额'].sum() if '利润额' in df.columns else 0
-        overall_roi = total_profit / total_marketing if total_marketing > 0 else 0
-        
-        suggestions.append({
-            '类别': '整体营销ROI',
-            '数量': f"{overall_roi:.2f}",
-            '重点关注': f"营销总成本¥{total_marketing:,.2f}, 带来利润¥{total_profit:,.2f}",
-            '建议': f"{'营销效率良好，建议维持' if overall_roi > 1 else '营销成本过高，建议优化'}"
-        })
-    
-    suggestions_export = pd.DataFrame(suggestions)
-    
-    # ==================== 创建Excel文件 ====================
-    
-    output = io.BytesIO()
-    
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # Sheet1: 异常商品
-        if len(anomalies_export) > 0:
-            anomalies_export.to_excel(writer, sheet_name='异常商品明细_需优化', index=False)
-        
-        # Sheet2: 营销活动
-        if len(activities_export) > 0:
-            activities_export.to_excel(writer, sheet_name='营销活动效率分析', index=False)
-        
-        # Sheet3: TOP商品
-        if len(top_products_export) > 0:
-            top_products_export.to_excel(writer, sheet_name='TOP营销成本商品', index=False)
-        
-        # Sheet4: 八象限
-        if len(quadrants_export) > 0:
-            quadrants_export.to_excel(writer, sheet_name='八象限分析', index=False)
-        
-        # Sheet5: 策略建议
-        if len(suggestions_export) > 0:
-            suggestions_export.to_excel(writer, sheet_name='营销策略建议汇总', index=False)
-    
-    output.seek(0)
-    
-    # 生成文件名
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    channel_suffix = "全部渠道" if channel == 'ALL' else channel
-    filename = f"{store_name}_营销分析报告_{channel_suffix}_{date_range_str}_{timestamp}.xlsx"
-    
-    return dcc.send_bytes(output.getvalue(), filename)
-
-
-@app.callback(
-    Output('download-aov-analysis', 'data'),
-    Input('export-aov-analysis-btn', 'n_clicks'),
-    State('store-data', 'data'),
-    State('cached-order-agg', 'data'),
-    State('current-store-id', 'data'),
-    prevent_initial_call=True
-)
-def export_aov_analysis(n_clicks, store_data, cached_agg, store_id):
-    """导出客单价深度分析报告
-    
-    业务逻辑（增强版）:
-    - Sheet1: 客单价分析_汇总（整体价格区间分布）
-    - Sheet2: 渠道客单价对比（各渠道在不同价格区间的表现）
-    - Sheet3: 购物篮深度分析（各价格区间的SKU购买情况）
-    - Sheet4.1~4.8: 各价格区间商品明细（含渠道、利润率、智能建议）
-    
-    核心洞察：
-    1. 发现不同渠道的客单价特征，优化渠道运营策略
-    2. 分析购物篮深度，识别凑单机会
-    3. 商品级别的智能建议，指导采购和促销决策
-    """
-    if not store_data:
-        return None
-    
-    import io
-    from datetime import datetime
-    
-    df = pd.DataFrame(store_data)
-    
-    if len(df) == 0:
-        return None
-    
-    # 获取门店名称和日期范围
-    store_name = df['门店名称'].iloc[0] if '门店名称' in df.columns else "未知门店"
-    
-    date_col = '日期' if '日期' in df.columns else '下单时间'
-    if date_col in df.columns:
-        df[date_col] = pd.to_datetime(df[date_col])
-        date_start = df[date_col].min().strftime('%Y%m%d')
-        date_end = df[date_col].max().strftime('%Y%m%d')
-        date_range_str = f"{date_start}-{date_end}"
-    else:
-        date_range_str = "未知日期"
-    
-    # 🔧 从缓存读取order_agg数据（如果有）
-    if cached_agg:
-        order_agg = pd.DataFrame(cached_agg)
-    else:
-        # 如果缓存为空，现场聚合 (✅ 包含实收价格)
-        agg_dict = {
-            '商品实售价': 'sum',
-            '订单实际利润': 'sum',  # 🔧 修复: 商品级字段用sum
-            '营销成本': 'sum'
-        }
-        if '实收价格' in df.columns:
-            agg_dict['实收价格'] = 'sum'
-        if '预计订单收入' in df.columns:
-            agg_dict['预计订单收入'] = 'sum'  # 🔧 修复: 商品级字段用sum
-        if '订单总收入' in df.columns:
-            agg_dict['订单总收入'] = 'sum'  # 🔧 修复: 商品级字段用sum
-        
-        order_agg = df.groupby('订单ID').agg(agg_dict).reset_index()
-    
-    # 🔧 剔除咖啡渠道（不再排除闪购小程序和收银机订单）
-    exclude_channels = CHANNELS_TO_REMOVE
-    
-    # 统一订单ID类型
-    df['订单ID'] = df['订单ID'].astype(str)
-    order_agg['订单ID'] = order_agg['订单ID'].astype(str)
-    
-    # 从df中获取每个订单的渠道信息
-    if '渠道' in df.columns:
-        order_channel = df.groupby('订单ID')['渠道'].first().reset_index()
-        order_channel['订单ID'] = order_channel['订单ID'].astype(str)
-        order_agg = order_agg.merge(order_channel, on='订单ID', how='left')
-        
-        # 过滤掉排除的渠道
-        order_agg = order_agg[~order_agg['渠道'].isin(exclude_channels)].copy()
-    
-    if len(order_agg) == 0:
-        return None
-    
-    # ✅ 计算客单价（使用实收价格）
-    if '实收价格' in order_agg.columns:
-        order_agg['客单价'] = order_agg['实收价格']
-    elif '预计订单收入' in order_agg.columns:
-        order_agg['客单价'] = order_agg['预计订单收入']
-    else:
-        order_agg['客单价'] = order_agg['实收价格']
-    
-    # ========== 客单价分区间分析 ==========
-    # 定义客单价区间
-    bins = [0, 10, 20, 30, 40, 50, 100, 200, float('inf')]
-    labels = ['0-10元', '10-20元', '20-30元', '30-40元', '40-50元', '50-100元', '100-200元', '200元以上']
-    
-    order_agg['客单价区间'] = pd.cut(order_agg['客单价'], bins=bins, labels=labels)
-    
-    # 将客单价区间合并回原始df，用于后续商品级别分析
-    df_with_zone = df.merge(
-        order_agg[['订单ID', '客单价区间']], 
-        on='订单ID', 
-        how='left'
-    )
-    
-    # 统计各区间订单数和占比
-    aov_dist = order_agg['客单价区间'].value_counts().sort_index()
-    aov_dist_pct = (aov_dist / len(order_agg) * 100).round(1)
-    
-    # 各区间平均利润
-    aov_avg_profit = order_agg.groupby('客单价区间')['订单实际利润'].mean()
-    
-    # 各区间销售额占比 (✅ 使用实收价格)
-    sales_field = '实收价格'
-    aov_sales = order_agg.groupby('客单价区间')[sales_field].sum()
-    aov_sales_pct = (aov_sales / order_agg[sales_field].sum() * 100).round(1)
-    
-    # 价格分组（低价区、主流区、高价区）
-    def get_price_group(zone):
-        if zone in ['0-10元', '10-20元']:
-            return '低价区'
-        elif zone in ['20-30元', '30-40元', '40-50元']:
-            return '主流区'
-        else:
-            return '高价区'
-    
-    # Sheet1: 客单价分析汇总
-    aov_stats = pd.DataFrame({
-        '客单价区间': labels,
-        '价格分组': [get_price_group(z) for z in labels],
-        '订单数': [int(aov_dist.get(label, 0)) for label in labels],
-        '订单占比(%)': [aov_dist_pct.get(label, 0) for label in labels],
-        '平均利润(元)': [aov_avg_profit.get(label, 0) for label in labels],
-        '销售额占比(%)': [aov_sales_pct.get(label, 0) for label in labels]
-    })
-    
-    aov_export = aov_stats[[
-        '客单价区间', '价格分组', '订单数', '订单占比(%)', 
-        '平均利润(元)', '销售额占比(%)'
-    ]].copy()
-    
-    # ========== 新增Sheet: 渠道×客单价交叉分析 ==========
-    channel_aov_analysis = []
-    
-    if '渠道' in order_agg.columns:
-        for channel in order_agg['渠道'].unique():
-            if pd.isna(channel):
-                continue
-            
-            channel_orders = order_agg[order_agg['渠道'] == channel]
-            
-            for zone in labels:
-                zone_orders = channel_orders[channel_orders['客单价区间'] == zone]
-                zone_count = len(zone_orders)
-                
-                if zone_count > 0:
-                    channel_aov_analysis.append({
-                        '渠道': channel,
-                        '客单价区间': zone,
-                        '价格分组': get_price_group(zone),
-                        '订单数': zone_count,
-                        '渠道内占比(%)': round(zone_count / len(channel_orders) * 100, 1),
-                        '平均客单价(元)': round(zone_orders['客单价'].mean(), 2),
-                        '平均利润(元)': round(zone_orders['订单实际利润'].mean(), 2) if '订单实际利润' in zone_orders.columns else 0
-                    })
-    
-    channel_aov_export = pd.DataFrame(channel_aov_analysis) if channel_aov_analysis else pd.DataFrame()
-    
-    # ========== 新增Sheet: 购物篮深度分析 ==========
-    basket_analysis = []
-    
-    # 为每个订单计算SKU数量
-    if '订单ID' in df.columns and '商品名称' in df.columns:
-        order_sku_count = df.groupby('订单ID')['商品名称'].nunique().reset_index()
-        order_sku_count.columns = ['订单ID', 'SKU数']
-        order_sku_count['订单ID'] = order_sku_count['订单ID'].astype(str)
-        
-        # 合并到order_agg
-        order_agg_with_sku = order_agg.merge(order_sku_count, on='订单ID', how='left')
-        
-        # 按客单价区间分析购物篮
-        for zone in labels:
-            zone_orders = order_agg_with_sku[order_agg_with_sku['客单价区间'] == zone]
-            
-            if len(zone_orders) > 0 and 'SKU数' in zone_orders.columns:
-                basket_analysis.append({
-                    '客单价区间': zone,
-                    '价格分组': get_price_group(zone),
-                    '订单数': len(zone_orders),
-                    '平均SKU数': round(zone_orders['SKU数'].mean(), 1),
-                    'SKU中位数': zone_orders['SKU数'].median(),
-                    '最大SKU数': int(zone_orders['SKU数'].max()),
-                    '单SKU订单占比(%)': round((zone_orders['SKU数'] == 1).sum() / len(zone_orders) * 100, 1),
-                    '3SKU以上占比(%)': round((zone_orders['SKU数'] >= 3).sum() / len(zone_orders) * 100, 1),
-                    '购物篮建议': '建议推荐凑单商品' if zone_orders['SKU数'].mean() < 2.5 else '购物篮较丰富，可推荐套餐'
-                })
-    
-    basket_export = pd.DataFrame(basket_analysis) if basket_analysis else pd.DataFrame()
-    
-    # ========== Sheet2.X: 各价格区间商品明细 ==========
-    aov_detail_sheets = {}
-    
-    for zone in labels:
-        # 筛选该价格区间的订单
-        zone_df = df_with_zone[df_with_zone['客单价区间'] == zone].copy()
-        
-        if len(zone_df) == 0:
-            continue
-        
-        # 该区间总订单数
-        zone_total_orders = order_agg[order_agg['客单价区间'] == zone]['订单ID'].nunique()
-        
-        # 按商品聚合
-        zone_products = zone_df.groupby('商品名称').agg({
-            '商品实售价': 'sum',
-            '销量': 'sum',
-            '利润额': 'sum',
-            '订单ID': 'nunique'  # 该商品出现在多少个订单中
-        }).reset_index()
-        
-        zone_products.columns = ['商品名称', '商品实售价', '销量', '利润额', '出现订单数']
-        
-        # 添加店内码和分类信息
-        if '店内码' in zone_df.columns:
-            product_code = zone_df.groupby('商品名称')['店内码'].first().to_dict()
-            zone_products['店内码'] = zone_products['商品名称'].map(product_code)
-        
-        if '分类' in zone_df.columns:
-            product_category = zone_df.groupby('商品名称')['分类'].first().to_dict()
-            zone_products['分类'] = zone_products['商品名称'].map(product_category)
-        
-        # 添加渠道维度分析
-        if '渠道' in zone_df.columns:
-            # 统计该商品在各渠道的出现情况
-            product_channels = zone_df.groupby('商品名称')['渠道'].apply(
-                lambda x: ','.join(x.value_counts().head(2).index.tolist())
-            ).to_dict()
-            zone_products['主要渠道'] = zone_products['商品名称'].map(product_channels)
-        
-        # 计算关键指标
-        zone_products['订单覆盖率(%)'] = (zone_products['出现订单数'] / zone_total_orders * 100).round(1)
-        zone_products['平均每单贡献(元)'] = (zone_products['实收价格'] / zone_products['出现订单数']).round(2)
-        zone_products['单品利润率(%)'] = ((zone_products['利润额'] / zone_products['实收价格']) * 100).round(1) if '利润额' in zone_products.columns else 0
-        
-        # 增强版经营建议
-        def get_zone_suggestion_enhanced(row):
-            zone_group = get_price_group(zone)
-            coverage = row['订单覆盖率(%)']
-            order_count = row['出现订单数']
-            contribution = row['平均每单贡献(元)']
-            profit_rate = row.get('单品利润率(%)', 0)
-            
-            suggestions = []
-            
-            if zone_group == '低价区':
-                if coverage > 50:
-                    suggestions.append("高频商品")
-                    if contribution < 5:
-                        suggestions.append("可作为引流品")
-                    suggestions.append("建议：设计组合套餐提升客单价")
-                elif coverage > 20:
-                    suggestions.append("中频商品，建议：关联推荐高价值商品")
-                else:
-                    suggestions.append("低频商品，建议：搭配销售或清库存")
-                    
-            elif zone_group == '主流区':
-                if coverage > 30:
-                    suggestions.append("主流畅销品，建议：保证库存稳定供应")
-                    if profit_rate > 20:
-                        suggestions.append("高利润商品，可加大推广")
-                else:
-                    suggestions.append("普通商品，建议：优化定价或促销")
-                    
-            else:  # 高价区
-                if order_count > 10:
-                    if profit_rate > 25:
-                        suggestions.append("高价值高利润，建议：重点推广")
-                    else:
-                        suggestions.append("高价值商品，建议：评估降价空间")
-                else:
-                    suggestions.append("低频高价，建议：分析用户需求或调整定位")
-            
-            return " | ".join(suggestions) if suggestions else "持续观察"
-        
-        zone_products['智能建议'] = zone_products.apply(get_zone_suggestion_enhanced, axis=1)
-        
-        # 按销售额降序
-        zone_products = zone_products.sort_values('商品实售价', ascending=False)
-        
-        # 选择导出列
-        export_cols = ['商品名称']
-        if '店内码' in zone_products.columns:
-            export_cols.append('店内码')
-        if '分类' in zone_products.columns:
-            export_cols.append('分类')
-        if '主要渠道' in zone_products.columns:
-            export_cols.append('主要渠道')
-        export_cols.extend([
-            '商品实售价', '销量', '利润额', 
-            '出现订单数', '订单覆盖率(%)', '平均每单贡献(元)'
-        ])
-        if '单品利润率(%)' in zone_products.columns:
-            export_cols.append('单品利润率(%)')
-        export_cols.append('智能建议')
-        
-        zone_products_export = zone_products[export_cols].copy()
-        aov_detail_sheets[zone] = zone_products_export
-    
-    # ========== 导出Excel ==========
-    output = io.BytesIO()
-    
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # Sheet1: 汇总
-        aov_export.to_excel(writer, sheet_name='1_客单价分析_汇总', index=False)
-        
-        # 新增Sheet2: 渠道×客单价交叉分析
-        if len(channel_aov_export) > 0:
-            channel_aov_export.to_excel(writer, sheet_name='2_渠道客单价对比', index=False)
-        
-        # 新增Sheet3: 购物篮深度分析
-        if len(basket_export) > 0:
-            basket_export.to_excel(writer, sheet_name='3_购物篮深度分析', index=False)
-        
-        # Sheet4.X: 各价格区间明细（原Sheet2.X）
-        zone_order = ['0-10元', '10-20元', '20-30元', '30-40元', '40-50元', '50-100元', '100-200元', '200元以上']
-        for idx, zone in enumerate(zone_order):
-            if zone in aov_detail_sheets:
-                zone_group = get_price_group(zone)
-                sheet_name = f"4.{idx+1}_{zone_group}_{zone}"
-                
-                # Excel sheet名称长度限制为31字符
-                if len(sheet_name) > 31:
-                    sheet_name = sheet_name[:31]
-                
-                aov_detail_sheets[zone].to_excel(writer, sheet_name=sheet_name, index=False)
-        
-        # 自动调整列宽
-        for sheet_name in writer.sheets:
-            worksheet = writer.sheets[sheet_name]
-            for column in worksheet.columns:
-                max_length = 0
-                column_letter = column[0].column_letter
-                for cell in column:
-                    try:
-                        if len(str(cell.value)) > max_length:
-                            max_length = len(str(cell.value))
-                    except:
-                        pass
-                adjusted_width = min(max_length + 2, 50)
-                worksheet.column_dimensions[column_letter].width = adjusted_width
-    
-    # 生成文件名
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"{store_name}_客单价深度分析_{date_range_str}_{timestamp}.xlsx"
-    
-    return dcc.send_bytes(output.getvalue(), filename)
-
-
-@app.callback(
-    Output('download-aov-trend', 'data'),
-    Input('export-aov-trend-btn', 'n_clicks'),
-    State('store-data', 'data'),
-    State('cached-order-agg', 'data'),
-    State('current-store-id', 'data'),
-    prevent_initial_call=True
-)
-def export_aov_trend(n_clicks, store_data, cached_agg, store_id):
-    """导出客单价趋势分析报告（Phase 2）
-    
-    业务逻辑：
-    - Sheet1: 本周vs上周客单价对比（4周数据，滚动对比）
-    - Sheet2: 近7天价格区间趋势（每日各价格区间订单数）
-    - Sheet3: 商品动销变化TOP20（销量增长/下降商品）
-    - Sheet4: 渠道客单价趋势（各渠道每日客单价）
-    - Sheet5: 价格区间订单数趋势（8个价格区间每日订单数）
-    - Sheet6: 异常预警清单（客单价突降、订单数骤减等）
-    """
-    if not store_data:
-        return None
-    
-    import io
-    from datetime import datetime, timedelta
-    import pandas as pd
-    import numpy as np
-    
-    df = pd.DataFrame(store_data)
-    
-    if len(df) == 0:
-        return None
-    
-    # 获取门店名称
-    store_name = df['门店名称'].iloc[0] if '门店名称' in df.columns else "未知门店"
-    
-    # 确保日期字段
-    date_col = '日期' if '日期' in df.columns else '下单时间'
-    if date_col not in df.columns:
-        return None
-    
-    df[date_col] = pd.to_datetime(df[date_col])
-    
-    # 从缓存读取order_agg
-    if cached_agg:
-        order_agg = pd.DataFrame(cached_agg)
-        # 确保有客单价字段（可能是预计订单收入）
-        if '客单价' not in order_agg.columns:
-            if '预计订单收入' in order_agg.columns:
-                order_agg['客单价'] = order_agg['预计订单收入']
-            elif '实收价格' in order_agg.columns:
-                order_agg['客单价'] = order_agg['实收价格']
-            else:
-                # 从原始数据重新聚合
-                order_agg = df.groupby('订单ID').agg({
-                    '实收价格': 'sum'
-                }).reset_index()
-                order_agg.rename(columns={'实收价格': '客单价'}, inplace=True)
-    else:
-        order_agg = df.groupby('订单ID').agg({
-            '实收价格': 'sum'
-        }).reset_index()
-        order_agg.rename(columns={'实收价格': '客单价'}, inplace=True)
-    
-    # 合并日期信息
-    order_date_map = df.groupby('订单ID')[date_col].first().reset_index()
-    order_agg = order_agg.merge(order_date_map, on='订单ID', how='left')
-    
-    # 定义价格分组函数
-    def categorize_aov(price):
-        if price < 10: return '¥0-10'
-        elif price < 20: return '¥10-20'
-        elif price < 30: return '¥20-30'
-        elif price < 40: return '¥30-40'
-        elif price < 50: return '¥40-50'
-        elif price < 100: return '¥50-100'
-        elif price < 200: return '¥100-200'
-        else: return '¥200以上'
-    
-    order_agg['价格区间'] = order_agg['客单价'].apply(categorize_aov)
-    
-    # ========== Sheet1: 本周vs上周对比 ==========
-    # 按周分组（最近4周）
-    order_agg['周'] = order_agg[date_col].dt.to_period('W')
-    weekly_stats = order_agg.groupby('周').agg({
-        '订单ID': 'count',
-        '客单价': 'mean'
-    }).reset_index()
-    weekly_stats.columns = ['周', '订单数', '平均客单价']
-    weekly_stats['周'] = weekly_stats['周'].astype(str)
-    
-    # 计算环比
-    weekly_stats['订单数环比(%)'] = weekly_stats['订单数'].pct_change() * 100
-    weekly_stats['客单价环比(%)'] = weekly_stats['平均客单价'].pct_change() * 100
-    
-    # ========== Sheet2: 近7天价格区间趋势 ==========
-    max_date = order_agg[date_col].max()
-    min_date = max_date - timedelta(days=6)
-    recent_7d = order_agg[order_agg[date_col] >= min_date].copy()
-    
-    daily_zone_dist = recent_7d.groupby([recent_7d[date_col].dt.date, '价格区间']).size().unstack(fill_value=0)
-    daily_zone_dist.index = pd.to_datetime(daily_zone_dist.index)
-    daily_zone_dist = daily_zone_dist.reset_index()
-    daily_zone_dist.rename(columns={date_col: '日期'}, inplace=True)
-    
-    # ========== Sheet3: 商品动销变化TOP20 ==========
-    # 对比最近7天vs之前7天
-    mid_date = max_date - timedelta(days=6)
-    previous_7d_start = mid_date - timedelta(days=7)
-    
-    # 检查销量字段（可能是'销量'或'月售'）
-    sales_field = None
-    for field in ['销量', '月售', '数量']:
-        if field in df.columns:
-            sales_field = field
-            break
-    
-    if sales_field:
-        recent_sales = df[df[date_col] >= mid_date].groupby('商品名称').agg({
-            sales_field: 'sum'
-        }).reset_index()
-        recent_sales.columns = ['商品名称', '最近7天销量']
-        
-        previous_sales = df[(df[date_col] >= previous_7d_start) & (df[date_col] < mid_date)].groupby('商品名称').agg({
-            sales_field: 'sum'
-        }).reset_index()
-        previous_sales.columns = ['商品名称', '之前7天销量']
-        
-        sales_comparison = recent_sales.merge(previous_sales, on='商品名称', how='outer').fillna(0)
-        sales_comparison['销量变化'] = sales_comparison['最近7天销量'] - sales_comparison['之前7天销量']
-        sales_comparison['变化率(%)'] = ((sales_comparison['最近7天销量'] - sales_comparison['之前7天销量']) / 
-                                         (sales_comparison['之前7天销量'].replace(0, 1))) * 100
-        
-        # TOP20（按绝对变化量）
-        sales_top20 = sales_comparison.nlargest(20, '销量变化')
-    else:
-        # 无销量字段，使用订单数作为替代
-        recent_sales = df[df[date_col] >= mid_date].groupby('商品名称').size().reset_index(name='最近7天订单数')
-        previous_sales = df[(df[date_col] >= previous_7d_start) & (df[date_col] < mid_date)].groupby('商品名称').size().reset_index(name='之前7天订单数')
-        
-        sales_comparison = recent_sales.merge(previous_sales, on='商品名称', how='outer').fillna(0)
-        sales_comparison.columns = ['商品名称', '最近7天销量', '之前7天销量']
-        sales_comparison['销量变化'] = sales_comparison['最近7天销量'] - sales_comparison['之前7天销量']
-        sales_comparison['变化率(%)'] = ((sales_comparison['最近7天销量'] - sales_comparison['之前7天销量']) / 
-                                         (sales_comparison['之前7天销量'].replace(0, 1))) * 100
-        
-        sales_top20 = sales_comparison.nlargest(20, '销量变化')
-    
-    # ========== Sheet4: 渠道客单价趋势 ==========
-    if '渠道' in df.columns:
-        # 合并渠道信息到order_agg
-        order_channel_map = df.groupby('订单ID')['渠道'].first().reset_index()
-        order_with_channel = order_agg.merge(order_channel_map, on='订单ID', how='left')
-        
-        channel_daily_aov = order_with_channel.groupby([order_with_channel[date_col].dt.date, '渠道'])['客单价'].mean().unstack(fill_value=0)
-        channel_daily_aov.index = pd.to_datetime(channel_daily_aov.index)
-        channel_daily_aov = channel_daily_aov.reset_index()
-        channel_daily_aov.rename(columns={date_col: '日期'}, inplace=True)
-    else:
-        channel_daily_aov = pd.DataFrame({'说明': ['渠道字段不存在']})
-    
-    # ========== Sheet5: 价格区间订单数趋势 ==========
-    zone_order_trend = order_agg.groupby([order_agg[date_col].dt.date, '价格区间']).size().unstack(fill_value=0)
-    zone_order_trend.index = pd.to_datetime(zone_order_trend.index)
-    zone_order_trend = zone_order_trend.reset_index()
-    zone_order_trend.rename(columns={date_col: '日期'}, inplace=True)
-    
-    # ========== Sheet6: 异常预警清单 ==========
-    alerts = []
-    
-    # 每日客单价计算
-    daily_aov = order_agg.groupby(order_agg[date_col].dt.date)['客单价'].mean()
-    daily_aov_std = daily_aov.std()
-    daily_aov_mean = daily_aov.mean()
-    
-    # 检测异常低客单价日期
-    for date, aov in daily_aov.items():
-        if aov < daily_aov_mean - 1.5 * daily_aov_std:
-            alerts.append({
-                '日期': date,
-                '异常类型': '客单价异常低',
-                '数值': f'¥{aov:.2f}',
-                '正常范围': f'¥{daily_aov_mean:.2f}±{1.5*daily_aov_std:.2f}',
-                '建议': '检查是否有大量低价商品促销，或高价商品缺货'
-            })
-    
-    # 检测订单数骤减
-    daily_orders = order_agg.groupby(order_agg[date_col].dt.date).size()
-    for i in range(1, len(daily_orders)):
-        if daily_orders.iloc[i] < daily_orders.iloc[i-1] * 0.5:
-            alerts.append({
-                '日期': daily_orders.index[i],
-                '异常类型': '订单数骤减',
-                '数值': f'{daily_orders.iloc[i]}单',
-                '前一日': f'{daily_orders.iloc[i-1]}单',
-                '建议': '检查系统是否正常，或是否有突发事件影响'
-            })
-    
-    alerts_df = pd.DataFrame(alerts) if alerts else pd.DataFrame({'说明': ['未发现异常']})
-    
-    # ========== 导出Excel ==========
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        weekly_stats.to_excel(writer, sheet_name='1_本周vs上周对比', index=False)
-        daily_zone_dist.to_excel(writer, sheet_name='2_近7天价格区间趋势', index=False)
-        sales_top20.to_excel(writer, sheet_name='3_商品动销变化TOP20', index=False)
-        channel_daily_aov.to_excel(writer, sheet_name='4_渠道客单价趋势', index=False)
-        zone_order_trend.to_excel(writer, sheet_name='5_价格区间订单数趋势', index=False)
-        alerts_df.to_excel(writer, sheet_name='6_异常预警清单', index=False)
-        
-        # 自动调整列宽
-        for sheet_name in writer.sheets:
-            worksheet = writer.sheets[sheet_name]
-            for column in worksheet.columns:
-                max_length = 0
-                column_letter = column[0].column_letter
-                for cell in column:
-                    try:
-                        if len(str(cell.value)) > max_length:
-                            max_length = len(str(cell.value))
-                    except:
-                        pass
-                adjusted_width = min(max_length + 2, 50)
-                worksheet.column_dimensions[column_letter].width = adjusted_width
-    
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"{store_name}_客单价趋势分析_{timestamp}.xlsx"
-    return dcc.send_bytes(output.getvalue(), filename)
-
-
-@app.callback(
-    Output('download-aov-association', 'data'),
-    Input('export-aov-association-btn', 'n_clicks'),
-    State('store-data', 'data'),
-    State('cached-order-agg', 'data'),
-    State('current-store-id', 'data'),
-    prevent_initial_call=True
-)
-def export_aov_association(n_clicks, store_data, cached_agg, store_id):
-    """导出商品关联分析报告（Phase 3）
-    
-    业务逻辑：
-    - Sheet1: 商品关联矩阵（哪些商品经常一起购买）
-    - Sheet2: 凑单推荐方案（基于关联规则，置信度>0.6）
-    - Sheet3: 套餐组合建议（利润最大化组合，2-3个商品）
-    - Sheet4: 交叉销售机会（商品A的买家还买了什么，TOP10）
-    - Sheet5: 关联分析预测收益（基于推荐的预期增收）
-    """
-    if not store_data:
-        return None
-    
-    import io
-    from datetime import datetime
-    import pandas as pd
-    import numpy as np
-    from itertools import combinations
-    from collections import Counter, defaultdict
-    
-    df = pd.DataFrame(store_data)
-    
-    if len(df) == 0:
-        return None
-    
-    # 获取门店名称
-    store_name = df['门店名称'].iloc[0] if '门店名称' in df.columns else "未知门店"
-    
-    # ========== 数据准备 ==========
-    # 构建订单-商品矩阵（每个订单包含哪些商品）
-    order_products = df.groupby('订单ID')['商品名称'].apply(list).reset_index()
-    
-    # 过滤只有1个商品的订单（无关联可挖）
-    order_products = order_products[order_products['商品名称'].apply(len) > 1]
-    
-    if len(order_products) == 0:
-        # 没有多商品订单，返回提示
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            pd.DataFrame({'说明': ['数据中没有包含多个商品的订单，无法进行关联分析']}).to_excel(writer, sheet_name='说明', index=False)
-        
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"商品关联分析_无数据_{timestamp}.xlsx"
-        return dcc.send_bytes(output.getvalue(), filename)
-    
-    # ========== Sheet1: 商品关联矩阵 ==========
-    # 计算商品对的共现次数
-    product_pairs = []
-    for products in order_products['商品名称']:
-        # 生成所有2商品组合
-        for pair in combinations(sorted(set(products)), 2):
-            product_pairs.append(pair)
-    
-    pair_counts = Counter(product_pairs)
-    
-    # 计算每个商品的出现次数
-    all_products = []
-    for products in order_products['商品名称']:
-        all_products.extend(products)
-    product_counts = Counter(all_products)
-    
-    # 构建关联矩阵
-    association_data = []
-    for (prod_a, prod_b), count in pair_counts.most_common(100):  # TOP100商品对
-        support_a = product_counts[prod_a]
-        support_b = product_counts[prod_b]
-        
-        # 置信度: P(B|A) = count(A,B) / count(A)
-        confidence_a_b = count / support_a if support_a > 0 else 0
-        confidence_b_a = count / support_b if support_b > 0 else 0
-        
-        # 提升度: lift = P(A,B) / (P(A) * P(B))
-        total_orders = len(order_products)
-        lift = (count / total_orders) / ((support_a / total_orders) * (support_b / total_orders)) if support_a > 0 and support_b > 0 else 0
-        
-        association_data.append({
-            '商品A': prod_a,
-            '商品B': prod_b,
-            '共现次数': count,
-            'A出现次数': support_a,
-            'B出现次数': support_b,
-            '置信度A→B(%)': round(confidence_a_b * 100, 2),
-            '置信度B→A(%)': round(confidence_b_a * 100, 2),
-            '提升度': round(lift, 2),
-            '关联强度': '强' if lift > 1.5 and confidence_a_b > 0.3 else ('中' if lift > 1.2 else '弱')
-        })
-    
-    association_matrix = pd.DataFrame(association_data)
-    
-    # ========== Sheet2: 凑单推荐方案 ==========
-    # 筛选高置信度关联规则（置信度>0.4, 提升度>1.2）
-    bundle_recommendations = association_matrix[
-        (association_matrix['置信度A→B(%)'] > 40) & 
-        (association_matrix['提升度'] > 1.2)
-    ].copy()
-    
-    # 添加推荐场景
-    bundle_recommendations['推荐场景'] = bundle_recommendations.apply(
-        lambda x: f"购买'{x['商品A']}'的用户，有{x['置信度A→B(%)']}%的概率也会买'{x['商品B']}'",
-        axis=1
-    )
-    
-    # 预估增收（假设推荐成功率30%）
-    if '商品实售价' in df.columns:
-        product_avg_price = df.groupby('商品名称')['实收价格'].mean().to_dict()
-        bundle_recommendations['商品B平均价格'] = bundle_recommendations['商品B'].map(product_avg_price)
-        bundle_recommendations['预期增收(元)'] = (
-            bundle_recommendations['A出现次数'] * 
-            (bundle_recommendations['置信度A→B(%)'] / 100) * 
-            0.3 *  # 推荐成功率
-            bundle_recommendations['商品B平均价格']
-        ).round(2)
-    else:
-        bundle_recommendations['预期增收(元)'] = 0
-    
-    bundle_recommendations = bundle_recommendations.sort_values('预期增收(元)', ascending=False).head(30)
-    
-    # ========== Sheet3: 套餐组合建议 ==========
-    # 基于利润率挖掘最优组合
-    combo_data = []
-    
-    if '实收价格' in df.columns and '商品采购成本' in df.columns:
-        # 计算每个商品的平均利润率
-        product_profit = df.groupby('商品名称').agg({
-            '实收价格': 'mean',
-            '商品采购成本': 'mean'
-        }).reset_index()
-        product_profit['利润率(%)'] = ((product_profit['实收价格'] - product_profit['商品采购成本']) / 
-                                       product_profit['实收价格'] * 100).round(2)
-        product_profit['单品利润'] = (product_profit['实收价格'] - product_profit['商品采购成本']).round(2)
-        
-        # 从高置信度关联中选择利润率高的组合
-        for idx, row in association_matrix.head(50).iterrows():
-            prod_a_info = product_profit[product_profit['商品名称'] == row['商品A']]
-            prod_b_info = product_profit[product_profit['商品名称'] == row['商品B']]
-            
-            if len(prod_a_info) > 0 and len(prod_b_info) > 0:
-                combo_price = prod_a_info['实收价格'].values[0] + prod_b_info['实收价格'].values[0]
-                combo_profit = prod_a_info['单品利润'].values[0] + prod_b_info['单品利润'].values[0]
-                combo_profit_rate = (combo_profit / combo_price * 100) if combo_price > 0 else 0
-                
-                combo_data.append({
-                    '套餐名称': f"{row['商品A']} + {row['商品B']}",
-                    '商品1': row['商品A'],
-                    '商品2': row['商品B'],
-                    '套餐原价(元)': round(combo_price, 2),
-                    '套餐利润(元)': round(combo_profit, 2),
-                    '利润率(%)': round(combo_profit_rate, 2),
-                    '历史共现次数': row['共现次数'],
-                    '提升度': row['提升度'],
-                    '建议定价(元)': round(combo_price * 0.95, 2),  # 95折
-                    '折扣后利润(元)': round(combo_profit - combo_price * 0.05, 2)
-                })
-    
-    combo_recommendations = pd.DataFrame(combo_data).sort_values('折扣后利润(元)', ascending=False).head(20) if combo_data else pd.DataFrame({'说明': ['需要价格和成本数据']})
-    
-    # ========== Sheet4: 交叉销售机会 ==========
-    # 找出每个热销商品的TOP10关联商品
-    cross_sell_data = []
-    
-    top_products = product_counts.most_common(20)  # 前20个热销商品
-    
-    for prod, count in top_products:
-        # 找出与该商品关联的其他商品
-        related = []
-        for (prod_a, prod_b), pair_count in pair_counts.items():
-            if prod_a == prod:
-                related.append((prod_b, pair_count))
-            elif prod_b == prod:
-                related.append((prod_a, pair_count))
-        
-        # 按共现次数排序
-        related.sort(key=lambda x: x[1], reverse=True)
-        
-        for rank, (related_prod, co_count) in enumerate(related[:10], 1):
-            cross_sell_data.append({
-                '主商品': prod,
-                '主商品销量': count,
-                '关联商品': related_prod,
-                '关联排名': rank,
-                '共同购买次数': co_count,
-                '关联率(%)': round(co_count / count * 100, 2) if count > 0 else 0
-            })
-    
-    cross_sell_opportunities = pd.DataFrame(cross_sell_data)
-    
-    # ========== Sheet5: 预测收益 ==========
-    # 汇总各类推荐的预期收益
-    revenue_summary = pd.DataFrame({
-        '推荐类型': ['凑单推荐', '套餐组合', '交叉销售'],
-        '推荐数量': [
-            len(bundle_recommendations),
-            len(combo_recommendations) if isinstance(combo_recommendations, pd.DataFrame) and '套餐名称' in combo_recommendations.columns else 0,
-            len(cross_sell_opportunities)
-        ],
-        '预期总增收(元)': [
-            bundle_recommendations['预期增收(元)'].sum() if '预期增收(元)' in bundle_recommendations.columns else 0,
-            combo_recommendations['折扣后利润(元)'].sum() if isinstance(combo_recommendations, pd.DataFrame) and '折扣后利润(元)' in combo_recommendations.columns else 0,
-            0  # 交叉销售收益需要更复杂的计算
-        ]
-    })
-    
-    revenue_summary['实施优先级'] = revenue_summary['预期总增收(元)'].rank(ascending=False).astype(int)
-    
-    # ========== 导出Excel ==========
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        association_matrix.to_excel(writer, sheet_name='1_商品关联矩阵', index=False)
-        bundle_recommendations.to_excel(writer, sheet_name='2_凑单推荐方案', index=False)
-        combo_recommendations.to_excel(writer, sheet_name='3_套餐组合建议', index=False)
-        cross_sell_opportunities.to_excel(writer, sheet_name='4_交叉销售机会', index=False)
-        revenue_summary.to_excel(writer, sheet_name='5_预测收益汇总', index=False)
-        
-        # 自动调整列宽
-        for sheet_name in writer.sheets:
-            worksheet = writer.sheets[sheet_name]
-            for column in worksheet.columns:
-                max_length = 0
-                column_letter = column[0].column_letter
-                for cell in column:
-                    try:
-                        if len(str(cell.value)) > max_length:
-                            max_length = len(str(cell.value))
-                    except:
-                        pass
-                adjusted_width = min(max_length + 2, 60)
-                worksheet.column_dimensions[column_letter].width = adjusted_width
-    
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"{store_name}_商品关联分析_{timestamp}.xlsx"
-    return dcc.send_bytes(output.getvalue(), filename)
-
-
-@app.callback(
-    Output('download-aov-segment', 'data'),
-    Input('export-aov-segment-btn', 'n_clicks'),
-    State('store-data', 'data'),
-    State('cached-order-agg', 'data'),
-    State('current-store-id', 'data'),
-    prevent_initial_call=True
-)
-def export_aov_segment(n_clicks, store_data, cached_agg, store_id):
-    """导出用户分层分析报告（Phase 4）
-    
-    业务逻辑：
-    - Sheet1: 新客vs老客分析（首购vs复购用户行为对比）
-    - Sheet2: 用户成长路径（客单价区间迁移分析）
-    - Sheet3: 复购分析（不同客单价区间用户的复购行为）
-    - Sheet4: 高价值用户画像（TOP100用户识别与特征）
-    - Sheet5: 流失预警（近期客单价下降或订单减少的用户）
-    
-    用户识别策略：优先使用用户ID，其次使用收货地址
-    """
-    if not store_data:
-        return None
-    
-    import io
-    from datetime import datetime, timedelta
-    import pandas as pd
-    import numpy as np
-    
-    df = pd.DataFrame(store_data)
-    
-    if len(df) == 0:
-        return None
-    
-    # 获取门店名称
-    store_name = df['门店名称'].iloc[0] if '门店名称' in df.columns else "未知门店"
-    
-    # ========== 用户识别 ==========
-    # 优先级：用户ID > 收货地址
-    user_id_field = None
-    for field in ['用户ID', '会员ID', '用户手机', '手机号']:
-        if field in df.columns and df[field].notna().sum() > len(df) * 0.3:  # 至少30%有值
-            user_id_field = field
-            break
-    
-    if user_id_field:
-        # 使用用户ID
-        df['用户标识'] = df[user_id_field].fillna('未知')
-        identification_method = f"使用{user_id_field}字段"
-    elif '收货地址' in df.columns:
-        # 使用收货地址作为fallback
-        df['用户标识'] = 'A_' + df['收货地址'].astype(str)
-        identification_method = "使用收货地址"
-    else:
-        # 无法识别用户
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            pd.DataFrame({'说明': ['数据中没有用户ID或收货地址字段，无法进行用户分层分析']}).to_excel(writer, sheet_name='说明', index=False)
-        
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"用户分层分析_无数据_{timestamp}.xlsx"
-        return dcc.send_bytes(output.getvalue(), filename)
-    
-    # 准备日期字段
-    date_col = '日期' if '日期' in df.columns else '下单时间'
-    if date_col in df.columns:
-        df[date_col] = pd.to_datetime(df[date_col])
-    else:
-        # 无日期字段
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            pd.DataFrame({'说明': ['数据中没有日期字段，无法进行时间序列分析']}).to_excel(writer, sheet_name='说明', index=False)
-        
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"用户分层分析_无日期_{timestamp}.xlsx"
-        return dcc.send_bytes(output.getvalue(), filename)
-    
-    # ========== 用户订单聚合 ==========
-    user_orders = df.groupby(['用户标识', '订单ID']).agg({
-        '商品实售价': 'sum',
-        date_col: 'first'
-    }).reset_index()
-    user_orders.rename(columns={'商品实售价': '订单金额'}, inplace=True)
-    
-    # ========== Sheet1: 新客vs老客分析 ==========
-    user_stats = user_orders.groupby('用户标识').agg({
-        '订单ID': 'count',
-        '订单金额': ['sum', 'mean'],
-        date_col: ['min', 'max']
-    }).reset_index()
-    
-    user_stats.columns = ['用户标识', '订单数', '总消费金额', '平均客单价', '首次购买日期', '最后购买日期']
-    
-    # 区分新老客（订单数=1为新客）
-    user_stats['用户类型'] = user_stats['订单数'].apply(lambda x: '新客' if x == 1 else '老客')
-    
-    new_vs_old = user_stats.groupby('用户类型').agg({
-        '用户标识': 'count',
-        '订单数': 'sum',
-        '总消费金额': 'sum',
-        '平均客单价': 'mean'
-    }).reset_index()
-    new_vs_old.columns = ['用户类型', '用户数', '总订单数', '总消费金额(元)', '平均客单价(元)']
-    new_vs_old['人均订单数'] = (new_vs_old['总订单数'] / new_vs_old['用户数']).round(2)
-    new_vs_old['人均消费(元)'] = (new_vs_old['总消费金额(元)'] / new_vs_old['用户数']).round(2)
-    
-    # ========== Sheet2: 用户成长路径 ==========
-    # 定义客单价区间
-    def categorize_aov(price):
-        if price < 20: return '低价区(<20)'
-        elif price < 50: return '主流区(20-50)'
-        else: return '高价区(50+)'
-    
-    user_orders['价格区间'] = user_orders['订单金额'].apply(categorize_aov)
-    
-    # 分析用户的首单和末单价格区间
-    user_first_last = user_orders.sort_values(date_col).groupby('用户标识').agg({
-        '价格区间': ['first', 'last'],
-        '订单金额': ['first', 'last']
-    }).reset_index()
-    user_first_last.columns = ['用户标识', '首单价格区间', '末单价格区间', '首单金额', '末单金额']
-    
-    # 成长路径分析
-    growth_path = user_first_last.groupby(['首单价格区间', '末单价格区间']).size().reset_index(name='用户数')
-    growth_path['成长类型'] = growth_path.apply(
-        lambda x: '保持' if x['首单价格区间'] == x['末单价格区间']
-        else ('升级' if (x['首单价格区间'] == '低价区(<20)' and x['末单价格区间'] != '低价区(<20)') or 
-                      (x['首单价格区间'] == '主流区(20-50)' and x['末单价格区间'] == '高价区(50+)')
-              else '降级'),
-        axis=1
-    )
-    
-    # ========== Sheet3: 复购分析 ==========
-    repurchase_analysis = user_stats[user_stats['订单数'] > 1].copy()  # 仅分析复购用户
-    repurchase_analysis['平均复购间隔(天)'] = (
-        (repurchase_analysis['最后购买日期'] - repurchase_analysis['首次购买日期']).dt.days / 
-        (repurchase_analysis['订单数'] - 1)
-    ).round(1)
-    
-    # 按客单价分段分析复购率
-    repurchase_analysis['客单价区间'] = repurchase_analysis['平均客单价'].apply(categorize_aov)
-    
-    repurchase_by_aov = repurchase_analysis.groupby('客单价区间').agg({
-        '用户标识': 'count',
-        '订单数': 'mean',
-        '平均复购间隔(天)': 'mean',
-        '总消费金额': 'mean'
-    }).reset_index()
-    repurchase_by_aov.columns = ['客单价区间', '复购用户数', '平均订单数', '平均复购间隔(天)', '人均消费(元)']
-    
-    # 计算复购率（复购用户数 / 总用户数）
-    total_users_by_aov = user_stats.groupby(
-        user_stats['平均客单价'].apply(categorize_aov)
-    ).size().reset_index(name='总用户数')
-    total_users_by_aov.columns = ['客单价区间', '总用户数']
-    
-    repurchase_by_aov = repurchase_by_aov.merge(total_users_by_aov, on='客单价区间', how='left')
-    repurchase_by_aov['复购率(%)'] = (repurchase_by_aov['复购用户数'] / repurchase_by_aov['总用户数'] * 100).round(2)
-    
-    # ========== Sheet4: 高价值用户画像 ==========
-    high_value_users = user_stats.nlargest(100, '总消费金额').copy()
-    
-    # 添加更多用户特征
-    for idx, user in high_value_users.iterrows():
-        user_id = user['用户标识']
-        user_detail_orders = user_orders[user_orders['用户标识'] == user_id]
-        
-        # 计算价格区间分布
-        zone_dist = user_detail_orders['价格区间'].value_counts().to_dict()
-        high_value_users.at[idx, '低价区订单数'] = zone_dist.get('低价区(<20)', 0)
-        high_value_users.at[idx, '主流区订单数'] = zone_dist.get('主流区(20-50)', 0)
-        high_value_users.at[idx, '高价区订单数'] = zone_dist.get('高价区(50+)', 0)
-    
-    high_value_users['价值等级'] = pd.cut(
-        high_value_users['总消费金额'],
-        bins=3,
-        labels=['银牌', '金牌', '钻石']
-    )
-    
-    # ========== Sheet5: 流失预警 ==========
-    max_date = df[date_col].max()
-    churn_threshold = max_date - timedelta(days=14)  # 14天未下单视为可能流失
-    
-    churn_risk_users = user_stats[user_stats['最后购买日期'] < churn_threshold].copy()
-    churn_risk_users['距离最后购买(天)'] = (max_date - churn_risk_users['最后购买日期']).dt.days
-    
-    # 计算客单价趋势（最后3单vs前面订单）
-    churn_details = []
-    for idx, user in churn_risk_users.head(100).iterrows():  # TOP100流失风险用户
-        user_id = user['用户标识']
-        user_detail_orders = user_orders[user_orders['用户标识'] == user_id].sort_values(date_col)
-        
-        if len(user_detail_orders) >= 3:
-            last_3_avg = user_detail_orders.tail(3)['订单金额'].mean()
-            previous_avg = user_detail_orders.head(-3)['订单金额'].mean() if len(user_detail_orders) > 3 else last_3_avg
-            
-            aov_change = ((last_3_avg - previous_avg) / previous_avg * 100) if previous_avg > 0 else 0
-            
-            churn_details.append({
-                '用户标识': user_id,
-                '历史订单数': user['订单数'],
-                '历史总消费(元)': user['总消费金额'],
-                '平均客单价(元)': user['平均客单价'],
-                '最后购买日期': user['最后购买日期'],
-                '距今天数': user['距离最后购买(天)'],
-                '近期客单价变化(%)': round(aov_change, 2),
-                '流失风险': '高' if user['距离最后购买(天)'] > 21 else '中',
-                '召回建议': '发送优惠券' if aov_change < -10 else '推送新品信息'
-            })
-    
-    churn_warning = pd.DataFrame(churn_details)
-    
-    # ========== 导出Excel ==========
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # 添加说明Sheet
-        info_df = pd.DataFrame({
-            '说明': [f'用户识别方法: {identification_method}', 
-                    f'分析期间: {df[date_col].min()} ~ {df[date_col].max()}',
-                    f'总用户数: {len(user_stats)}',
-                    f'新客数: {len(user_stats[user_stats["用户类型"]=="新客"])}',
-                    f'老客数: {len(user_stats[user_stats["用户类型"]=="老客"])}']
-        })
-        info_df.to_excel(writer, sheet_name='0_分析说明', index=False)
-        
-        new_vs_old.to_excel(writer, sheet_name='1_新客vs老客分析', index=False)
-        growth_path.to_excel(writer, sheet_name='2_用户成长路径', index=False)
-        repurchase_by_aov.to_excel(writer, sheet_name='3_复购分析', index=False)
-        high_value_users.to_excel(writer, sheet_name='4_高价值用户画像', index=False)
-        if len(churn_warning) > 0:
-            churn_warning.to_excel(writer, sheet_name='5_流失预警', index=False)
-        else:
-            pd.DataFrame({'说明': ['暂无流失风险用户']}).to_excel(writer, sheet_name='5_流失预警', index=False)
-        
-        # 自动调整列宽
-        for sheet_name in writer.sheets:
-            worksheet = writer.sheets[sheet_name]
-            for column in worksheet.columns:
-                max_length = 0
-                column_letter = column[0].column_letter
-                for cell in column:
-                    try:
-                        if len(str(cell.value)) > max_length:
-                            max_length = len(str(cell.value))
-                    except:
-                        pass
-                adjusted_width = min(max_length + 2, 60)
-                worksheet.column_dimensions[column_letter].width = adjusted_width
-    
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"{store_name}_用户分层分析_{timestamp}.xlsx"
-    return dcc.send_bytes(output.getvalue(), filename)
-
-
-@app.callback(
-    [Output('download-tab1-order-report', 'data'),
-     Output('export-toast', 'is_open', allow_duplicate=True),
-     Output('export-toast', 'children', allow_duplicate=True)],
-    Input('export-tab1-order-report-btn', 'n_clicks'),
-    State('store-data', 'data'),
-    State('cached-order-agg', 'data'),
-    State('cached-comparison-data', 'data'),
-    State('current-store-id', 'data'),
-    prevent_initial_call=True
-)
-def export_tab1_order_report(n_clicks, store_data, cached_agg, cached_comparison, store_id):
-    """导出Tab1订单层面经营分析报告
-    
-    业务逻辑:
-    - Sheet1: 关键指标汇总（订单总数、销售额、利润等核心指标）
-    - Sheet2: 渠道表现对比（各渠道订单表现和环比）
-    - Sheet3: 利润表现分析（每日订单利润趋势和异常识别）
-    - Sheet4: 时段分析（不同时段订单分布）
-    - Sheet5: 经营优化建议（智能生成的优化建议）
-    
-    注意：客单价深度分析已移至单独的导出按钮
-    """
-    # 添加调试日志
-    print(f"\n🔍 [导出回调触发] n_clicks={n_clicks}, store_data存在={store_data is not None}", flush=True)
-    
-    # 检查是否真的点击了按钮
-    if not n_clicks or n_clicks == 0:
-        print(f"   ⏭️ 跳过:未点击按钮 (n_clicks={n_clicks})", flush=True)
-        raise PreventUpdate
-    
-    if not store_data:
-        print(f"   ⚠️ 没有数据,返回None", flush=True)
-        return None, False, ""
-    
-    import io
-    from datetime import datetime, timedelta
-    
-    df = pd.DataFrame(store_data)
-    
-    if len(df) == 0:
-        return None, False, ""
-    
-    # 获取门店名称和日期范围
-    store_name = df['门店名称'].iloc[0] if '门店名称' in df.columns else "未知门店"
-    
-    date_col = '日期' if '日期' in df.columns else '下单时间'
-    if date_col in df.columns:
-        df[date_col] = pd.to_datetime(df[date_col])
-        date_start = df[date_col].min().strftime('%Y%m%d')
-        date_end = df[date_col].max().strftime('%Y%m%d')
-        date_range_str = f"{date_start}-{date_end}"
-    else:
-        date_range_str = "未知日期"
-    
-    # 获取订单聚合数据
-    if cached_agg:
-        order_agg = pd.DataFrame(cached_agg)
-    else:
-        order_agg = calculate_order_metrics(df)
-    
-    # 获取环比数据
-    comparison_metrics = {}
-    channel_comparison = {}
-    if cached_comparison:
-        comparison_metrics = cached_comparison.get('comparison_metrics', {})
-        channel_comparison = cached_comparison.get('channel_comparison', {})
-    
-    # ==================== Sheet1: 关键指标汇总 ====================
-    
-    total_orders = len(order_agg)
-    # 使用正确的字段名：预计订单收入（而非预计零售额）
-    total_expected_revenue = order_agg['预计订单收入'].sum() if '预计订单收入' in order_agg.columns else 0
-    total_profit = order_agg['利润额'].sum() if '利润额' in order_agg.columns else 0
-    total_sales = order_agg['实收价格'].sum() if '实收价格' in order_agg.columns else 0
-    avg_order_value = total_sales / total_orders if total_orders > 0 else 0
-    profit_rate = (total_profit / total_sales * 100) if total_sales > 0 else 0
-    total_products = df['商品名称'].nunique() if '商品名称' in df.columns else 0
-    
-    indicators = []
-    for key, label in [
-        ('订单数', '订单总数'),
-        ('预计零售额', '预计零售额'),
-        ('总利润', '总利润'),
-        ('客单价', '平均客单价'),
-        ('总利润率', '总利润率'),
-        ('动销商品数', '动销商品数')
-    ]:
-        comp = comparison_metrics.get(key, {})
-        indicators.append({
-            '指标名称': label,
-            '当期值': {
-                '订单数': total_orders,
-                '预计零售额': total_expected_revenue,
-                '总利润': total_profit,
-                '客单价': avg_order_value,
-                '总利润率': profit_rate,
-                '动销商品数': total_products
-            }.get(key, 0),
-            '上期值': comp.get('previous', ''),
-            '变化率': f"{comp.get('change_rate', 0):.1f}%" if comp.get('change_rate') else '',
-            '变化方向': comp.get('direction', '')
-        })
-    
-    indicators_export = pd.DataFrame(indicators)
-    
-    # ==================== Sheet2: 渠道表现对比 ====================
-    
-    channel_stats_list = []
-    
-    if '渠道' in order_agg.columns:
-        # 构建聚合字典，只包含存在的字段
-        agg_dict = {}
-        if '预计订单收入' in order_agg.columns:
-            agg_dict['预计订单收入'] = 'sum'
-        if '利润额' in order_agg.columns:
-            agg_dict['利润额'] = 'sum'
-        if '商品实售价' in order_agg.columns:
-            agg_dict['实收价格'] = 'sum'
-        if '配送净成本' in order_agg.columns:
-            agg_dict['配送净成本'] = 'sum'
-        if '营销成本' in order_agg.columns:
-            agg_dict['营销成本'] = 'sum'
-        
-        if not agg_dict:
-            channel_export = pd.DataFrame()
-        else:
-            channel_stats = order_agg.groupby('渠道').agg(agg_dict).reset_index()
-            
-            # 计算订单数
-            channel_orders = order_agg.groupby('渠道').size().reset_index(name='订单数')
-            channel_stats = channel_stats.merge(channel_orders, on='渠道')
-            
-            # 计算衍生指标
-            sales_col = '实收价格'
-            channel_stats['利润率'] = (channel_stats['利润额'] / channel_stats[sales_col] * 100).fillna(0) if '利润额' in channel_stats.columns else 0
-            channel_stats['平均客单价'] = (channel_stats[sales_col] / channel_stats['订单数']).fillna(0)
-            if '配送净成本' in channel_stats.columns:
-                channel_stats['配送成本率'] = (channel_stats['配送净成本'] / channel_stats[sales_col] * 100).fillna(0)
-            else:
-                channel_stats['配送成本率'] = 0
-            if '营销成本' in channel_stats.columns:
-                channel_stats['营销成本率'] = (channel_stats['营销成本'] / channel_stats[sales_col] * 100).fillna(0)
-            else:
-                channel_stats['营销成本率'] = 0
-            
-            # 添加环比数据
-            for idx, row in channel_stats.iterrows():
-                channel = row['渠道']
-                comp = channel_comparison.get(channel, {})
-                
-                channel_stats_list.append({
-                    '渠道名称': channel,
-                    '订单数': row['订单数'],
-                    '销售额': row.get('商品实售价', 0),
-                    '利润额': row.get('利润额', 0),
-                    '利润率': f"{row['利润率']:.2f}%",
-                    '平均客单价': row['平均客单价'],
-                    '配送成本': row.get('配送净成本', 0),
-                    '配送成本率': f"{row['配送成本率']:.2f}%",
-                    '营销成本': row.get('营销成本', 0),
-                    '营销成本率': f"{row['营销成本率']:.2f}%",
-                    '销售额环比': f"{comp.get('销售额_变化率', 0):.1f}%" if comp.get('销售额_变化率') else '',
-                    '利润率环比': f"{comp.get('利润率_变化率', 0):.1f}%" if comp.get('利润率_变化率') else '',
-                    '订单数环比': f"{comp.get('订单数_变化率', 0):.1f}%" if comp.get('订单数_变化率') else ''
-                })
-    
-            channel_export = pd.DataFrame(channel_stats_list) if channel_stats_list else pd.DataFrame()
-    else:
-        channel_export = pd.DataFrame()
-    
-    # ==================== 客单价深度分析已移除 ====================
-    # 客单价分析已移至单独的导出按钮，此处不再包含
-    
-    # aov_analysis_list = []
-    
-    # 客单价分析代码已移除，请使用客单价看板的单独导出功能
-    # bins = [0, 10, 20, 30, 40, 50, 100, 200, float('inf')]
-    # labels = ['0-10元', '10-20元', '20-30元', '30-40元', '40-50元', '50-100元', '100-200元', '200元以上']
-    
-    # ==================== Sheet3: 利润表现分析 ====================
-    # 注意：原Sheet4调整为Sheet3，因客单价分析已移除
-    
-    # 从原始df获取订单ID和日期的映射关系
-    if date_col in df.columns and '订单ID' in df.columns:
-        # 获取每个订单的日期（去重，每个订单只保留一个日期）
-        order_dates = df.groupby('订单ID')[date_col].first().reset_index()
-        order_dates.columns = ['订单ID', '日期']
-        
-        # 将日期合并到order_agg
-        order_agg_with_date = order_agg.merge(order_dates, on='订单ID', how='left')
-        
-        # 使用正确的销售额字段
-        sales_col_daily = '实收价格' if '实收价格' in order_agg_with_date.columns else '商品销售额'
-        
-        # 按日期聚合
-        agg_dict_daily = {}
-        if sales_col_daily in order_agg_with_date.columns:
-            agg_dict_daily[sales_col_daily] = 'sum'
-        if '利润额' in order_agg_with_date.columns:
-            agg_dict_daily['利润额'] = 'sum'
-        agg_dict_daily['订单ID'] = 'count'
-        
-        daily_sales = order_agg_with_date.groupby('日期').agg(agg_dict_daily).reset_index()
-        
-        # 重命名列
-        col_mapping = {'订单ID': '订单数'}
-        if sales_col_daily in daily_sales.columns:
-            col_mapping[sales_col_daily] = '销售额'
-        if '利润额' in daily_sales.columns:
-            col_mapping['利润额'] = '总利润'
-        daily_sales = daily_sales.rename(columns=col_mapping)
-        
-        # 计算利润率
-        if '总利润' in daily_sales.columns and '销售额' in daily_sales.columns:
-            daily_sales['利润率'] = (daily_sales['总利润'] / daily_sales['销售额'] * 100).fillna(0)
-        else:
-            daily_sales['利润率'] = 0
-    else:
-        daily_sales = pd.DataFrame()
-    
-    # 异常检测（仅在有数据时执行）
-    if len(daily_sales) > 0 and '利润率' in daily_sales.columns:
-        avg_profit_rate = daily_sales['利润率'].mean()
-        std_profit_rate = daily_sales['利润率'].std()
-        
-        daily_sales['异常标识'] = daily_sales['利润率'].apply(
-            lambda x: '异常' if abs(x - avg_profit_rate) > std_profit_rate else '正常'
-        )
-        daily_sales['偏离度'] = ((daily_sales['利润率'] - avg_profit_rate) / std_profit_rate).round(2)
-        
-        # 异常原因分析
-        daily_sales['异常原因'] = daily_sales.apply(
-            lambda row: f"利润率{'过低' if row['利润率'] < avg_profit_rate else '过高'}，偏离{abs(row['偏离度']):.1f}个标准差" 
-            if row['异常标识'] == '异常' else '',
-            axis=1
-        )
-        
-        profit_export = daily_sales.copy()
-        profit_export['日期'] = profit_export['日期'].dt.strftime('%Y-%m-%d')
-    else:
-        profit_export = pd.DataFrame()
-        avg_profit_rate = 0
-        std_profit_rate = 0
-    
-    # ==================== Sheet5: 时段分析 ====================
-    
-    time_analysis_list = []
-    
-    if '下单时间' in df.columns:
-        df['下单时间_dt'] = pd.to_datetime(df['下单时间'], errors='coerce')
-        df['时段'] = df['下单时间_dt'].dt.hour.apply(
-            lambda x: f"{x:02d}:00-{x+1:02d}:00" if pd.notna(x) else '未知'
-        )
-        
-        # 构建聚合字典
-        time_agg_dict = {'订单ID': 'nunique'}
-        
-        # 使用实际存在的字段
-        if '实收价格' in df.columns:
-            time_agg_dict['实收价格'] = 'sum'
-            sales_field = '实收价格'
-        elif '实收价格' in df.columns:
-            time_agg_dict['实收价格'] = 'sum'
-            sales_field = '实收价格'
-        else:
-            sales_field = None
-            
-        if '利润额' in df.columns:
-            time_agg_dict['利润额'] = 'sum'
-        
-        if sales_field:
-            time_stats = df.groupby('时段').agg(time_agg_dict).reset_index()
-            
-            # 重命名列
-            col_rename = {'订单ID': '订单数'}
-            if sales_field in time_stats.columns:
-                col_rename[sales_field] = '销售额'
-            time_stats = time_stats.rename(columns=col_rename)
-            
-            total_time_orders = time_stats['订单数'].sum()
-            
-            if '销售额' in time_stats.columns:
-                total_time_sales = time_stats['销售额'].sum()
-                time_stats['平均客单价'] = (time_stats['销售额'] / time_stats['订单数']).round(2)
-                time_stats['销售占比'] = (time_stats['销售额'] / total_time_sales * 100).round(2) if total_time_sales > 0 else 0
-            
-            if '利润额' in time_stats.columns and '销售额' in time_stats.columns:
-                time_stats['利润率'] = (time_stats['利润额'] / time_stats['销售额'] * 100).fillna(0).round(2)
-            
-            time_stats['订单占比'] = (time_stats['订单数'] / total_time_orders * 100).round(2) if total_time_orders > 0 else 0
-            
-            time_export = time_stats.sort_values('时段')
-        else:
-            time_export = pd.DataFrame()
-    else:
-        time_export = pd.DataFrame()
-    
-    # ==================== Sheet6: 经营优化建议 ====================
-    
-    suggestions = []
-    
-    # 1. 渠道优化建议
-    if len(channel_export) > 0:
-        # 按利润率排序（需要去除%符号后排序）
-        if '利润率' in channel_export.columns:
-            try:
-                # 尝试提取数值
-                channel_export_sorted = channel_export.copy()
-                if channel_export_sorted['利润率'].dtype == 'object':
-                    channel_export_sorted['利润率_num'] = channel_export_sorted['利润率'].str.replace('%', '').astype(float)
-                    best_channel = channel_export_sorted.nlargest(1, '利润率_num').iloc[0]
-                else:
-                    best_channel = channel_export_sorted.nlargest(1, '利润率').iloc[0]
-            except:
-                best_channel = channel_export.iloc[0]
-        else:
-            best_channel = channel_export.iloc[0]
-        
-        suggestions.append({
-            '类别': '渠道优化',
-            '发现': f"最优渠道：{best_channel['渠道名称']}",
-            '数据': f"利润率{best_channel['利润率']}，销售额¥{best_channel['销售额']:,.0f}",
-            '建议': f"建议加大{best_channel['渠道名称']}资源投入，优化其他渠道配送和营销成本"
-        })
-    
-    # 2. 客单价优化建议（基于订单数据的简单分析）
-    if avg_order_value > 0:
-        suggestions.append({
-            '类别': '客单价优化',
-            '发现': f"当前平均客单价为¥{avg_order_value:.2f}",
-            '数据': f"总订单数{total_orders}笔，总销售额¥{total_sales:,.2f}",
-            '建议': "建议：1)设计满减活动提升客单价 2)推荐凑单商品增加购物篮 3)使用【客单价深度分析】按钮查看详细报告"
-        })
-    
-    # 3. 利润优化建议
-    if len(profit_export) > 0:
-        anomaly_days = profit_export[profit_export['异常标识'] == '异常']
-        if len(anomaly_days) > 0:
-            suggestions.append({
-                '类别': '利润优化',
-                '发现': f"发现{len(anomaly_days)}个异常利润日",
-                '数据': f"平均利润率{avg_profit_rate:.2f}%，波动±{std_profit_rate:.2f}%",
-                '建议': "建议分析异常日期的营销活动和配送成本，优化成本控制"
-            })
-    
-    # 4. 时段优化建议
-    if len(time_export) > 0:
-        peak_time = time_export.nlargest(1, '订单数').iloc[0]
-        suggestions.append({
-            '类别': '时段优化',
-            '发现': f"订单高峰时段：{peak_time['时段']}",
-            '数据': f"订单数{peak_time['订单数']:.0f}，占比{peak_time['订单占比']:.1f}%",
-            '建议': "建议在高峰时段加强人员配备，确保配送时效和服务质量"
-        })
-    
-    suggestions_export = pd.DataFrame(suggestions)
-    
-    # ==================== 创建Excel文件 ====================
-    
-    output = io.BytesIO()
-    
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # Sheet1: 关键指标
-        if len(indicators_export) > 0:
-            indicators_export.to_excel(writer, sheet_name='1_关键指标汇总', index=False)
-        
-        # Sheet2: 渠道对比
-        if len(channel_export) > 0:
-            channel_export.to_excel(writer, sheet_name='2_渠道表现对比', index=False)
-        
-        # 客单价分析已移除，请使用客单价看板的单独导出功能
-        
-        # Sheet3: 利润表现（原Sheet4）
-        if len(profit_export) > 0:
-            profit_export.to_excel(writer, sheet_name='3_利润表现分析', index=False)
-        
-        # Sheet4: 时段分析（原Sheet5）
-        if len(time_export) > 0:
-            time_export.to_excel(writer, sheet_name='4_时段分析', index=False)
-        
-        # Sheet5: 优化建议（原Sheet6）
-        if len(suggestions_export) > 0:
-            suggestions_export.to_excel(writer, sheet_name='5_经营优化建议', index=False)
-    
-    output.seek(0)
-    
-    # 生成文件名
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"{store_name}_经营分析报告_订单维度_{date_range_str}_{timestamp}.xlsx"
-    
-    # 返回文件和Toast提示
-    return dcc.send_bytes(output.getvalue(), filename), True, "✅ 导出成功!"
-
-
-# ==================== 主程序入口 ====================
-
-# ==================== Clientside Callback: 场景化组合切换 ====================
-app.clientside_callback(
-    """
-    function(selected_scene) {
-        // 控制5个场景的显示/隐藏
-        const scenes = ['早餐', '午餐', '晚餐', '夜宵', '下午茶'];
-        const styles = scenes.map(scene => 
-            scene === selected_scene ? {} : {display: 'none'}
-        );
-        
-        return styles;
-    }
-    """,
-    [
-        Output({'type': 'scene-combo-早餐', 'index': MATCH}, 'style'),
-        Output({'type': 'scene-combo-午餐', 'index': MATCH}, 'style'),
-        Output({'type': 'scene-combo-晚餐', 'index': MATCH}, 'style'),
-        Output({'type': 'scene-combo-夜宵', 'index': MATCH}, 'style'),
-        Output({'type': 'scene-combo-下午茶', 'index': MATCH}, 'style')
-    ],
-    [Input({'type': 'scene-selector', 'index': MATCH}, 'value')]
-)
-
-# ==================== 导入并注册Tab7回调 ====================
-# 注释：Tab7所有回调已在主文件中直接定义，无需单独导入
-# try:
-#     from tab7_callbacks import register_tab7_callbacks
-#     register_tab7_callbacks(app)
-#     print("✅ Tab7双维度分析回调已注册")
-# except Exception as e:
-#     print(f"⚠️ Tab7回调注册失败: {e}")
-print("✅ Tab7营销分析回调已加载（主文件内置）")
-
 # ==================== Toast队列管理系统 ====================
 
 @app.callback(
@@ -22376,18 +20648,28 @@ if __name__ == '__main__':
     sys.stdout.flush()
     sys.stderr.flush()
     
-    # 获取本机局域网IP
+    # 获取本机局域网IP（优先选择192.168或10.开头的真实局域网IP）
     import socket
     try:
-        # 获取本机IP地址
-        hostname = socket.gethostname()
-        local_ip = socket.gethostbyname(hostname)
-        # 如果是127.0.0.1，尝试另一种方法
-        if local_ip.startswith('127.'):
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 80))
-            local_ip = s.getsockname()[0]
-            s.close()
+        # 方法1：通过连接外网获取真实的出口IP
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        
+        # 如果获取到的不是常见局域网IP段（192.168.x.x 或 10.x.x.x），尝试其他方法
+        if not (local_ip.startswith('192.168.') or local_ip.startswith('10.')):
+            # 方法2：遍历所有网络接口，优先选择局域网IP
+            import subprocess
+            result = subprocess.run(['ipconfig'], capture_output=True, text=True, encoding='gbk', errors='ignore')
+            for line in result.stdout.split('\n'):
+                if 'IPv4' in line:
+                    parts = line.split(':')
+                    if len(parts) > 1:
+                        ip = parts[1].strip()
+                        if ip.startswith('192.168.') or ip.startswith('10.'):
+                            local_ip = ip
+                            break
     except:
         local_ip = "本机IP"
     
@@ -22398,8 +20680,8 @@ if __name__ == '__main__':
     ║  ✅ 流畅的交互体验                                            ║
     ║  ✅ 支持局域网多人同时访问                                     ║
     ╠══════════════════════════════════════════════════════════════╣
-    ║  📍 本机访问: http://localhost:8050                          ║
-    ║  🌐 局域网访问: http://{local_ip}:8050                   ║
+    ║  📍 本机访问: http://localhost:8051                          ║
+    ║  🌐 局域网访问: http://{local_ip}:8051                   ║
     ║  👥 其他设备通过局域网IP访问即可共享看板                       ║
     ╚══════════════════════════════════════════════════════════════╝
     """, flush=True)
@@ -22422,7 +20704,7 @@ if __name__ == '__main__':
     debug_mode = os.environ.get('DASH_DEBUG', 'false').lower() == 'true'
     
     print(f"📊 数据状态: {len(GLOBAL_DATA) if GLOBAL_DATA is not None else 0} 行数据已加载", flush=True)
-    print(f"⚙️ 配置: host=0.0.0.0, port=8050, debug={debug_mode}", flush=True)
+    print(f"⚙️ 配置: host=0.0.0.0, port=8051, debug={debug_mode}", flush=True)
     
     if debug_mode:
         print("🔧 [调试模式] 已开启: 修改代码并保存后，看板将自动重启应用新逻辑", flush=True)
@@ -22437,7 +20719,7 @@ if __name__ == '__main__':
             app.run(
                 debug=True,
                 host='0.0.0.0',
-                port=8050,
+                port=8051,
                 use_reloader=True  # 调试模式下开启自动重载
             )
         else:
@@ -22448,7 +20730,7 @@ if __name__ == '__main__':
                 serve(
                     app.server,
                     host='0.0.0.0',
-                    port=8050,
+                    port=8051,
                     threads=4,  # 并发线程数（可根据CPU核心数调整）
                     channel_timeout=120,  # 通道超时时间（秒）
                     connection_limit=100,  # 最大连接数
@@ -22461,7 +20743,7 @@ if __name__ == '__main__':
                 app.run(
                     debug=False,
                     host='0.0.0.0',
-                    port=8050,
+                    port=8051,
                     use_reloader=False
                 )
         print("⚠️ 应用服务器已停止", flush=True)

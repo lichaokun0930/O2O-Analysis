@@ -1,6 +1,10 @@
 """
 P2任务：数据源管理器
 支持从Excel或数据库加载数据
+
+✅ 2025-12-04: 统一字段映射配置
+- 所有数据库字段到中文显示名的映射统一在此文件维护
+- 新增字段时只需在 DB_FIELD_MAPPING 中添加映射即可
 """
 
 import sys
@@ -15,6 +19,98 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from database.connection import get_db
 from database.models import Order, Product
 from 真实数据处理器 import RealDataProcessor
+
+
+# ========================================
+# 📌 统一字段映射配置表
+# ========================================
+# 格式: '中文显示名': ('数据库字段名', 默认值, 是否必须hasattr检查)
+# 新增字段时只需在这里添加一行即可，无需修改其他代码
+# ========================================
+DB_FIELD_MAPPING = {
+    # ===== 基础订单信息 =====
+    '订单ID': ('order_id', '', False),
+    '订单编号': ('order_number', '', True),  # ✅ 新增字段示例
+    '下单时间': ('date', None, False),
+    '日期': ('date', None, False),  # 兼容字段
+    '门店名称': ('store_name', '', False),
+    '门店ID': ('store_id', '', True),
+    '城市名称': ('city', '', True),
+    
+    # ===== 商品信息 =====
+    '商品名称': ('product_name', '', False),
+    '商品条形码': ('barcode', '', False),
+    '条码': ('barcode', '', False),  # 兼容字段
+    '店内码': ('store_code', '', True),  # 特殊处理，见下方
+    '一级分类名': ('category_level1', '', False),
+    '三级分类名': ('category_level3', '', False),
+    
+    # ===== 价格成本 =====
+    '商品实售价': ('price', 0.0, False),
+    '商品原价': ('original_price', None, False),  # 特殊处理：fallback到price
+    '商品采购成本': ('cost', 0.0, False),
+    '成本': ('cost', 0.0, False),  # 兼容字段
+    '实收价格': ('actual_price', None, False),  # 特殊处理：fallback到price
+    
+    # ===== 销量金额 =====
+    '销量': ('quantity', 1, False),
+    '销售数量': ('quantity', 1, False),  # 兼容字段
+    '月售': ('quantity', 1, False),  # 兼容字段
+    '库存': ('remaining_stock', 0, False),
+    '剩余库存': ('remaining_stock', 0, False),
+    '预计订单收入': ('amount', None, False),  # 特殊处理
+    '利润额': ('profit', 0.0, False),
+    
+    # ===== 费用 =====
+    '物流配送费': ('delivery_fee', 0.0, False),
+    '平台佣金': ('commission', 0.0, False),
+    '平台服务费': ('platform_service_fee', 0.0, False),
+    
+    # ===== 营销活动字段 =====
+    '用户支付配送费': ('user_paid_delivery_fee', 0.0, False),
+    '配送费减免金额': ('delivery_discount', 0.0, False),
+    '满减金额': ('full_reduction', 0.0, False),
+    '商品减免金额': ('product_discount', 0.0, False),
+    '商家代金券': ('merchant_voucher', 0.0, False),
+    '商家承担部分券': ('merchant_share', 0.0, False),
+    '打包袋金额': ('packaging_fee', 0.0, False),
+    '满赠金额': ('gift_amount', 0.0, True),
+    '商家其他优惠': ('other_merchant_discount', 0.0, True),
+    '新客减免金额': ('new_customer_discount', 0.0, True),
+    
+    # ===== 利润维度字段 =====
+    '企客后返': ('corporate_rebate', 0.0, True),
+    
+    # ===== 配送信息 =====
+    '配送平台': ('delivery_platform', '', True),
+    '配送距离': ('delivery_distance', 0.0, True),
+    '收货地址': ('address', '', False),  # ✅ 新增：客户地址字段
+    
+    # ===== 渠道场景 =====
+    '渠道': ('channel', '', False),
+    '场景': ('scene', '', False),
+    '时段': ('time_period', '', False),
+}
+
+
+def get_field_value(order, field_name: str, default_value, need_hasattr: bool):
+    """
+    安全获取字段值
+    
+    Args:
+        order: Order对象
+        field_name: 数据库字段名
+        default_value: 默认值
+        need_hasattr: 是否需要检查hasattr
+    """
+    if need_hasattr:
+        if hasattr(order, field_name):
+            val = getattr(order, field_name)
+            return val if val is not None else default_value
+        return default_value
+    else:
+        val = getattr(order, field_name, default_value)
+        return val if val is not None else default_value
 
 
 class DataSourceManager:
@@ -135,79 +231,45 @@ class DataSourceManager:
                 for i, (order, store_code) in enumerate(results[:5]):
                     print(f"   {i+1}. order_id='{order.order_id}' (type={type(order.order_id).__name__})")
             
-            # 转换为DataFrame
+            # 转换为DataFrame - 使用统一的字段映射
             data = []
-            for order, store_code in results:  # 🆕 解包时不再包含stock,直接用order.remaining_stock
-                data.append({
-                    # 基础订单信息
-                    '订单ID': order.order_id,
-                    '下单时间': order.date,
-                    '日期': order.date,  # 兼容字段
-                    '门店名称': order.store_name,
-                    '门店ID': order.store_name if order.store_name else '',  # 使用store_name替代不存在的store_id
-                    '收货地址': order.address if hasattr(order, 'address') else '',
-                    '城市名称': '',  # Order模型中没有city字段
-                    
-                    # 商品信息
-                    '商品名称': order.product_name,
-                    '商品条形码': order.barcode,
-                    '条码': order.barcode,  # 兼容字段
-                    # ✅ 优先使用Order表自己的store_code，如果为空再用Product表的
-                    '店内码': order.store_code if (hasattr(order, 'store_code') and order.store_code) else (store_code if store_code else ''),
-                    '一级分类名': order.category_level1,
-                    '三级分类名': order.category_level3,
-                    
-                    # 价格成本
-                    '商品实售价': order.price,
-                    '商品原价': order.original_price if order.original_price else order.price,
-                    '商品采购成本': order.cost if order.cost is not None else 0.0,  # ✅ 修复:使用Order表自己的cost字段
-                    '成本': order.cost if order.cost is not None else 0.0,  # 兼容字段
-                    '实收价格': order.actual_price if order.actual_price else order.price,
-                    
-                    # 销量金额
-                    '销量': order.quantity,
-                    '销售数量': order.quantity,  # 兼容字段
-                    '月售': order.quantity,  # 兼容字段
-                    '库存': order.remaining_stock if order.remaining_stock is not None else 0,  # ✅ 使用Order表的remaining_stock
-                    '剩余库存': order.remaining_stock if order.remaining_stock is not None else 0,  # ✅ 使用Order表的remaining_stock
-                    '订单零售额': order.price * order.quantity,
-                    '实收金额': (order.actual_price if order.actual_price else order.price) * order.quantity,
-                    '用户支付金额': (order.actual_price if order.actual_price else order.price) * order.quantity,
-                    # 🔄 从amount字段读取Excel的"预计订单收入"（不再用price*quantity计算）
-                    '预计订单收入': order.amount if order.amount else (order.price * order.quantity),
-                    # ✅ 从数据库读取Excel导入的"利润额"字段（存储在profit字段中）
-                    '利润额': order.profit if order.profit else 0.0,
-                    
-                    # 费用
-                    '物流配送费': order.delivery_fee if order.delivery_fee else 0.0,
-                    '平台佣金': order.commission if order.commission else 0.0,
-                    '平台服务费': order.platform_service_fee if order.platform_service_fee else 0.0,  # 修复:添加平台服务费映射
-                    
-                    # ✨ 营销活动字段
-                    '用户支付配送费': order.user_paid_delivery_fee if order.user_paid_delivery_fee else 0.0,
-                    '配送费减免金额': order.delivery_discount if order.delivery_discount else 0.0,
-                    '满减金额': order.full_reduction if order.full_reduction else 0.0,
-                    '商品减免金额': order.product_discount if order.product_discount else 0.0,
-                    '商家代金券': order.merchant_voucher if order.merchant_voucher else 0.0,
-                    '商家承担部分券': order.merchant_share if order.merchant_share else 0.0,
-                    '打包袋金额': order.packaging_fee if order.packaging_fee else 0.0,
-                    # ✅ 新增营销维度字段
-                    '满赠金额': order.gift_amount if hasattr(order, 'gift_amount') and order.gift_amount else 0.0,
-                    '商家其他优惠': order.other_merchant_discount if hasattr(order, 'other_merchant_discount') and order.other_merchant_discount else 0.0,
-                    '新客减免金额': order.new_customer_discount if hasattr(order, 'new_customer_discount') and order.new_customer_discount else 0.0,
-                    # ✅ 新增利润维度字段
-                    '企客后返': order.corporate_rebate if hasattr(order, 'corporate_rebate') and order.corporate_rebate else 0.0,
-                    # ✅ 新增配送平台字段
-                    '配送平台': order.delivery_platform if hasattr(order, 'delivery_platform') and order.delivery_platform else '',
-                    
-                    # ✨ 配送信息
-                    '配送距离': order.delivery_distance if hasattr(order, 'delivery_distance') and order.delivery_distance is not None else 0.0,
-                    
-                    # 渠道场景
-                    '渠道': order.channel if order.channel else '',
-                    '场景': order.scene if order.scene else '',
-                    '时段': order.time_period if order.time_period else '',
-                })
+            for order, store_code in results:
+                row = {}
+                
+                # 自动从映射表读取字段
+                for chinese_name, (db_field, default_val, need_hasattr) in DB_FIELD_MAPPING.items():
+                    row[chinese_name] = get_field_value(order, db_field, default_val, need_hasattr)
+                
+                # ===== 特殊处理的字段 =====
+                # 店内码: 优先使用Order表，fallback到Product表
+                if not row.get('店内码'):
+                    row['店内码'] = store_code if store_code else ''
+                
+                # 商品原价: fallback到实售价
+                if row.get('商品原价') is None:
+                    row['商品原价'] = row.get('商品实售价', 0)
+                
+                # 实收价格: fallback到实售价
+                if row.get('实收价格') is None:
+                    row['实收价格'] = row.get('商品实售价', 0)
+                
+                # 预计订单收入: fallback到计算值
+                if row.get('预计订单收入') is None:
+                    row['预计订单收入'] = row.get('商品实售价', 0) * row.get('销量', 1)
+                
+                # ===== 计算字段 =====
+                price = row.get('商品实售价', 0) or 0
+                quantity = row.get('销量', 1) or 1
+                actual_price = row.get('实收价格', 0) or price
+                
+                row['订单零售额'] = price * quantity
+                row['实收金额'] = actual_price * quantity
+                row['用户支付金额'] = actual_price * quantity
+                
+                # ===== 兼容字段处理已通过字段映射自动完成 =====
+                # row['收货地址'] 已通过 DB_FIELD_MAPPING 自动映射
+                
+                data.append(row)
             
             df = pd.DataFrame(data)
             

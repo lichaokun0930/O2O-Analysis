@@ -38,6 +38,12 @@ import numpy as np
 from datetime import timedelta
 from typing import Dict, Tuple, Optional, Any, List
 
+# 导入弹性系数学习机制
+try:
+    from .pricing_engine import learn_elasticity_from_price_change
+except ImportError:
+    learn_elasticity_from_price_change = None
+
 # 配送费阈值
 DELIVERY_FEE_THRESHOLD = 6  # 元
 
@@ -84,6 +90,86 @@ ACTIVITY_FIELDS = {
     '满赠': '满赠金额',
     '其他优惠': '商家其他优惠'
 }
+
+
+# ============ 趋势分析辅助函数 ============
+
+def calculate_trend_indicator(yesterday_value: float, avg_3d_value: float) -> Dict[str, Any]:
+    """
+    计算趋势指示器（昨日 vs 3日均值）
+    
+    返回:
+        {
+            'trend': 'up' | 'down' | 'stable',  # 趋势方向
+            'icon': '↑' | '↓' | '→',            # 趋势图标
+            'label': '恶化' | '好转' | '持平',  # 趋势标签
+            'color': 'red' | 'green' | 'gray',  # 颜色
+            'change_pct': float,                # 变化百分比
+            'avg_3d': float,                    # 3日均值
+            'description': str                  # 描述文字
+        }
+    """
+    result = {
+        'trend': 'stable',
+        'icon': '→',
+        'label': '持平',
+        'color': 'gray',
+        'change_pct': 0,
+        'avg_3d': round(avg_3d_value, 1),
+        'description': ''
+    }
+    
+    if avg_3d_value <= 0:
+        if yesterday_value > 0:
+            # 之前没问题，昨天出现了
+            result['trend'] = 'up'
+            result['icon'] = '⚠️'
+            result['label'] = '新增'
+            result['color'] = 'orange'
+            result['description'] = f'近3日均0，昨日新增{yesterday_value:.0f}'
+        return result
+    
+    change_pct = (yesterday_value - avg_3d_value) / avg_3d_value * 100
+    result['change_pct'] = round(change_pct, 1)
+    
+    # 判断趋势（对于负面指标：增加=恶化，减少=好转）
+    if change_pct > 30:
+        result['trend'] = 'up'
+        result['icon'] = '↑'
+        result['label'] = '恶化'
+        result['color'] = 'red'
+        result['description'] = f'较3日均({avg_3d_value:.0f})↑{change_pct:.0f}%'
+    elif change_pct < -30:
+        result['trend'] = 'down'
+        result['icon'] = '↓'
+        result['label'] = '好转'
+        result['color'] = 'green'
+        result['description'] = f'较3日均({avg_3d_value:.0f})↓{abs(change_pct):.0f}%'
+    else:
+        result['trend'] = 'stable'
+        result['icon'] = '→'
+        result['label'] = '持平'
+        result['color'] = 'gray'
+        result['description'] = f'与3日均({avg_3d_value:.0f})持平'
+    
+    return result
+
+
+def calculate_positive_trend_indicator(yesterday_value: float, avg_3d_value: float) -> Dict[str, Any]:
+    """
+    计算正向指标趋势（爆款商品等，增加=好，减少=差）
+    """
+    result = calculate_trend_indicator(yesterday_value, avg_3d_value)
+    
+    # 反转语义（增加=持续，减少=下滑）
+    if result['trend'] == 'up':
+        result['label'] = '持续火爆'
+        result['color'] = 'green'
+    elif result['trend'] == 'down':
+        result['label'] = '有所回落'
+        result['color'] = 'orange'
+    
+    return result
 
 
 def calculate_order_profit(order_agg: pd.DataFrame) -> pd.Series:
@@ -276,6 +362,46 @@ def analyze_urgent_issues(df: pd.DataFrame) -> Dict[str, Any]:
                 if '渠道' in overflow_orders.columns:
                     result['overflow']['channels'] = overflow_orders['渠道'].value_counts().to_dict()
             
+            # ===== 穿底趋势分析（3日均值对比）=====
+            # 计算前3天的穿底订单数均值
+            try:
+                overflow_3d_counts = []
+                for day_offset in range(1, 4):  # 前1天、前2天、前3天
+                    check_date = yesterday - timedelta(days=day_offset)
+                    check_df = df[df[date_col].dt.normalize() == check_date]
+                    if not check_df.empty and order_id_col in check_df.columns:
+                        # 复用聚合逻辑
+                        check_df = check_df.copy()
+                        if '实收价格' in check_df.columns and sales_field in check_df.columns:
+                            check_df['_实收价格_销量'] = check_df['实收价格'].fillna(0) * check_df[sales_field].fillna(1)
+                        check_agg = {}
+                        if '利润额' in check_df.columns:
+                            check_agg['利润额'] = pd.NamedAgg(column='利润额', aggfunc='sum')
+                        if '平台服务费' in check_df.columns:
+                            check_agg['平台服务费'] = pd.NamedAgg(column='平台服务费', aggfunc='sum')
+                        if '企客后返' in check_df.columns:
+                            check_agg['企客后返'] = pd.NamedAgg(column='企客后返', aggfunc='sum')
+                        if '物流配送费' in check_df.columns:
+                            check_agg['物流配送费'] = pd.NamedAgg(column='物流配送费', aggfunc='first')
+                        if check_agg:
+                            check_order = check_df.groupby(order_id_col).agg(**check_agg).reset_index()
+                            check_order['订单实际利润'] = calculate_order_profit(check_order)
+                            check_overflow = (check_order['订单实际利润'] < 0)
+                            if '利润额' in check_order.columns:
+                                check_overflow = check_overflow & (check_order['利润额'] != 0)
+                            overflow_3d_counts.append(int(check_overflow.sum()))
+                        else:
+                            overflow_3d_counts.append(0)
+                    else:
+                        overflow_3d_counts.append(0)
+                
+                avg_3d = sum(overflow_3d_counts) / len(overflow_3d_counts) if overflow_3d_counts else 0
+                result['overflow']['trend'] = calculate_trend_indicator(result['overflow']['count'], avg_3d)
+                result['overflow']['avg_3d'] = round(avg_3d, 1)
+            except Exception as e:
+                result['overflow']['trend'] = {'trend': 'stable', 'icon': '→', 'label': '持平', 'color': 'gray', 'description': ''}
+                result['overflow']['avg_3d'] = 0
+            
             # ================== 2. 高配送费预警 ==================
             # 使用配送净成本公式：物流配送费 - (用户支付配送费 - 配送费减免) - 企客后返
             if '物流配送费' in order_data.columns:
@@ -325,6 +451,45 @@ def analyze_urgent_issues(df: pd.DataFrame) -> Dict[str, Any]:
                         labels = ['0-3km', '3-5km', '5-8km', '8km+']
                         distance_cut = pd.cut(distances_km, bins=bins, labels=labels)
                         result['delivery']['distance_distribution'] = distance_cut.value_counts().to_dict()
+            
+            # ===== 高配送费趋势分析（3日均值对比）=====
+            try:
+                delivery_3d_counts = []
+                for day_offset in range(1, 4):
+                    check_date = yesterday - timedelta(days=day_offset)
+                    check_df = df[df[date_col].dt.normalize() == check_date]
+                    if not check_df.empty and order_id_col in check_df.columns:
+                        check_df = check_df.copy()
+                        check_agg = {}
+                        if '物流配送费' in check_df.columns:
+                            check_agg['物流配送费'] = pd.NamedAgg(column='物流配送费', aggfunc='first')
+                        if '用户支付配送费' in check_df.columns:
+                            check_agg['用户支付配送费'] = pd.NamedAgg(column='用户支付配送费', aggfunc='first')
+                        if delivery_discount_col_src:
+                            check_agg['配送费减免金额'] = pd.NamedAgg(column=delivery_discount_col_src, aggfunc='first')
+                        if '企客后返' in check_df.columns:
+                            check_agg['企客后返'] = pd.NamedAgg(column='企客后返', aggfunc='sum')
+                        if check_agg:
+                            check_order = check_df.groupby(order_id_col).agg(**check_agg).reset_index()
+                            check_net = check_order.get('物流配送费', pd.Series(0)).fillna(0)
+                            if '用户支付配送费' in check_order.columns:
+                                check_net = check_net - check_order['用户支付配送费'].fillna(0)
+                            if '配送费减免金额' in check_order.columns:
+                                check_net = check_net + check_order['配送费减免金额'].fillna(0)
+                            if '企客后返' in check_order.columns:
+                                check_net = check_net - check_order['企客后返'].fillna(0)
+                            delivery_3d_counts.append(int((check_net > DELIVERY_FEE_THRESHOLD).sum()))
+                        else:
+                            delivery_3d_counts.append(0)
+                    else:
+                        delivery_3d_counts.append(0)
+                
+                avg_3d_delivery = sum(delivery_3d_counts) / len(delivery_3d_counts) if delivery_3d_counts else 0
+                result['delivery']['trend'] = calculate_trend_indicator(result['delivery']['count'], avg_3d_delivery)
+                result['delivery']['avg_3d'] = round(avg_3d_delivery, 1)
+            except Exception as e:
+                result['delivery']['trend'] = {'trend': 'stable', 'icon': '→', 'label': '持平', 'color': 'gray', 'description': ''}
+                result['delivery']['avg_3d'] = 0
         
         # ================== 3. 热销缺货分析 ==================
         # 定义：近N天有销量 且 昨日剩余库存=0（自适应数据天数）
@@ -413,6 +578,38 @@ def analyze_urgent_issues(df: pd.DataFrame) -> Dict[str, Any]:
                             idx = product_main_channel.groupby('商品名称')[sales_col].idxmax()
                             main_channels = product_main_channel.loc[idx][channel_col]
                             result['stockout']['channels'] = main_channels.value_counts().to_dict()
+                        
+                        # ===== 缺货连续天数分析 =====
+                        # 统计每个缺货商品连续缺货了多少天
+                        try:
+                            stockout_names = stockout_products['商品名称'].tolist()
+                            consecutive_days = {}
+                            for product_name in stockout_names:
+                                # 检查最近几天该商品库存情况
+                                days_count = 1  # 昨日已缺货
+                                for day_offset in range(1, 8):  # 最多往前查7天
+                                    check_date = yesterday - timedelta(days=day_offset)
+                                    check_df = df[(df[date_col].dt.normalize() == check_date) & (df['商品名称'] == product_name)]
+                                    if not check_df.empty and stock_col:
+                                        stock_val = check_df[stock_col].iloc[0] if len(check_df) > 0 else -1
+                                        if stock_val == 0:
+                                            days_count += 1
+                                        else:
+                                            break
+                                    else:
+                                        break
+                                consecutive_days[product_name] = days_count
+                            
+                            # 按连续天数分级
+                            persistent_count = sum(1 for d in consecutive_days.values() if d >= 3)  # ≥3天
+                            new_count = sum(1 for d in consecutive_days.values() if d == 1)  # 仅昨日
+                            result['stockout']['persistent_count'] = persistent_count  # 持续缺货(≥3天)
+                            result['stockout']['new_count'] = new_count  # 新增缺货(昨日)
+                            result['stockout']['consecutive_days'] = consecutive_days
+                        except Exception as e:
+                            result['stockout']['persistent_count'] = 0
+                            result['stockout']['new_count'] = result['stockout']['count']
+                            result['stockout']['consecutive_days'] = {}
         
         # ================== 4. 价格异常预警 ==================
         # 定义：实收价格 < 单品采购成本（商品采购成本/月售），卖一单亏一单
@@ -566,12 +763,30 @@ def analyze_watch_issues(df: pd.DataFrame) -> Dict[str, Any]:
             product_last_sale.columns = ['商品名称', '最后销售日']
             product_last_sale['无销量天数'] = (yesterday - product_last_sale['最后销售日'].dt.normalize()).dt.days
             
-            # 获取每个商品的最新库存
+            # 🔧 获取每个商品的最新库存 - 采用双重判断逻辑（与主看板一致）
             if stock_col:
-                latest_stock = df.sort_values(date_col).groupby('商品名称')[stock_col].last().reset_index()
-                latest_stock.columns = ['商品名称', '库存']
-                product_last_sale = product_last_sale.merge(latest_stock, on='商品名称', how='left')
-                product_last_sale['库存'] = product_last_sale['库存'].fillna(0)
+                last_date = df[date_col].max()
+                
+                # 步骤1: 获取最后一天有销售的商品库存
+                last_day_data = df[df[date_col] == last_date]
+                if len(last_day_data) > 0:
+                    last_day_stock_map = last_day_data.groupby('商品名称')[stock_col].last().to_dict()
+                else:
+                    last_day_stock_map = {}
+                
+                # 步骤2: 获取每个商品最后一次售卖记录的库存（回退方案）
+                last_sale_stock_map = df.sort_values(date_col).groupby('商品名称')[stock_col].last().to_dict()
+                
+                # 步骤3: 双重判断 - 优先使用最后一天的库存，否则使用最后售卖时的库存
+                def get_final_stock(product_name):
+                    if product_name in last_day_stock_map:
+                        return last_day_stock_map[product_name]
+                    elif product_name in last_sale_stock_map:
+                        return last_sale_stock_map[product_name]
+                    else:
+                        return 0
+                
+                product_last_sale['库存'] = product_last_sale['商品名称'].apply(get_final_stock)
                 
                 # 核心条件：库存>0 才算滞销
                 has_stock_mask = product_last_sale['库存'] > 0
@@ -589,9 +804,35 @@ def analyze_watch_issues(df: pd.DataFrame) -> Dict[str, Any]:
                 result['new_slow']['products'] = new_slow_products['商品名称'].tolist()[:10]
                 
                 if cost_col and stock_col:
+                    # ⚠️ 修复：使用店内码获取单品成本，避免同名不同规格混淆
+                    # 商品采购成本是总成本(=单品成本×销量)，需要除以销量得到单品成本
                     slow_names = new_slow_products['商品名称'].tolist()
-                    latest_info = df[df['商品名称'].isin(slow_names)].sort_values(date_col).groupby('商品名称')[[stock_col, cost_col]].last()
-                    result['new_slow']['cost'] = round((latest_info[stock_col] * latest_info[cost_col]).sum(), 2)
+                    slow_df = df[df['商品名称'].isin(slow_names)].copy()
+                    
+                    # 按店内码聚合计算单品成本（如果有店内码）
+                    group_key = '店内码' if '店内码' in slow_df.columns else '商品名称'
+                    sales_col_local = '月售' if '月售' in slow_df.columns else ('销量' if '销量' in slow_df.columns else None)
+                    
+                    if sales_col_local:
+                        slow_df['_销量'] = pd.to_numeric(slow_df[sales_col_local], errors='coerce').fillna(1).replace(0, 1)
+                        slow_df['_总成本'] = pd.to_numeric(slow_df[cost_col], errors='coerce').fillna(0)
+                        cost_agg = slow_df.groupby(group_key).agg({
+                            '_总成本': 'sum',
+                            '_销量': 'sum',
+                            '商品名称': 'first'
+                        }).reset_index()
+                        cost_agg['单品成本'] = cost_agg['_总成本'] / cost_agg['_销量']
+                        cost_info = cost_agg.set_index('商品名称')['单品成本'].to_dict()
+                    else:
+                        cost_info = slow_df.sort_values(date_col).groupby('商品名称')[cost_col].last().to_dict()
+                    
+                    # 使用已有的库存数据和获取的成本计算总值
+                    total_cost = 0
+                    for _, row in new_slow_products.iterrows():
+                        product_stock = row['库存']
+                        product_cost = cost_info.get(row['商品名称'], 0)
+                        total_cost += product_stock * product_cost
+                    result['new_slow']['cost'] = round(total_cost, 2)
             
             # === 持续滞销 ===
             # 条件：库存>0 且 刚满7天无销量
@@ -602,9 +843,32 @@ def analyze_watch_issues(df: pd.DataFrame) -> Dict[str, Any]:
                 result['ongoing_slow']['count'] = len(ongoing_slow_products)
                 
                 if cost_col and stock_col:
+                    # ⚠️ 修复：使用店内码获取单品成本
                     slow_names = ongoing_slow_products['商品名称'].tolist()
-                    latest_info = df[df['商品名称'].isin(slow_names)].sort_values(date_col).groupby('商品名称')[[stock_col, cost_col]].last()
-                    result['ongoing_slow']['cost'] = round((latest_info[stock_col] * latest_info[cost_col]).sum(), 2)
+                    slow_df = df[df['商品名称'].isin(slow_names)].copy()
+                    
+                    group_key = '店内码' if '店内码' in slow_df.columns else '商品名称'
+                    sales_col_local = '月售' if '月售' in slow_df.columns else ('销量' if '销量' in slow_df.columns else None)
+                    
+                    if sales_col_local:
+                        slow_df['_销量'] = pd.to_numeric(slow_df[sales_col_local], errors='coerce').fillna(1).replace(0, 1)
+                        slow_df['_总成本'] = pd.to_numeric(slow_df[cost_col], errors='coerce').fillna(0)
+                        cost_agg = slow_df.groupby(group_key).agg({
+                            '_总成本': 'sum',
+                            '_销量': 'sum',
+                            '商品名称': 'first'
+                        }).reset_index()
+                        cost_agg['单品成本'] = cost_agg['_总成本'] / cost_agg['_销量']
+                        cost_info = cost_agg.set_index('商品名称')['单品成本'].to_dict()
+                    else:
+                        cost_info = slow_df.sort_values(date_col).groupby('商品名称')[cost_col].last().to_dict()
+                    
+                    total_cost = 0
+                    for _, row in ongoing_slow_products.iterrows():
+                        product_stock = row['库存']
+                        product_cost = cost_info.get(row['商品名称'], 0)
+                        total_cost += product_stock * product_cost
+                    result['ongoing_slow']['cost'] = round(total_cost, 2)
             
             # === 严重滞销 ===
             # 条件：库存>0 且 刚满15天无销量
@@ -615,9 +879,32 @@ def analyze_watch_issues(df: pd.DataFrame) -> Dict[str, Any]:
                 result['severe_slow']['count'] = len(severe_slow_products)
                 
                 if cost_col and stock_col:
+                    # ⚠️ 修复：使用店内码获取单品成本
                     slow_names = severe_slow_products['商品名称'].tolist()
-                    latest_info = df[df['商品名称'].isin(slow_names)].sort_values(date_col).groupby('商品名称')[[stock_col, cost_col]].last()
-                    result['severe_slow']['cost'] = round((latest_info[stock_col] * latest_info[cost_col]).sum(), 2)
+                    slow_df = df[df['商品名称'].isin(slow_names)].copy()
+                    
+                    group_key = '店内码' if '店内码' in slow_df.columns else '商品名称'
+                    sales_col_local = '月售' if '月售' in slow_df.columns else ('销量' if '销量' in slow_df.columns else None)
+                    
+                    if sales_col_local:
+                        slow_df['_销量'] = pd.to_numeric(slow_df[sales_col_local], errors='coerce').fillna(1).replace(0, 1)
+                        slow_df['_总成本'] = pd.to_numeric(slow_df[cost_col], errors='coerce').fillna(0)
+                        cost_agg = slow_df.groupby(group_key).agg({
+                            '_总成本': 'sum',
+                            '_销量': 'sum',
+                            '商品名称': 'first'
+                        }).reset_index()
+                        cost_agg['单品成本'] = cost_agg['_总成本'] / cost_agg['_销量']
+                        cost_info = cost_agg.set_index('商品名称')['单品成本'].to_dict()
+                    else:
+                        cost_info = slow_df.sort_values(date_col).groupby('商品名称')[cost_col].last().to_dict()
+                    
+                    total_cost = 0
+                    for _, row in severe_slow_products.iterrows():
+                        product_stock = row['库存']
+                        product_cost = cost_info.get(row['商品名称'], 0)
+                        total_cost += product_stock * product_cost
+                    result['severe_slow']['cost'] = round(total_cost, 2)
         
         # ================== 3. 新品表现 ==================
         # 定义：过去7天无销量 + 昨日有销量（首次动销）
@@ -847,16 +1134,47 @@ def analyze_highlights(df: pd.DataFrame) -> Dict[str, Any]:
                 result['hot_products']['total_qty'] = int(hot_products['昨日销量'].sum())
                 result['hot_products']['total_sales'] = round(hot_products['昨日利润'].sum(), 2) if '昨日利润' in hot_products.columns else 0
                 
-                # TOP5商品
+                # ===== 计算连续增长天数 =====
+                # 对TOP5商品计算连续增长了多少天
+                top5_names = hot_products.head(5)['商品名称'].tolist()
+                consecutive_growth = {}
+                for product_name in top5_names:
+                    days_count = 1  # 昨日已增长
+                    for day_offset in range(1, 8):  # 最多往前查7天
+                        check_date_curr = yesterday - timedelta(days=day_offset)
+                        check_date_prev = yesterday - timedelta(days=day_offset + 1)
+                        
+                        curr_df = df[(df[date_col].dt.normalize() == check_date_curr) & (df['商品名称'] == product_name)]
+                        prev_df_check = df[(df[date_col].dt.normalize() == check_date_prev) & (df['商品名称'] == product_name)]
+                        
+                        if not curr_df.empty and not prev_df_check.empty:
+                            curr_qty = curr_df[sales_col].sum()
+                            prev_qty = prev_df_check[sales_col].sum()
+                            if prev_qty > 0 and curr_qty > prev_qty:
+                                days_count += 1
+                            else:
+                                break
+                        else:
+                            break
+                    consecutive_growth[product_name] = days_count
+                
+                result['hot_products']['consecutive_growth'] = consecutive_growth
+                
+                # TOP5商品（带连续增长天数）
                 top5 = hot_products.head(5)
                 result['hot_products']['top_products'] = [
                     {
                         'name': row['商品名称'],
                         'qty': int(row['昨日销量']),
-                        'growth': round(row['增长率'], 1)
+                        'growth': round(row['增长率'], 1),
+                        'consecutive_days': consecutive_growth.get(row['商品名称'], 1)
                     }
                     for _, row in top5.iterrows()
                 ]
+                
+                # 统计连续增长≥3天的商品数
+                sustained_hot_count = sum(1 for d in consecutive_growth.values() if d >= 3)
+                result['hot_products']['sustained_count'] = sustained_hot_count
         
         # ================== 2. 高利润商品分析 ==================
         # 定义：昨日利润额TOP商品（利润额>0）
@@ -995,12 +1313,16 @@ def get_diagnosis_summary(df: pd.DataFrame) -> Dict[str, Any]:
 
 # ==================== 详情数据获取函数 ====================
 
-def get_overflow_orders(df: pd.DataFrame) -> pd.DataFrame:
+def get_overflow_orders(df: pd.DataFrame, days: int = 1) -> pd.DataFrame:
     """
     获取穿底订单详情（使用主看板统一公式）
     
     穿底判断标准：订单实际利润 < 0
     公式：订单实际利润 = 利润额 - 平台服务费 - 物流配送费 + 企客后返
+    
+    参数:
+        df: 原始数据
+        days: 查询天数，1=昨日，3=近3天，7=近7天，15=近15天，0=全部
     """
     if df is None or df.empty:
         return pd.DataFrame()
@@ -1009,13 +1331,20 @@ def get_overflow_orders(df: pd.DataFrame) -> pd.DataFrame:
         date_col = '日期' if '日期' in df.columns else '下单时间'
         df = df.copy()
         df[date_col] = pd.to_datetime(df[date_col])
-        yesterday = df[date_col].max().normalize()
-        yesterday_df = df[df[date_col].dt.normalize() == yesterday]
+        latest_date = df[date_col].max().normalize()
         
-        if yesterday_df.empty:
+        # 根据days参数筛选日期范围
+        if days == 0:
+            # 全部数据
+            filtered_df = df.copy()
+        else:
+            start_date = latest_date - timedelta(days=days-1)
+            filtered_df = df[df[date_col].dt.normalize() >= start_date]
+        
+        if filtered_df.empty:
             return pd.DataFrame()
         
-        order_id_col = '订单ID' if '订单ID' in yesterday_df.columns else None
+        order_id_col = '订单ID' if '订单ID' in filtered_df.columns else None
         if not order_id_col:
             return pd.DataFrame()
         
@@ -1024,54 +1353,61 @@ def get_overflow_orders(df: pd.DataFrame) -> pd.DataFrame:
         
         # ===== 商品级字段 (sum) =====
         # 利润额
-        if '利润额' in yesterday_df.columns:
+        if '利润额' in filtered_df.columns:
             agg_dict['利润额'] = pd.NamedAgg(column='利润额', aggfunc='sum')
         
         # 平台服务费
-        if '平台服务费' in yesterday_df.columns:
+        if '平台服务费' in filtered_df.columns:
             agg_dict['平台服务费'] = pd.NamedAgg(column='平台服务费', aggfunc='sum')
         
         # 企客后返
-        if '企客后返' in yesterday_df.columns:
+        if '企客后返' in filtered_df.columns:
             agg_dict['企客后返'] = pd.NamedAgg(column='企客后返', aggfunc='sum')
         
         # 实收价格 (需要先乘以销量再sum)
-        sales_field = '月售' if '月售' in yesterday_df.columns else '销量'
-        if '实收价格' in yesterday_df.columns and sales_field in yesterday_df.columns:
+        sales_field = '月售' if '月售' in filtered_df.columns else '销量'
+        if '实收价格' in filtered_df.columns and sales_field in filtered_df.columns:
             # 创建临时列：实收价格 × 销量
-            yesterday_df['_实收价格_销量'] = yesterday_df['实收价格'].fillna(0) * yesterday_df[sales_field].fillna(1)
+            filtered_df['_实收价格_销量'] = filtered_df['实收价格'].fillna(0) * filtered_df[sales_field].fillna(1)
             agg_dict['销售额'] = pd.NamedAgg(column='_实收价格_销量', aggfunc='sum')
-        elif '商品实售价' in yesterday_df.columns:
+        elif '商品实售价' in filtered_df.columns:
             agg_dict['销售额'] = pd.NamedAgg(column='商品实售价', aggfunc='sum')
         
         # 商品采购成本
-        cost_col = '商品采购成本' if '商品采购成本' in yesterday_df.columns else '成本'
-        if cost_col in yesterday_df.columns:
+        cost_col = '商品采购成本' if '商品采购成本' in filtered_df.columns else '成本'
+        if cost_col in filtered_df.columns:
             agg_dict['成本'] = pd.NamedAgg(column=cost_col, aggfunc='sum')
         
         # ===== 订单级字段 (first) =====
         # 物流配送费
-        if '物流配送费' in yesterday_df.columns:
+        if '物流配送费' in filtered_df.columns:
             agg_dict['物流配送费'] = pd.NamedAgg(column='物流配送费', aggfunc='first')
         
+        # 订单编号 - 用于识别渠道平台
+        if '订单编号' in filtered_df.columns:
+            agg_dict['订单编号'] = pd.NamedAgg(column='订单编号', aggfunc='first')
+        
         # 渠道
-        channel_col = next((c for c in ['平台', '渠道', 'platform'] if c in yesterday_df.columns), None)
+        channel_col = next((c for c in ['平台', '渠道', 'platform'] if c in filtered_df.columns), None)
         if channel_col:
             agg_dict['渠道'] = pd.NamedAgg(column=channel_col, aggfunc='first')
         
         # 门店
-        if '门店' in yesterday_df.columns:
+        if '门店' in filtered_df.columns:
             agg_dict['门店'] = pd.NamedAgg(column='门店', aggfunc='first')
+        
+        # 日期 - 用于展示
+        agg_dict['日期'] = pd.NamedAgg(column=date_col, aggfunc='first')
         
         # 活动字段（订单级）
         for name, field in ACTIVITY_FIELDS.items():
-            if field in yesterday_df.columns:
+            if field in filtered_df.columns:
                 agg_dict[name] = pd.NamedAgg(column=field, aggfunc='first')
         
         if not agg_dict:
             return pd.DataFrame()
         
-        order_data = yesterday_df.groupby(order_id_col).agg(**agg_dict).reset_index()
+        order_data = filtered_df.groupby(order_id_col).agg(**agg_dict).reset_index()
         
         # 使用统一函数计算订单实际利润
         order_data['订单实际利润'] = calculate_order_profit(order_data)
@@ -1091,8 +1427,12 @@ def get_overflow_orders(df: pd.DataFrame) -> pd.DataFrame:
         overflow_orders = order_data[overflow_mask].copy()
         overflow_orders = overflow_orders.sort_values('订单实际利润', ascending=True)
         
-        # 选择展示列（剔除平台服务费、物流配送费，这些已包含在订单实际利润计算中）
-        display_cols = [order_id_col, '渠道', '门店', '销售额', '成本', '活动成本', '利润额', '订单实际利润']
+        # 格式化日期列
+        if '日期' in overflow_orders.columns:
+            overflow_orders['日期'] = pd.to_datetime(overflow_orders['日期']).dt.strftime('%m-%d')
+        
+        # 选择展示列（加入订单编号和日期）
+        display_cols = [order_id_col, '订单编号', '日期', '渠道', '门店', '销售额', '成本', '活动成本', '利润额', '订单实际利润']
         display_cols = [c for c in display_cols if c in overflow_orders.columns]
         
         return overflow_orders[display_cols]
@@ -1103,7 +1443,7 @@ def get_overflow_orders(df: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def get_overflow_products(df: pd.DataFrame) -> pd.DataFrame:
+def get_overflow_products(df: pd.DataFrame, days: int = 1) -> pd.DataFrame:
     """
     获取穿底商品分析（商品级定位）
     
@@ -1113,6 +1453,10 @@ def get_overflow_products(df: pd.DataFrame) -> pd.DataFrame:
     3. 商品毛利率 - (实收价格-成本)/实收价格
     4. 活动参与情况 - 该商品的平均活动折扣
     5. 昨日销量 - 判断影响范围
+    
+    参数:
+        df: 原始数据
+        days: 查询天数，1=昨日，3=近3天，7=近7天，15=近15天，0=全部
     
     业务价值：
     - 低毛利+高活动 → 建议降低活动力度或退出活动
@@ -1125,35 +1469,41 @@ def get_overflow_products(df: pd.DataFrame) -> pd.DataFrame:
         date_col = '日期' if '日期' in df.columns else '下单时间'
         df = df.copy()
         df[date_col] = pd.to_datetime(df[date_col])
-        yesterday = df[date_col].max().normalize()
-        yesterday_df = df[df[date_col].dt.normalize() == yesterday]
+        latest_date = df[date_col].max().normalize()
         
-        if yesterday_df.empty:
+        # 根据days参数筛选日期范围
+        if days == 0:
+            filtered_df = df.copy()
+        else:
+            start_date = latest_date - timedelta(days=days-1)
+            filtered_df = df[df[date_col].dt.normalize() >= start_date]
+        
+        if filtered_df.empty:
             return pd.DataFrame()
         
-        order_id_col = '订单ID' if '订单ID' in yesterday_df.columns else None
-        if not order_id_col or '商品名称' not in yesterday_df.columns:
+        order_id_col = '订单ID' if '订单ID' in filtered_df.columns else None
+        if not order_id_col or '商品名称' not in filtered_df.columns:
             return pd.DataFrame()
         
         # ===== Step 1: 先按订单聚合，计算订单实际利润 =====
         order_agg_dict = {}
         
         # 商品级字段 (sum)
-        if '利润额' in yesterday_df.columns:
+        if '利润额' in filtered_df.columns:
             order_agg_dict['利润额'] = pd.NamedAgg(column='利润额', aggfunc='sum')
-        if '平台服务费' in yesterday_df.columns:
+        if '平台服务费' in filtered_df.columns:
             order_agg_dict['平台服务费'] = pd.NamedAgg(column='平台服务费', aggfunc='sum')
-        if '企客后返' in yesterday_df.columns:
+        if '企客后返' in filtered_df.columns:
             order_agg_dict['企客后返'] = pd.NamedAgg(column='企客后返', aggfunc='sum')
         
         # 订单级字段 (first)
-        if '物流配送费' in yesterday_df.columns:
+        if '物流配送费' in filtered_df.columns:
             order_agg_dict['物流配送费'] = pd.NamedAgg(column='物流配送费', aggfunc='first')
         
         if not order_agg_dict:
             return pd.DataFrame()
         
-        order_data = yesterday_df.groupby(order_id_col).agg(**order_agg_dict).reset_index()
+        order_data = filtered_df.groupby(order_id_col).agg(**order_agg_dict).reset_index()
         order_data['订单实际利润'] = calculate_order_profit(order_data)
         
         # 筛选穿底订单ID：订单实际利润 < 0 且 利润额 != 0（排除异常数据）
@@ -1168,7 +1518,7 @@ def get_overflow_products(df: pd.DataFrame) -> pd.DataFrame:
             return pd.DataFrame()
         
         # ===== Step 2: 获取穿底订单中的商品明细 =====
-        overflow_items = yesterday_df[yesterday_df[order_id_col].isin(overflow_order_ids)].copy()
+        overflow_items = filtered_df[filtered_df[order_id_col].isin(overflow_order_ids)].copy()
         
         # 计算销量字段
         sales_field = '月售' if '月售' in overflow_items.columns else '销量'
@@ -1274,11 +1624,11 @@ def get_overflow_products(df: pd.DataFrame) -> pd.DataFrame:
         # 穿底贡献 = 商品毛利（负值表示贡献穿底）
         product_agg['穿底贡献'] = product_agg['商品毛利']
         
-        # ===== Step 4: 获取该商品昨日总销量（用于对比）=====
+        # ===== Step 4: 获取该商品在筛选周期内的总销量（用于对比）=====
         # 使用相同的聚合key
-        group_key = get_product_group_key(yesterday_df)
-        all_product_sales = yesterday_df.groupby(group_key)[sales_field].sum().reset_index()
-        all_product_sales.columns = [group_key, '昨日总销量']
+        group_key = get_product_group_key(filtered_df)
+        all_product_sales = filtered_df.groupby(group_key)[sales_field].sum().reset_index()
+        all_product_sales.columns = [group_key, '周期总销量']
         
         # 确保merge的key一致
         merge_key = '店内码' if '店内码' in product_agg.columns else '商品名称'
@@ -1297,7 +1647,7 @@ def get_overflow_products(df: pd.DataFrame) -> pd.DataFrame:
             product_agg = product_agg[product_agg['一级分类'] != '耗材'].copy()
         
         # 选择展示列（业务视角：分类 + 单品信息 + 穿底影响）
-        display_cols = ['一级分类', '三级分类', '店内码', '商品名称', '穿底订单数', '订单ID', '穿底销量', '昨日总销量',
+        display_cols = ['一级分类', '三级分类', '店内码', '商品名称', '穿底订单数', '订单ID', '穿底销量', '周期总销量',
                         '商品原价', '商品实售价', '实收价格', '单品成本', '定价毛利率', '实收毛利率', '穿底贡献', '处理建议']
         display_cols = [c for c in display_cols if c in product_agg.columns]
         
@@ -1310,12 +1660,16 @@ def get_overflow_products(df: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def get_high_delivery_orders(df: pd.DataFrame) -> pd.DataFrame:
+def get_high_delivery_orders(df: pd.DataFrame, days: int = 1) -> pd.DataFrame:
     """
     获取高配送费订单详情（优化版）
     
     高配送费判断标准：配送净成本 > 6元
     配送净成本公式：物流配送费 - (用户支付配送费 - 配送费减免) - 企客后返
+    
+    参数:
+        df: 原始数据
+        days: 日期范围（1=昨日，3=近3天，7=近7天，15=近15天，0=全部）
     
     功能：
     1. 配送距离展示为km（原始数据为米）
@@ -1330,44 +1684,56 @@ def get_high_delivery_orders(df: pd.DataFrame) -> pd.DataFrame:
         date_col = '日期' if '日期' in df.columns else '下单时间'
         df = df.copy()
         df[date_col] = pd.to_datetime(df[date_col])
-        yesterday = df[date_col].max().normalize()
-        yesterday_df = df[df[date_col].dt.normalize() == yesterday]
         
-        if yesterday_df.empty:
+        # 根据days参数筛选日期范围
+        latest_date = df[date_col].max().normalize()
+        if days == 0:
+            # 全部数据
+            filtered_df = df.copy()
+        elif days == 1:
+            # 昨日
+            filtered_df = df[df[date_col].dt.normalize() == latest_date]
+        else:
+            # 近N天
+            start_date = latest_date - pd.Timedelta(days=days-1)
+            filtered_df = df[(df[date_col].dt.normalize() >= start_date) & 
+                            (df[date_col].dt.normalize() <= latest_date)]
+        
+        if filtered_df.empty:
             return pd.DataFrame()
         
-        order_id_col = '订单ID' if '订单ID' in yesterday_df.columns else None
-        if not order_id_col or '物流配送费' not in yesterday_df.columns:
+        order_id_col = '订单ID' if '订单ID' in filtered_df.columns else None
+        if not order_id_col or '物流配送费' not in filtered_df.columns:
             return pd.DataFrame()
         
         # 提取小时用于时段分析
-        yesterday_df['_小时'] = yesterday_df[date_col].apply(lambda x: pd.to_datetime(x).hour if pd.notna(x) else -1)
+        filtered_df['_小时'] = filtered_df[date_col].apply(lambda x: pd.to_datetime(x).hour if pd.notna(x) else -1)
         
         # 构建聚合字典 - 严格区分字段级别
         agg_dict = {}
         
         # ===== 商品级字段 (sum) =====
-        if '利润额' in yesterday_df.columns:
+        if '利润额' in filtered_df.columns:
             agg_dict['利润额'] = pd.NamedAgg(column='利润额', aggfunc='sum')
         
-        if '平台服务费' in yesterday_df.columns:
+        if '平台服务费' in filtered_df.columns:
             agg_dict['平台服务费'] = pd.NamedAgg(column='平台服务费', aggfunc='sum')
         
-        if '企客后返' in yesterday_df.columns:
+        if '企客后返' in filtered_df.columns:
             agg_dict['企客后返'] = pd.NamedAgg(column='企客后返', aggfunc='sum')
         
         # 实收价格 (需要先乘以销量再sum)
-        sales_field = '月售' if '月售' in yesterday_df.columns else '销量'
-        if '实收价格' in yesterday_df.columns and sales_field in yesterday_df.columns:
-            yesterday_df['_实收价格_销量'] = yesterday_df['实收价格'].fillna(0) * yesterday_df[sales_field].fillna(1)
+        sales_field = '月售' if '月售' in filtered_df.columns else '销量'
+        if '实收价格' in filtered_df.columns and sales_field in filtered_df.columns:
+            filtered_df['_实收价格_销量'] = filtered_df['实收价格'].fillna(0) * filtered_df[sales_field].fillna(1)
             agg_dict['销售额'] = pd.NamedAgg(column='_实收价格_销量', aggfunc='sum')
-        elif '商品实售价' in yesterday_df.columns:
+        elif '商品实售价' in filtered_df.columns:
             agg_dict['销售额'] = pd.NamedAgg(column='商品实售价', aggfunc='sum')
         
         # 商品成本
-        cost_col = '商品采购成本' if '商品采购成本' in yesterday_df.columns else '成本'
-        if cost_col in yesterday_df.columns:
-            yesterday_df['_成本_销量'] = yesterday_df[cost_col].fillna(0) * yesterday_df[sales_field].fillna(1)
+        cost_col = '商品采购成本' if '商品采购成本' in filtered_df.columns else '成本'
+        if cost_col in filtered_df.columns:
+            filtered_df['_成本_销量'] = filtered_df[cost_col].fillna(0) * filtered_df[sales_field].fillna(1)
             agg_dict['成本'] = pd.NamedAgg(column='_成本_销量', aggfunc='sum')
         
         # ===== 订单级字段 (first) =====
@@ -1375,38 +1741,38 @@ def get_high_delivery_orders(df: pd.DataFrame) -> pd.DataFrame:
         agg_dict['小时'] = pd.NamedAgg(column='_小时', aggfunc='first')
         
         # 用户支付配送费（用于计算配送净成本）
-        if '用户支付配送费' in yesterday_df.columns:
+        if '用户支付配送费' in filtered_df.columns:
             agg_dict['用户支付配送费'] = pd.NamedAgg(column='用户支付配送费', aggfunc='first')
         
         # 配送费减免金额（用于计算配送净成本）
-        if '配送费减免金额' in yesterday_df.columns:
+        if '配送费减免金额' in filtered_df.columns:
             agg_dict['配送费减免金额'] = pd.NamedAgg(column='配送费减免金额', aggfunc='first')
-        elif '配送费减免' in yesterday_df.columns:
+        elif '配送费减免' in filtered_df.columns:
             agg_dict['配送费减免金额'] = pd.NamedAgg(column='配送费减免', aggfunc='first')
         
         # 渠道
-        channel_col = next((c for c in ['平台', '渠道', 'platform'] if c in yesterday_df.columns), None)
+        channel_col = next((c for c in ['平台', '渠道', 'platform'] if c in filtered_df.columns), None)
         if channel_col:
             agg_dict['渠道'] = pd.NamedAgg(column=channel_col, aggfunc='first')
         
         # 门店
-        if '门店' in yesterday_df.columns:
+        if '门店' in filtered_df.columns:
             agg_dict['门店'] = pd.NamedAgg(column='门店', aggfunc='first')
         
         # 距离
-        distance_col = next((c for c in ['配送距离', '送达距离'] if c in yesterday_df.columns), None)
+        distance_col = next((c for c in ['配送距离', '送达距离'] if c in filtered_df.columns), None)
         if distance_col:
             agg_dict['_配送距离'] = pd.NamedAgg(column=distance_col, aggfunc='first')
         
         # 收货地址
-        if '收货地址' in yesterday_df.columns:
+        if '收货地址' in filtered_df.columns:
             agg_dict['收货地址'] = pd.NamedAgg(column='收货地址', aggfunc='first')
         
         # 收集商品名称用于大规格判断
-        if '商品名称' in yesterday_df.columns:
+        if '商品名称' in filtered_df.columns:
             agg_dict['_商品列表'] = pd.NamedAgg(column='商品名称', aggfunc=lambda x: '|'.join(x.astype(str).unique()))
         
-        order_data = yesterday_df.groupby(order_id_col).agg(**agg_dict).reset_index()
+        order_data = filtered_df.groupby(order_id_col).agg(**agg_dict).reset_index()
         
         # 使用统一函数计算订单实际利润
         order_data['订单实际利润'] = calculate_order_profit(order_data)
@@ -1741,8 +2107,8 @@ def get_traffic_drop_products(df: pd.DataFrame) -> pd.DataFrame:
     获取流量下跌商品详情（7日 vs 7日对比）
     
     判断标准：
-    - 前7天日均销量 >= 3（确保是热销品）
-    - 跌幅 > 30%（(前7天日均 - 近7天日均) / 前7天日均）
+    - 前7天日均销量 >= 2（确保有稳定销量）
+    - 跌幅 > 20%（(前7天日均 - 近7天日均) / 前7天日均）
     
     新增字段（对齐热销缺货）：
     - 一级分类名、三级分类名、店内码
@@ -1846,11 +2212,12 @@ def get_traffic_drop_products(df: pd.DataFrame) -> pd.DataFrame:
         comparison['近7天日均'] = comparison['近7天日均'].fillna(0)
         comparison['近7天销量'] = comparison['近7天销量'].fillna(0)
         
-        # 计算跌幅（使用比例形式，与卡片统计一致）
-        comparison['跌幅'] = ((comparison['前7天日均'] - comparison['近7天日均']) / comparison['前7天日均'] * 100).round(1)
+        # 计算跌幅（正数表示下跌，负数表示上涨，与传统理解一致）
+        # 但为了回调函数中正确显示，这里改为：近期-前期（负数=下跌）
+        comparison['跌幅'] = ((comparison['近7天日均'] - comparison['前7天日均']) / comparison['前7天日均'] * 100).round(1)
         
-        # ========== 筛选：前7天日均>=2 且 跌幅>30% ==========
-        drop_products = comparison[(comparison['前7天日均'] >= 2) & (comparison['跌幅'] > 30)].copy()
+        # ========== 筛选：前7天日均>=2 且 跌幅<-20%（负数=下跌） ==========
+        drop_products = comparison[(comparison['前7天日均'] >= 2) & (comparison['跌幅'] < -20)].copy()
         
         if drop_products.empty:
             return pd.DataFrame()
@@ -2458,21 +2825,24 @@ def get_profit_rate_drop_products(df: pd.DataFrame, store_name: str = None) -> p
             prev_agg_dict[sales_col] = 'sum'
         prev_stats = prev_df.groupby(group_key, as_index=False).agg(prev_agg_dict)
         
-        # 计算利润率（避免除零）
-        recent_stats['近7天利润率'] = np.where(
+        # 计算利润率（避免除零，并限制在合理范围 -100% ~ 100%）
+        raw_recent_rate = np.where(
             recent_stats['销售额'] > 0,
             recent_stats['利润额'] / recent_stats['销售额'] * 100,
             0
         )
-        prev_stats['前7天利润率'] = np.where(
+        recent_stats['近7天利润率'] = np.clip(raw_recent_rate, -100, 100)
+        
+        raw_prev_rate = np.where(
             prev_stats['销售额'] > 0,
             prev_stats['利润额'] / prev_stats['销售额'] * 100,
             0
         )
+        prev_stats['前7天利润率'] = np.clip(raw_prev_rate, -100, 100)
         
         # 合并对比
-        # 构建合并列（包含前7天销量）
-        prev_merge_cols = [group_key, '前7天利润率', '销售额']
+        # 构建合并列（包含前7天销量和利润额）
+        prev_merge_cols = [group_key, '前7天利润率', '销售额', '利润额']
         if sales_col and sales_col in prev_stats.columns:
             prev_merge_cols.append(sales_col)
         merged = pd.merge(
@@ -2483,47 +2853,29 @@ def get_profit_rate_drop_products(df: pd.DataFrame, store_name: str = None) -> p
             suffixes=('', '_prev')
         )
         
-        # 计算变化
+        # 计算变化（下滑幅度）
         merged['利润率变化'] = merged['近7天利润率'] - merged['前7天利润率']
         
-        # 计算毛利率
-        if '_单品成本' in merged.columns:
-            # 定价毛利率 = (商品原价 - 单品成本) / 商品原价 * 100%
-            if original_price_col and original_price_col in merged.columns:
-                merged['定价毛利率'] = np.where(
-                    merged[original_price_col] > 0,
-                    ((merged[original_price_col] - merged['_单品成本']) / merged[original_price_col] * 100).round(1),
-                    0
-                )
-            else:
-                merged['定价毛利率'] = 0
-            
-            # 实收毛利率 = (实收价格 - 单品成本) / 实收价格 * 100%
-            merged['实收毛利率'] = np.where(
-                merged[price_col] > 0,
-                ((merged[price_col] - merged['_单品成本']) / merged[price_col] * 100).round(1),
-                0
-            )
-        else:
-            merged['定价毛利率'] = 0
-            merged['实收毛利率'] = 0
-        
-        # 筛选下滑商品（下滑超过10个百分点，与卡片统计一致）
-        drop_df = merged[merged['利润率变化'] < -10].copy()
+        # 筛选下滑商品（下滑超过5个百分点，优化后的阈值）
+        drop_df = merged[merged['利润率变化'] < -5].copy()
         
         if drop_df.empty:
             return pd.DataFrame()
         
-        # 分级
+        # 分级（优化后的4档阈值）
         def get_drop_level(change):
             if change < -20:
-                return '🔴暴跌'
-            else:
+                return '🔴严重下滑'
+            elif change < -15:
                 return '🟠大幅下滑'
+            elif change < -10:
+                return '🟡中度下滑'
+            else:
+                return '🟢轻微下滑'
         
         drop_df['下滑等级'] = drop_df['利润率变化'].apply(get_drop_level)
         
-        # 整理输出
+        # 整理输出（精简字段）
         results = []
         for _, row in drop_df.iterrows():
             # 获取店内码
@@ -2542,32 +2894,29 @@ def get_profit_rate_drop_products(df: pd.DataFrame, store_name: str = None) -> p
                 '店内码': store_code,
                 '商品名称': product_name,
                 '下滑等级': row['下滑等级'],
-                '商品原价': round(row.get(original_price_col, 0), 2) if original_price_col and original_price_col in row.index else 0,
-                '实收价格': round(row.get(price_col, 0), 2) if price_col and price_col in row.index else 0,
-                '单品成本': round(row.get('_单品成本', 0), 2) if '_单品成本' in row.index else 0,
-                '定价毛利率': f"{row.get('定价毛利率', 0)}%",
-                '实收毛利率': f"{row.get('实收毛利率', 0)}%",
                 '前7天利润率': f"{round(row['前7天利润率'], 1)}%",
                 '近7天利润率': f"{round(row['近7天利润率'], 1)}%",
-                '利润率变化': f"{round(row['利润率变化'], 1)}%",
+                '下滑幅度': f"{round(row['利润率变化'], 1)}%",
+                '前7天利润额': round(row.get('利润额_prev', 0), 2),
                 '近7天利润额': round(row['利润额'], 2),
+                '前7天销售额': round(row.get('销售额_prev', 0), 2),
                 '近7天销售额': round(row['销售额'], 2),
-                '一级分类': row.get('一级分类名', '') if '一级分类名' in row.index else '',
-                '三级分类': row.get('三级分类名', '') if '三级分类名' in row.index else '',
             }
             # 添加销量字段
-            if sales_col and sales_col in row.index:
-                result_row['近7天销量'] = int(row[sales_col])
             if sales_col and f'{sales_col}_prev' in row.index:
                 result_row['前7天销量'] = int(row[f'{sales_col}_prev'])
+            if sales_col and sales_col in row.index:
+                result_row['近7天销量'] = int(row[sales_col])
             if channel_col and channel_col in row.index:
                 result_row['主渠道'] = row[channel_col]
+            if '一级分类名' in row.index:
+                result_row['一级分类'] = row.get('一级分类名', '')
             results.append(result_row)
         
         result_df = pd.DataFrame(results)
         if not result_df.empty:
             # 按下滑程度排序（变化值越小排越前）
-            result_df = result_df.sort_values('利润率变化', key=lambda x: x.str.rstrip('%').astype(float), ascending=True)
+            result_df = result_df.sort_values('下滑幅度', key=lambda x: x.str.rstrip('%').astype(float), ascending=True)
         
         return result_df
         
@@ -2723,7 +3072,7 @@ def get_hot_products(df: pd.DataFrame, store_name: str = None) -> pd.DataFrame:
             result_row = {
                 '店内码': store_code,
                 '商品名称': product_name,
-                '爆款等级': '🔥🔥🔥' if row['增长率'] > 200 else ('🔥🔥' if row['增长率'] > 100 else '🔥'),
+                '爆款等级': '超级爆款' if row['增长率'] > 200 else ('热销' if row['增长率'] > 100 else '增长'),
                 '昨日销量': int(row[sales_col]),
                 '前日销量': int(row['前日销量']),
                 '增长率': growth_display,
@@ -3221,6 +3570,57 @@ def calculate_price_elasticity(price_changes_df: pd.DataFrame) -> pd.DataFrame:
     
     df['建议'] = df.apply(generate_advice, axis=1)
     
+    # ===== 联动弹性学习机制 =====
+    # 将计算出的真实弹性同步到智能调价器的学习库
+    if learn_elasticity_from_price_change is not None:
+        learned_count = 0
+        for _, row in df.iterrows():
+            try:
+                elasticity = row.get('弹性')
+                if pd.isna(elasticity):
+                    continue
+                    
+                # 解析价格变动字符串（格式："10.0→12.0"）
+                售价变动 = row.get('售价变动', '')
+                if '→' not in str(售价变动):
+                    continue
+                    
+                parts = str(售价变动).split('→')
+                if len(parts) != 2:
+                    continue
+                    
+                old_price = float(parts[0].strip())
+                new_price = float(parts[1].strip())
+                
+                # 获取销量数据
+                old_sales = row.get('调价前7日均销量', 0)
+                new_sales = row.get('调价后7日均销量', 0)
+                
+                # 获取商品标识
+                product_code = str(row.get('店内码', ''))
+                channel = str(row.get('渠道', '未知'))
+                
+                if not product_code or old_price <= 0:
+                    continue
+                
+                # 调用学习函数
+                result = learn_elasticity_from_price_change(
+                    product_code=product_code,
+                    channel=channel,
+                    old_price=old_price,
+                    new_price=new_price,
+                    old_daily_sales=old_sales,
+                    new_daily_sales=new_sales,
+                    days_after_change=7
+                )
+                if result is not None:
+                    learned_count += 1
+            except Exception as e:
+                pass  # 单条数据学习失败不影响整体
+        
+        if learned_count > 0:
+            print(f"📚 已学习 {learned_count} 条商品弹性系数到智能调价器")
+    
     return df
 
 
@@ -3316,17 +3716,19 @@ def get_price_elasticity_summary(df: pd.DataFrame) -> Dict[str, Any]:
     return result
 
 
-def get_high_profit_products(df: pd.DataFrame, store_name: str = None) -> pd.DataFrame:
+def get_high_profit_products(df: pd.DataFrame, store_name: str = None, days: int = 1) -> pd.DataFrame:
     """
-    获取高利润商品详情（昨日利润贡献TOP商品）
+    获取高利润商品详情（真正的高利润商品）
     
-    高利润判断标准：
-    - 利润额>0
-    - 销量>=3
+    高利润判断标准（优化后）：
+    - 毛利率 >= 25%（定价有足够利润空间）
+    - 利润额 >= 10元（实际赚得多）
+    - 销量 >= 3（有一定销售量，排除偶发）
     
     Args:
         df: 订单数据DataFrame
         store_name: 门店名称筛选（可选）
+        days: 日期范围（1=昨日，3=近3天，7=近7天，15=近15天，0=全部）
     
     Returns:
         高利润商品DataFrame
@@ -3363,32 +3765,42 @@ def get_high_profit_products(df: pd.DataFrame, store_name: str = None) -> pd.Dat
         if df_copy.empty:
             return pd.DataFrame()
         
-        # 昨日数据
-        yesterday = df_copy[date_col].max().normalize()
-        yesterday_df = df_copy[df_copy[date_col].dt.normalize() == yesterday].copy()
+        # 根据days参数筛选日期范围
+        latest_date = df_copy[date_col].max().normalize()
+        if days == 0:
+            # 全部数据
+            filtered_df = df_copy.copy()
+        elif days == 1:
+            # 昨日
+            filtered_df = df_copy[df_copy[date_col].dt.normalize() == latest_date].copy()
+        else:
+            # 近N天
+            start_date = latest_date - pd.Timedelta(days=days-1)
+            filtered_df = df_copy[(df_copy[date_col].dt.normalize() >= start_date) & 
+                                  (df_copy[date_col].dt.normalize() <= latest_date)].copy()
         
-        if yesterday_df.empty:
+        if filtered_df.empty:
             return pd.DataFrame()
         
         # 清洗数据
         if sales_col:
-            yesterday_df[sales_col] = pd.to_numeric(yesterday_df[sales_col], errors='coerce').fillna(0)
+            filtered_df[sales_col] = pd.to_numeric(filtered_df[sales_col], errors='coerce').fillna(0)
         if price_col:
-            yesterday_df[price_col] = pd.to_numeric(yesterday_df[price_col], errors='coerce').fillna(0)
+            filtered_df[price_col] = pd.to_numeric(filtered_df[price_col], errors='coerce').fillna(0)
         if cost_col:
-            yesterday_df[cost_col] = pd.to_numeric(yesterday_df[cost_col], errors='coerce').fillna(0)
-        yesterday_df['利润额'] = pd.to_numeric(yesterday_df['利润额'], errors='coerce').fillna(0)
+            filtered_df[cost_col] = pd.to_numeric(filtered_df[cost_col], errors='coerce').fillna(0)
+        filtered_df['利润额'] = pd.to_numeric(filtered_df['利润额'], errors='coerce').fillna(0)
         
         # 计算销售额和单品成本
         if price_col and sales_col:
-            yesterday_df['_销售额'] = yesterday_df[price_col] * yesterday_df[sales_col]
+            filtered_df['_销售额'] = filtered_df[price_col] * filtered_df[sales_col]
         else:
-            yesterday_df['_销售额'] = 0
+            filtered_df['_销售额'] = 0
         
         if cost_col and sales_col:
-            yesterday_df['_单品成本'] = yesterday_df[cost_col] / yesterday_df[sales_col].replace(0, 1)
+            filtered_df['_单品成本'] = filtered_df[cost_col] / filtered_df[sales_col].replace(0, 1)
         else:
-            yesterday_df['_单品成本'] = 0
+            filtered_df['_单品成本'] = 0
         
         # 按商品汇总
         agg_dict = {
@@ -3400,16 +3812,16 @@ def get_high_profit_products(df: pd.DataFrame, store_name: str = None) -> pd.Dat
             agg_dict[sales_col] = 'sum'
         if price_col:
             agg_dict[price_col] = 'mean'
-        if category_col and category_col in yesterday_df.columns:
+        if category_col and category_col in filtered_df.columns:
             agg_dict[category_col] = 'first'
-        if channel_col and channel_col in yesterday_df.columns:
+        if channel_col and channel_col in filtered_df.columns:
             agg_dict[channel_col] = 'first'
         
         group_cols = [product_col]
-        if code_col and code_col in yesterday_df.columns:
+        if code_col and code_col in filtered_df.columns:
             group_cols.append(code_col)
         
-        profit_stats = yesterday_df.groupby(group_cols, as_index=False).agg(agg_dict)
+        profit_stats = filtered_df.groupby(group_cols, as_index=False).agg(agg_dict)
         
         # 计算利润率
         profit_stats['利润率'] = np.where(
@@ -3418,11 +3830,14 @@ def get_high_profit_products(df: pd.DataFrame, store_name: str = None) -> pd.Dat
             0
         )
         
-        # 筛选：利润额>0 且 销量>=3
+        # 高利润商品筛选（优化后的严格标准）：
+        # 1. 毛利率 >= 25%（定价有足够利润空间）
+        # 2. 利润额 >= 10元（实际赚得多）
+        # 3. 销量 >= 3（有一定销售量，排除偶发）
         if sales_col:
-            high_mask = (profit_stats['利润额'] > 0) & (profit_stats[sales_col] >= 3)
+            high_mask = (profit_stats['利润率'] >= 25) & (profit_stats['利润额'] >= 10) & (profit_stats[sales_col] >= 3)
         else:
-            high_mask = profit_stats['利润额'] > 0
+            high_mask = (profit_stats['利润率'] >= 25) & (profit_stats['利润额'] >= 10)
         
         # 过滤耗材
         if category_col and category_col in profit_stats.columns:
@@ -3435,6 +3850,14 @@ def get_high_profit_products(df: pd.DataFrame, store_name: str = None) -> pd.Dat
         
         # 按利润额排序，取TOP30
         high_df = high_df.sort_values('利润额', ascending=False).head(30)
+        
+        # 根据days参数决定列名前缀
+        if days == 0:
+            period_prefix = '累计'
+        elif days == 1:
+            period_prefix = '当天'
+        else:
+            period_prefix = f'{days}天'
         
         # 整理输出
         results = []
@@ -3451,9 +3874,9 @@ def get_high_profit_products(df: pd.DataFrame, store_name: str = None) -> pd.Dat
                 '排名': f"{level} TOP{rank}" if level else f"TOP{rank}",
                 '店内码': row.get(code_col, '') if code_col and code_col in row.index else '',
                 '商品名称': row[product_col],
-                '昨日利润': round(row['利润额'], 2),
-                '昨日销售额': round(row['_销售额'], 2),
-                '昨日销量': int(row.get(sales_col, 0)) if sales_col and sales_col in row.index else 0,
+                f'{period_prefix}利润': round(row['利润额'], 2),
+                f'{period_prefix}销售额': round(row['_销售额'], 2),
+                f'{period_prefix}销量': int(row.get(sales_col, 0)) if sales_col and sales_col in row.index else 0,
                 '利润率': f"{row['利润率']}%",
                 '实收价格': round(row.get(price_col, 0), 2) if price_col and price_col in row.index else 0,
                 '单品成本': round(row['_单品成本'], 2),

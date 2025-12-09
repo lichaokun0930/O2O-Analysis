@@ -19,6 +19,9 @@ class Order(Base):
     # 原因: 一个订单可以包含多个商品(多行数据), order_id会重复
     # 例如: 订单2214952978包含5个商品, 需要5行数据
     order_id = Column(String(100), nullable=False, index=True, comment='订单ID')
+    # ✅ 2025-12-04: 新增订单编号字段，用于识别不同渠道平台的订单
+    # 例如: 饿了么订单编号为 ELE4069586098931426958
+    order_number = Column(String(100), index=True, comment='订单编号(渠道平台订单号)')
     date = Column(DateTime, nullable=False, index=True, comment='下单时间')
     store_name = Column(String(200), comment='门店名称')
     

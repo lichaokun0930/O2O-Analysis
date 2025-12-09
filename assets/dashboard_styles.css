@@ -476,3 +476,150 @@ body {
     display: none !important;
 }
 
+/* ==================== DataTable 列宽优化 ==================== */
+/* 让表格列可以自适应内容，同时支持手动调整 */
+.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner table {
+    table-layout: auto !important;
+}
+
+/* 表头支持双行显示（对于长标题） */
+.dash-table-container .dash-header {
+    white-space: normal !important;
+    height: auto !important;
+    min-height: 40px;
+    line-height: 1.3;
+}
+
+/* 单元格内容自动换行 */
+.dash-table-container .dash-cell {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    max-width: none !important;
+}
+
+/* 为表格添加水平滚动 */
+.dash-table-container {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+/* 优化长文本显示 */
+.dash-table-container .dash-cell-value {
+    display: block;
+    word-wrap: break-word;
+    word-break: break-word;
+}
+
+/* 鼠标悬停在表头时显示提示 */
+.dash-table-container .dash-header:hover {
+    background-color: #e6f7ff !important;
+    cursor: pointer;
+}
+
+/* 为商品名称列添加特殊样式（固定列效果） */
+.dash-table-container .column-0 {
+    position: sticky;
+    left: 0;
+    background-color: white;
+    z-index: 10;
+}
+
+.dash-table-container .column-0:hover {
+    background-color: #f5f5f5;
+}
+
+/* ==================== AG Grid 自定义样式 ==================== */
+/* 高危客户单元格样式 (未下单天数 >= 15) */
+.ag-cell-danger {
+    background-color: #ffebee !important;
+    color: #c62828 !important;
+    font-weight: bold !important;
+}
+
+/* 高价值客户单元格样式 (LTV >= 200) */
+.ag-cell-warning {
+    background-color: #fff3e0 !important;
+    color: #f57c00 !important;
+    font-weight: bold !important;
+}
+
+/* AG Grid 表格容器优化 */
+.ag-theme-alpine {
+    --ag-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --ag-font-size: 14px;
+    --ag-row-height: 50px;
+    --ag-header-height: 50px;
+    --ag-header-foreground-color: #2c3e50;
+    --ag-header-background-color: #f8f9fa;
+    --ag-odd-row-background-color: #ffffff;
+    --ag-even-row-background-color: #fafbfc;
+    --ag-row-hover-color: #e8f4fd;
+    --ag-border-color: #e0e0e0;
+}
+
+/* AG Grid 表头样式增强 */
+.ag-theme-alpine .ag-header-cell {
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
+    padding: 0 12px;
+}
+
+.ag-theme-alpine .ag-header-cell-label {
+    justify-content: center;
+}
+
+/* AG Grid 固定列阴影效果 */
+.ag-theme-alpine .ag-pinned-left-header,
+.ag-theme-alpine .ag-pinned-left-cols-container {
+    box-shadow: 3px 0 8px rgba(0,0,0,0.1);
+    z-index: 5;
+}
+
+/* AG Grid 筛选框样式优化 */
+.ag-theme-alpine .ag-floating-filter-input {
+    border-radius: 4px;
+    border: 1px solid #d0d0d0;
+    padding: 6px 8px;
+    font-size: 13px;
+}
+
+.ag-theme-alpine .ag-floating-filter-input:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
+    outline: none;
+}
+
+/* AG Grid 筛选器按钮样式 */
+.ag-theme-alpine .ag-header-cell-menu-button,
+.ag-theme-alpine .ag-floating-filter-button {
+    color: #666;
+    opacity: 0.7;
+}
+
+.ag-theme-alpine .ag-header-cell-menu-button:hover,
+.ag-theme-alpine .ag-floating-filter-button:hover {
+    opacity: 1;
+}
+
+/* AG Grid 分页器样式 */
+.ag-theme-alpine .ag-paging-panel {
+    border-top: 2px solid #dee2e6;
+    padding: 12px 16px;
+    background-color: #f8f9fa;
+    font-size: 13px;
+}
+
+/* AG Grid 单元格内边距优化 */
+.ag-theme-alpine .ag-cell {
+    padding: 0 12px;
+    line-height: 50px;
+}
+
+/* AG Grid 行悬停效果增强 */
+.ag-theme-alpine .ag-row-hover {
+    background-color: #e8f4fd !important;
+}
+
+
+

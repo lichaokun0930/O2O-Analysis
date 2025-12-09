@@ -7,9 +7,11 @@
 2. 销量/利润预测
 3. 智能定价建议
 4. 调价方案生成与导出
+5. 弹性系数学习机制（从实际调价效果反推）
 
 Author: AI Assistant
 Date: 2025-11-28
+Updated: 2025-12-04 - 添加弹性系数学习机制
 """
 
 import pandas as pd
@@ -17,6 +19,138 @@ import numpy as np
 from typing import Dict, List, Tuple, Optional, Any
 from datetime import datetime, timedelta
 import io
+import json
+import os
+
+# ==================== 弹性系数学习存储 ====================
+# 存储学习到的弹性系数，格式：{店内码: {渠道: {'elasticity': float, 'samples': int, 'last_update': str}}}
+LEARNED_ELASTICITY_FILE = os.path.join(os.path.dirname(__file__), 'learned_elasticity.json')
+LEARNED_ELASTICITY: Dict[str, Dict[str, dict]] = {}
+
+def load_learned_elasticity():
+    """加载已学习的弹性系数"""
+    global LEARNED_ELASTICITY
+    try:
+        if os.path.exists(LEARNED_ELASTICITY_FILE):
+            with open(LEARNED_ELASTICITY_FILE, 'r', encoding='utf-8') as f:
+                LEARNED_ELASTICITY = json.load(f)
+                print(f"✅ 已加载 {sum(len(v) for v in LEARNED_ELASTICITY.values())} 条学习弹性系数")
+    except Exception as e:
+        print(f"⚠️ 加载弹性系数失败: {e}")
+        LEARNED_ELASTICITY = {}
+
+def save_learned_elasticity():
+    """保存学习到的弹性系数"""
+    try:
+        with open(LEARNED_ELASTICITY_FILE, 'w', encoding='utf-8') as f:
+            json.dump(LEARNED_ELASTICITY, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"⚠️ 保存弹性系数失败: {e}")
+
+def learn_elasticity_from_price_change(
+    product_code: str,
+    channel: str,
+    old_price: float,
+    new_price: float,
+    old_daily_sales: float,
+    new_daily_sales: float,
+    days_after_change: int = 7
+) -> Optional[float]:
+    """
+    从实际调价效果学习弹性系数
+    
+    公式：弹性系数 = (销量变化率) / (价格变化率)
+    
+    Args:
+        product_code: 店内码
+        channel: 渠道
+        old_price: 调价前价格
+        new_price: 调价后价格
+        old_daily_sales: 调价前日均销量
+        new_daily_sales: 调价后日均销量
+        days_after_change: 调价后观察天数（用于判断数据可靠性）
+    
+    Returns:
+        计算得到的弹性系数，无效时返回None
+    """
+    global LEARNED_ELASTICITY
+    
+    # 数据有效性检查
+    if old_price <= 0 or new_price <= 0:
+        return None
+    if old_daily_sales <= 0:  # 调价前必须有销量
+        return None
+    if abs(new_price - old_price) / old_price < 0.02:  # 价格变化太小（<2%），不可靠
+        return None
+    
+    # 计算弹性系数
+    price_change_rate = (new_price - old_price) / old_price
+    sales_change_rate = (new_daily_sales - old_daily_sales) / old_daily_sales if old_daily_sales > 0 else 0
+    
+    # 弹性 = 销量变化率 / 价格变化率
+    if abs(price_change_rate) < 0.01:
+        return None
+    
+    elasticity = sales_change_rate / price_change_rate
+    
+    # 合理性检查：
+    # - 正常弹性为负数（涨价→销量降，降价→销量涨）
+    # - 刚需品可能有小的正弹性（涨价销量基本不变或微涨）
+    # - 异常情况：弹性绝对值过大（>5），可能有其他因素影响
+    if elasticity > 1.0:  # 涨价反而大幅增销量，可能有其他因素（如促销活动）
+        return None
+    if elasticity < -5:  # 弹性过大，不可靠
+        return None
+    
+    # 存储学习结果（使用加权平均）
+    if product_code not in LEARNED_ELASTICITY:
+        LEARNED_ELASTICITY[product_code] = {}
+    
+    if channel not in LEARNED_ELASTICITY[product_code]:
+        LEARNED_ELASTICITY[product_code][channel] = {
+            'elasticity': elasticity,
+            'samples': 1,
+            'last_update': datetime.now().strftime('%Y-%m-%d')
+        }
+    else:
+        # 加权平均：新样本权重 = 1 / (samples + 1)
+        old_data = LEARNED_ELASTICITY[product_code][channel]
+        old_elasticity = old_data['elasticity']
+        samples = old_data['samples']
+        
+        # 新弹性 = (旧弹性 × 旧样本数 + 新弹性) / (旧样本数 + 1)
+        new_elasticity = (old_elasticity * samples + elasticity) / (samples + 1)
+        
+        LEARNED_ELASTICITY[product_code][channel] = {
+            'elasticity': round(new_elasticity, 3),
+            'samples': samples + 1,
+            'last_update': datetime.now().strftime('%Y-%m-%d')
+        }
+    
+    # 保存到文件
+    save_learned_elasticity()
+    
+    return elasticity
+
+def get_learned_elasticity(product_code: str, channel: str) -> Optional[Tuple[float, int]]:
+    """
+    获取学习到的弹性系数
+    
+    Returns:
+        (弹性系数, 样本数) 或 None
+    """
+    if product_code in LEARNED_ELASTICITY:
+        if channel in LEARNED_ELASTICITY[product_code]:
+            data = LEARNED_ELASTICITY[product_code][channel]
+            return (data['elasticity'], data['samples'])
+        # 尝试其他渠道的数据
+        for ch, data in LEARNED_ELASTICITY[product_code].items():
+            if data['samples'] >= 2:  # 至少2个样本才使用跨渠道数据
+                return (data['elasticity'], data['samples'])
+    return None
+
+# 初始化时加载已学习的弹性系数
+load_learned_elasticity()
 
 # ==================== 品类默认弹性系数 ====================
 
@@ -90,6 +224,13 @@ def get_product_elasticity(
         (弹性系数, 来源说明)
     """
     
+    # 0. 【优先】尝试从学习数据获取该商品弹性
+    learned = get_learned_elasticity(product_code, channel)
+    if learned is not None:
+        elasticity, samples = learned
+        if samples >= 2:  # 至少2次调价样本
+            return (elasticity, f"学习数据（{samples}次调价）")
+    
     # 1. 尝试从历史数据获取该商品弹性
     if price_changes_df is not None and not price_changes_df.empty:
         # 该商品+该渠道的调价记录
@@ -118,15 +259,15 @@ def get_product_elasticity(
         # 尝试精确匹配
         if category in CATEGORY_ELASTICITY:
             elasticity = CATEGORY_ELASTICITY[category]
-            return (elasticity, f"品类默认（{category}）")
+            return (elasticity, f"品类默认（{category}）⚠️")
         
         # 尝试模糊匹配
         for cat_name, cat_elasticity in CATEGORY_ELASTICITY.items():
             if cat_name in category or category in cat_name:
-                return (cat_elasticity, f"品类参考（{cat_name}）")
+                return (cat_elasticity, f"品类参考（{cat_name}）⚠️")
     
     # 4. 全局默认
-    return (DEFAULT_ELASTICITY, "默认值")
+    return (DEFAULT_ELASTICITY, "默认值⚠️")
 
 
 def get_channel_factor(channel: str) -> float:

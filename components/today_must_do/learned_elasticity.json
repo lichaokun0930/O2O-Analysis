@@ -1,0 +1,1544 @@
+{
+  "100887": {
+    "美团共橙": {
+      "elasticity": -0.239,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "101241": {
+    "美团共橙": {
+      "elasticity": -2.578,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -1.82,
+      "samples": 40,
+      "last_update": "2025-12-09"
+    }
+  },
+  "105039": {
+    "饿了么": {
+      "elasticity": -4.154,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "10615": {
+    "饿了么": {
+      "elasticity": -0.581,
+      "samples": 40,
+      "last_update": "2025-12-09"
+    }
+  },
+  "106685": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "10926": {
+    "饿了么": {
+      "elasticity": -2.964,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "10930": {
+    "饿了么": {
+      "elasticity": -0.954,
+      "samples": 50,
+      "last_update": "2025-12-09"
+    }
+  },
+  "11267": {
+    "饿了么": {
+      "elasticity": -0.044,
+      "samples": 130,
+      "last_update": "2025-12-09"
+    }
+  },
+  "112790": {
+    "美团共橙": {
+      "elasticity": -2.201,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -0.538,
+      "samples": 40,
+      "last_update": "2025-12-09"
+    }
+  },
+  "116533": {
+    "饿了么": {
+      "elasticity": -0.314,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "116938": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "12790": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "134903": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "14688": {
+    "美团共橙": {
+      "elasticity": -3.9,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -0.314,
+      "samples": 60,
+      "last_update": "2025-12-09"
+    }
+  },
+  "14689": {
+    "饿了么": {
+      "elasticity": -3.431,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "147575": {
+    "美团共橙": {
+      "elasticity": 0.608,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -0.147,
+      "samples": 40,
+      "last_update": "2025-12-09"
+    }
+  },
+  "148517": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "153870": {
+    "美团共橙": {
+      "elasticity": -2.918,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -1.203,
+      "samples": 50,
+      "last_update": "2025-12-09"
+    }
+  },
+  "158162": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "158519": {
+    "美团共橙": {
+      "elasticity": -1.313,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "16314": {
+    "美团共橙": {
+      "elasticity": -0.525,
+      "samples": 100,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -0.627,
+      "samples": 70,
+      "last_update": "2025-12-09"
+    }
+  },
+  "16319": {
+    "美团共橙": {
+      "elasticity": -2.353,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "1712": {
+    "饿了么": {
+      "elasticity": -0.228,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "172238": {
+    "饿了么": {
+      "elasticity": -4.704,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "179754": {
+    "饿了么": {
+      "elasticity": -0.891,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "181644": {
+    "美团共橙": {
+      "elasticity": -1.719,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "1888": {
+    "美团共橙": {
+      "elasticity": -2.708,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "193584": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "194900": {
+    "饿了么": {
+      "elasticity": -3.307,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "195739": {
+    "饿了么": {
+      "elasticity": -4.333,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "201151": {
+    "美团共橙": {
+      "elasticity": -0.584,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "20293": {
+    "饿了么": {
+      "elasticity": -0.967,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "20518": {
+    "饿了么": {
+      "elasticity": -0.02,
+      "samples": 50,
+      "last_update": "2025-12-09"
+    }
+  },
+  "205416": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -1.596,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "20745": {
+    "饿了么": {
+      "elasticity": -4.837,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "214192": {
+    "饿了么": {
+      "elasticity": -2.271,
+      "samples": 30,
+      "last_update": "2025-12-09"
+    }
+  },
+  "214554": {
+    "饿了么": {
+      "elasticity": -1.024,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "217580": {
+    "美团共橙": {
+      "elasticity": -1.498,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "218471": {
+    "美团共橙": {
+      "elasticity": -0.564,
+      "samples": 50,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -0.233,
+      "samples": 70,
+      "last_update": "2025-12-09"
+    }
+  },
+  "22224": {
+    "美团共橙": {
+      "elasticity": 0.992,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -1.84,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "22238": {
+    "饿了么": {
+      "elasticity": -3.852,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "224690": {
+    "饿了么": {
+      "elasticity": -3.088,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "232594": {
+    "饿了么": {
+      "elasticity": -1.762,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "2327": {
+    "饿了么": {
+      "elasticity": -0.075,
+      "samples": 80,
+      "last_update": "2025-12-09"
+    }
+  },
+  "232999": {
+    "美团共橙": {
+      "elasticity": -0.364,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": 0.05,
+      "samples": 90,
+      "last_update": "2025-12-09"
+    }
+  },
+  "2346": {
+    "饿了么": {
+      "elasticity": -0.55,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "236386": {
+    "美团共橙": {
+      "elasticity": -4.022,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -2.459,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "241864": {
+    "饿了么": {
+      "elasticity": -0.664,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "24352": {
+    "饿了么": {
+      "elasticity": -0.442,
+      "samples": 110,
+      "last_update": "2025-12-09"
+    }
+  },
+  "24355": {
+    "饿了么": {
+      "elasticity": -0.089,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "24571": {
+    "美团共橙": {
+      "elasticity": -1.615,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -0.203,
+      "samples": 40,
+      "last_update": "2025-12-09"
+    }
+  },
+  "250448": {
+    "饿了么": {
+      "elasticity": -0.618,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "253312": {
+    "美团共橙": {
+      "elasticity": -0.504,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "254254": {
+    "美团共橙": {
+      "elasticity": -2.5,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "254439": {
+    "美团共橙": {
+      "elasticity": -0.429,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "254861": {
+    "美团共橙": {
+      "elasticity": 0.571,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "256258": {
+    "饿了么": {
+      "elasticity": -2.236,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "2569": {
+    "美团共橙": {
+      "elasticity": -1.971,
+      "samples": 40,
+      "last_update": "2025-12-09"
+    }
+  },
+  "257847": {
+    "美团共橙": {
+      "elasticity": -2.442,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "257855": {
+    "美团共橙": {
+      "elasticity": 0.404,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "258028": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "259672": {
+    "饿了么": {
+      "elasticity": -0.1,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "261818": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "263958": {
+    "饿了么": {
+      "elasticity": -0.107,
+      "samples": 100,
+      "last_update": "2025-12-09"
+    }
+  },
+  "2685": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "269968": {
+    "饿了么": {
+      "elasticity": -0.294,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "270357": {
+    "美团共橙": {
+      "elasticity": -0.327,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "270589": {
+    "美团共橙": {
+      "elasticity": -1.765,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "282749": {
+    "美团共橙": {
+      "elasticity": -0.25,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "282793": {
+    "美团共橙": {
+      "elasticity": -1.113,
+      "samples": 40,
+      "last_update": "2025-12-09"
+    }
+  },
+  "284688": {
+    "美团共橙": {
+      "elasticity": -4.107,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "286992": {
+    "美团共橙": {
+      "elasticity": -0.364,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "291516": {
+    "美团共橙": {
+      "elasticity": -0.941,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "294813": {
+    "饿了么": {
+      "elasticity": -0.25,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "295200": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "306165": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "307286": {
+    "美团共橙": {
+      "elasticity": -0.018,
+      "samples": 30,
+      "last_update": "2025-12-09"
+    }
+  },
+  "307338": {
+    "饿了么": {
+      "elasticity": -4.545,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "307963": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "311619": {
+    "饿了么": {
+      "elasticity": -0.48,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "311620": {
+    "饿了么": {
+      "elasticity": -2.45,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "313264": {
+    "饿了么": {
+      "elasticity": -1.385,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "315127": {
+    "美团共橙": {
+      "elasticity": -1.544,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -3.333,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "315128": {
+    "美团共橙": {
+      "elasticity": -0.643,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -1.7,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "316345": {
+    "饿了么": {
+      "elasticity": -1.875,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "31732": {
+    "饿了么": {
+      "elasticity": -2.812,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "318050": {
+    "饿了么": {
+      "elasticity": 0.956,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "319562": {
+    "美团共橙": {
+      "elasticity": -2.5,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "324471": {
+    "饿了么": {
+      "elasticity": 0.176,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "326026": {
+    "饿了么": {
+      "elasticity": -2.94,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "326036": {
+    "饿了么": {
+      "elasticity": -0.24,
+      "samples": 50,
+      "last_update": "2025-12-09"
+    }
+  },
+  "32906": {
+    "美团共橙": {
+      "elasticity": -3.197,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -4.433,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "32908": {
+    "美团共橙": {
+      "elasticity": -0.882,
+      "samples": 50,
+      "last_update": "2025-12-09"
+    }
+  },
+  "32958": {
+    "饿了么": {
+      "elasticity": -0.134,
+      "samples": 60,
+      "last_update": "2025-12-09"
+    }
+  },
+  "32966": {
+    "饿了么": {
+      "elasticity": -0.5,
+      "samples": 90,
+      "last_update": "2025-12-09"
+    }
+  },
+  "32970": {
+    "美团共橙": {
+      "elasticity": -2.9,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -0.392,
+      "samples": 50,
+      "last_update": "2025-12-09"
+    }
+  },
+  "32988": {
+    "饿了么": {
+      "elasticity": -4.593,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "32990": {
+    "饿了么": {
+      "elasticity": -0.471,
+      "samples": 40,
+      "last_update": "2025-12-09"
+    }
+  },
+  "33104": {
+    "美团共橙": {
+      "elasticity": -0.906,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "33156": {
+    "美团共橙": {
+      "elasticity": -0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "33158": {
+    "饿了么": {
+      "elasticity": -3.005,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "33256": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "33276": {
+    "饿了么": {
+      "elasticity": -1.319,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "3437": {
+    "美团共橙": {
+      "elasticity": -0.093,
+      "samples": 50,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -2.933,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "3451": {
+    "美团共橙": {
+      "elasticity": -0.271,
+      "samples": 140,
+      "last_update": "2025-12-09"
+    }
+  },
+  "3619": {
+    "美团共橙": {
+      "elasticity": 0.956,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "3647": {
+    "饿了么": {
+      "elasticity": 0.095,
+      "samples": 30,
+      "last_update": "2025-12-09"
+    }
+  },
+  "37390": {
+    "美团共橙": {
+      "elasticity": -4.385,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "37595": {
+    "饿了么": {
+      "elasticity": -0.708,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "38303": {
+    "饿了么": {
+      "elasticity": -1.638,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "38608": {
+    "美团共橙": {
+      "elasticity": -2.513,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "39257": {
+    "美团共橙": {
+      "elasticity": -1.077,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "39259": {
+    "美团共橙": {
+      "elasticity": -0.065,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -0.159,
+      "samples": 60,
+      "last_update": "2025-12-09"
+    }
+  },
+  "4006": {
+    "美团共橙": {
+      "elasticity": -1.636,
+      "samples": 40,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": 0.275,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "40234": {
+    "饿了么": {
+      "elasticity": -2.054,
+      "samples": 30,
+      "last_update": "2025-12-09"
+    }
+  },
+  "40277": {
+    "饿了么": {
+      "elasticity": -1.003,
+      "samples": 30,
+      "last_update": "2025-12-09"
+    }
+  },
+  "40987": {
+    "美团共橙": {
+      "elasticity": -2.167,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -0.96,
+      "samples": 70,
+      "last_update": "2025-12-09"
+    }
+  },
+  "40989": {
+    "饿了么": {
+      "elasticity": -0.571,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "41285": {
+    "饿了么": {
+      "elasticity": -1.113,
+      "samples": 40,
+      "last_update": "2025-12-09"
+    }
+  },
+  "41293": {
+    "美团共橙": {
+      "elasticity": 0.206,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "41318": {
+    "饿了么": {
+      "elasticity": -2.995,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "41520": {
+    "饿了么": {
+      "elasticity": -3.75,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "41564": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "42098": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "42857": {
+    "美团共橙": {
+      "elasticity": -0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "4418": {
+    "饿了么": {
+      "elasticity": 0.096,
+      "samples": 60,
+      "last_update": "2025-12-09"
+    }
+  },
+  "44888": {
+    "美团共橙": {
+      "elasticity": -1.187,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "44910": {
+    "饿了么": {
+      "elasticity": -0.154,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "45116": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "45429": {
+    "美团共橙": {
+      "elasticity": -4.615,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": 0.094,
+      "samples": 50,
+      "last_update": "2025-12-09"
+    }
+  },
+  "45450": {
+    "美团共橙": {
+      "elasticity": -0.446,
+      "samples": 30,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -0.406,
+      "samples": 180,
+      "last_update": "2025-12-09"
+    }
+  },
+  "46095": {
+    "美团共橙": {
+      "elasticity": -1.05,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "46605": {
+    "饿了么": {
+      "elasticity": -1.214,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "48932": {
+    "饿了么": {
+      "elasticity": -0.249,
+      "samples": 60,
+      "last_update": "2025-12-09"
+    }
+  },
+  "49108": {
+    "饿了么": {
+      "elasticity": -1.168,
+      "samples": 30,
+      "last_update": "2025-12-09"
+    }
+  },
+  "49809": {
+    "饿了么": {
+      "elasticity": -0.433,
+      "samples": 140,
+      "last_update": "2025-12-09"
+    }
+  },
+  "49813": {
+    "饿了么": {
+      "elasticity": -0.266,
+      "samples": 60,
+      "last_update": "2025-12-09"
+    }
+  },
+  "5029": {
+    "饿了么": {
+      "elasticity": -0.378,
+      "samples": 30,
+      "last_update": "2025-12-09"
+    }
+  },
+  "52183": {
+    "美团共橙": {
+      "elasticity": 0.337,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -0.943,
+      "samples": 30,
+      "last_update": "2025-12-09"
+    }
+  },
+  "52399": {
+    "饿了么": {
+      "elasticity": -0.134,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "52418": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "53377": {
+    "饿了么": {
+      "elasticity": -0.357,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "53594": {
+    "饿了么": {
+      "elasticity": -0.886,
+      "samples": 80,
+      "last_update": "2025-12-09"
+    }
+  },
+  "54139": {
+    "饿了么": {
+      "elasticity": -0.278,
+      "samples": 80,
+      "last_update": "2025-12-09"
+    }
+  },
+  "56316": {
+    "饿了么": {
+      "elasticity": 0.232,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "57308": {
+    "饿了么": {
+      "elasticity": -0.049,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "58947": {
+    "美团共橙": {
+      "elasticity": 0.095,
+      "samples": 40,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 30,
+      "last_update": "2025-12-09"
+    }
+  },
+  "60759": {
+    "美团共橙": {
+      "elasticity": -2.7,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "61175": {
+    "美团共橙": {
+      "elasticity": 0.3,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "61742": {
+    "美团共橙": {
+      "elasticity": -3.687,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -2.526,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "62135": {
+    "美团共橙": {
+      "elasticity": -0.024,
+      "samples": 60,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -0.552,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "62139": {
+    "美团共橙": {
+      "elasticity": -0.046,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -0.486,
+      "samples": 30,
+      "last_update": "2025-12-09"
+    }
+  },
+  "62568": {
+    "美团共橙": {
+      "elasticity": -0.471,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -2.25,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "62573": {
+    "美团共橙": {
+      "elasticity": -0.41,
+      "samples": 40,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": 0.933,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "62575": {
+    "美团共橙": {
+      "elasticity": -0.309,
+      "samples": 70,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -2.438,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "62576": {
+    "饿了么": {
+      "elasticity": -1.112,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "6306": {
+    "美团共橙": {
+      "elasticity": -2.213,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -0.388,
+      "samples": 160,
+      "last_update": "2025-12-09"
+    }
+  },
+  "63332": {
+    "饿了么": {
+      "elasticity": -0.613,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "6424": {
+    "饿了么": {
+      "elasticity": -1.757,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "6426": {
+    "饿了么": {
+      "elasticity": -0.805,
+      "samples": 50,
+      "last_update": "2025-12-09"
+    }
+  },
+  "65562": {
+    "饿了么": {
+      "elasticity": -0.446,
+      "samples": 110,
+      "last_update": "2025-12-09"
+    }
+  },
+  "66058": {
+    "美团共橙": {
+      "elasticity": -1.226,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -0.107,
+      "samples": 170,
+      "last_update": "2025-12-09"
+    }
+  },
+  "6867": {
+    "饿了么": {
+      "elasticity": 0.031,
+      "samples": 50,
+      "last_update": "2025-12-09"
+    }
+  },
+  "69005": {
+    "美团共橙": {
+      "elasticity": -2.353,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "6949": {
+    "美团共橙": {
+      "elasticity": -2.333,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "73183": {
+    "饿了么": {
+      "elasticity": -3.514,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "73227": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -1.093,
+      "samples": 40,
+      "last_update": "2025-12-09"
+    }
+  },
+  "73343": {
+    "美团共橙": {
+      "elasticity": -3.404,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "73382": {
+    "饿了么": {
+      "elasticity": -4.667,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "73384": {
+    "美团共橙": {
+      "elasticity": -0.637,
+      "samples": 40,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -0.216,
+      "samples": 60,
+      "last_update": "2025-12-09"
+    }
+  },
+  "74514": {
+    "饿了么": {
+      "elasticity": 0.178,
+      "samples": 40,
+      "last_update": "2025-12-09"
+    }
+  },
+  "75041": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "79561": {
+    "美团共橙": {
+      "elasticity": -3.598,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "80099": {
+    "饿了么": {
+      "elasticity": -0.633,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "80104": {
+    "美团共橙": {
+      "elasticity": -3.879,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -3.429,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "80108": {
+    "饿了么": {
+      "elasticity": -0.516,
+      "samples": 60,
+      "last_update": "2025-12-09"
+    }
+  },
+  "80429": {
+    "美团共橙": {
+      "elasticity": -0.276,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "80616": {
+    "饿了么": {
+      "elasticity": -0.028,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "80640": {
+    "美团共橙": {
+      "elasticity": -0.094,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -0.222,
+      "samples": 70,
+      "last_update": "2025-12-09"
+    }
+  },
+  "80645": {
+    "饿了么": {
+      "elasticity": -0.316,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "81571": {
+    "美团共橙": {
+      "elasticity": -0.573,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -3.923,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "81986": {
+    "美团共橙": {
+      "elasticity": -0.039,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    },
+    "饿了么": {
+      "elasticity": -0.021,
+      "samples": 50,
+      "last_update": "2025-12-09"
+    }
+  },
+  "83274": {
+    "饿了么": {
+      "elasticity": -0.454,
+      "samples": 70,
+      "last_update": "2025-12-09"
+    }
+  },
+  "83540": {
+    "饿了么": {
+      "elasticity": -2.51,
+      "samples": 30,
+      "last_update": "2025-12-09"
+    }
+  },
+  "83844": {
+    "饿了么": {
+      "elasticity": -0.981,
+      "samples": 30,
+      "last_update": "2025-12-09"
+    }
+  },
+  "8524": {
+    "饿了么": {
+      "elasticity": -0.376,
+      "samples": 110,
+      "last_update": "2025-12-09"
+    }
+  },
+  "86420": {
+    "美团共橙": {
+      "elasticity": -0.653,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "87212": {
+    "饿了么": {
+      "elasticity": -2.237,
+      "samples": 20,
+      "last_update": "2025-12-09"
+    }
+  },
+  "91108": {
+    "美团共橙": {
+      "elasticity": -0.718,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "92044": {
+    "饿了么": {
+      "elasticity": -0.576,
+      "samples": 10,
+      "last_update": "2025-12-09"
+    }
+  },
+  "96508": {
+    "饿了么": {
+      "elasticity": 0.001,
+      "samples": 30,
+      "last_update": "2025-12-09"
+    }
+  }
+}
