@@ -84,24 +84,53 @@ if ($pgResult -eq "OK") {
 Write-Host ""
 
 # ========== 检查并停止已有看板进程 ==========
-Write-Host "检测已有看板进程..." -ForegroundColor Gray
-$existingProcess = Get-Process python -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "*订单数据看板*" }
+Write-Host "🔍 检测已有看板进程..." -ForegroundColor Yellow
+$allPythonProcs = Get-Process python* -ErrorAction SilentlyContinue
+$dashboardProcs = @()
 
-if ($existingProcess) {
-    Write-Host "发现正在运行的看板实例, 正在停止..." -ForegroundColor Yellow
-    Stop-Process -Id $existingProcess.Id -Force
-    Write-Host "已停止现有实例" -ForegroundColor Green
+foreach ($proc in $allPythonProcs) {
+    try {
+        $cmdLine = (Get-CimInstance Win32_Process -Filter "ProcessId=$($proc.Id)").CommandLine
+        if ($cmdLine -match "智能门店看板_Dash版\.py") {
+            $dashboardProcs += $proc
+        }
+    } catch { }
+}
+
+if ($dashboardProcs.Count -gt 0) {
+    Write-Host "   发现 $($dashboardProcs.Count) 个旧进程，正在清理..." -ForegroundColor Yellow
+    foreach ($proc in $dashboardProcs) {
+        Write-Host "   停止进程 PID=$($proc.Id)" -ForegroundColor DarkYellow
+        Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+    }
     Start-Sleep -Seconds 2
+    Write-Host "   ✅ 旧进程已清理" -ForegroundColor Green
 } else {
-    Write-Host "未发现正在运行的看板实例" -ForegroundColor Gray
+    Write-Host "   ✅ 无需清理" -ForegroundColor Green
 }
 
 Write-Host ""
-Write-Host "启动调试模式..." -ForegroundColor Yellow
-Write-Host "访问地址: http://localhost:8050" -ForegroundColor Cyan
-Write-Host "按 Ctrl+C 停止服务" -ForegroundColor Gray
+Write-Host "🐛 启动调试模式..." -ForegroundColor Yellow
+Write-Host "===========================================" -ForegroundColor Cyan
+Write-Host "📍 本机访问: http://localhost:8051" -ForegroundColor Green
+Write-Host "🌐 局域网访问: http://192.168.1.213:8051" -ForegroundColor Green
+Write-Host ""
+Write-Host "💡 特性:" -ForegroundColor Cyan
+Write-Host "   - 自动重载: 代码修改后自动重启" -ForegroundColor Gray
+Write-Host "   - 详细日志: 显示所有调试信息" -ForegroundColor Gray
+Write-Host "   - 错误追踪: 完整的堆栈跟踪" -ForegroundColor Gray
+Write-Host ""
+Write-Host "⚠️  按 Ctrl+C 停止服务" -ForegroundColor Yellow
+Write-Host "===========================================" -ForegroundColor Cyan
 Write-Host ""
 
-$env:DASH_DEBUG = "true"
-& $pythonExe 智能门店看板_Dash版.py
-Remove-Item Env:DASH_DEBUG -ErrorAction SilentlyContinue
+try {
+    $env:DASH_DEBUG = "true"
+    & $pythonExe "智能门店看板_Dash版.py"
+} catch {
+    Write-Host ""
+    Write-Host "❌ 调试模式启动失败: $_" -ForegroundColor Red
+    Read-Host "按回车键退出"
+} finally {
+    Remove-Item Env:DASH_DEBUG -ErrorAction SilentlyContinue
+}

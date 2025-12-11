@@ -1,1544 +1,8040 @@
 {
-  "100887": {
-    "美团共橙": {
-      "elasticity": -0.239,
-      "samples": 10,
-      "last_update": "2025-12-09"
-    }
-  },
   "101241": {
     "美团共橙": {
-      "elasticity": -2.578,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -2.762,
+      "samples": 15,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -1.8,
+      "samples": 7,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -1.82,
-      "samples": 40,
-      "last_update": "2025-12-09"
+      "elasticity": -0.6,
+      "samples": 48,
+      "last_update": "2025-12-10"
+    }
+  },
+  "101695": {
+    "美团闪购": {
+      "elasticity": -0.01,
+      "samples": 58,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.4017857142857143,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "10194": {
+    "美团闪购": {
+      "elasticity": -1.8,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.090909090909091,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "10246": {
+    "饿了么": {
+      "elasticity": -0.325,
+      "samples": 36,
+      "last_update": "2025-12-10"
+    }
+  },
+  "104227": {
+    "饿了么": {
+      "elasticity": -0.056,
+      "samples": 200,
+      "last_update": "2025-12-10"
+    }
+  },
+  "10472": {
+    "美团闪购": {
+      "elasticity": -1.348,
+      "samples": 19,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.19,
+      "samples": 8,
+      "last_update": "2025-12-10"
     }
   },
   "105039": {
     "饿了么": {
-      "elasticity": -4.154,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -3.591,
+      "samples": 16,
+      "last_update": "2025-12-10"
     }
   },
   "10615": {
+    "美团闪购": {
+      "elasticity": -1.125,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "闪购小程序": {
+      "elasticity": -2.294,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.581,
-      "samples": 40,
-      "last_update": "2025-12-09"
+      "elasticity": -1.643,
+      "samples": 31,
+      "last_update": "2025-12-10"
     }
   },
-  "106685": {
-    "饿了么": {
-      "elasticity": 0.0,
-      "samples": 20,
-      "last_update": "2025-12-09"
+  "106519": {
+    "美团闪购": {
+      "elasticity": -0.495,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "10843": {
+    "美团闪购": {
+      "elasticity": -4.14,
+      "samples": 7,
+      "last_update": "2025-12-10"
     }
   },
   "10926": {
     "饿了么": {
-      "elasticity": -2.964,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -2.863,
+      "samples": 27,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.47953216374269075,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "10930": {
     "饿了么": {
-      "elasticity": -0.954,
-      "samples": 50,
-      "last_update": "2025-12-09"
+      "elasticity": -0.024,
+      "samples": 35,
+      "last_update": "2025-12-10"
+    }
+  },
+  "110307": {
+    "饿了么": {
+      "elasticity": -0.526,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "111296": {
+    "美团闪购": {
+      "elasticity": -0.0,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -3.75,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.227,
+      "samples": 8,
+      "last_update": "2025-12-10"
     }
   },
   "11267": {
     "饿了么": {
-      "elasticity": -0.044,
-      "samples": 130,
-      "last_update": "2025-12-09"
+      "elasticity": -0.605,
+      "samples": 188,
+      "last_update": "2025-12-10"
     }
   },
   "112790": {
     "美团共橙": {
-      "elasticity": -2.201,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -1.933,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -3.73,
+      "samples": 7,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -0.538,
-      "samples": 40,
-      "last_update": "2025-12-09"
+      "elasticity": -1.595,
+      "samples": 65,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -3.206060606060606,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "113716": {
+    "美团咖啡": {
+      "elasticity": 0.385,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    }
+  },
+  "113734": {
+    "美团咖啡": {
+      "elasticity": 0.012,
+      "samples": 35,
+      "last_update": "2025-12-10"
+    }
+  },
+  "113735": {
+    "美团咖啡": {
+      "elasticity": -0.901,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    }
+  },
+  "113824": {
+    "美团咖啡": {
+      "elasticity": -0.587,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    }
+  },
+  "113825": {
+    "美团咖啡": {
+      "elasticity": -2.822,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    }
+  },
+  "11429": {
+    "美团闪购": {
+      "elasticity": -2.126,
+      "samples": 26,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.528,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "114432": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "114517": {
+    "饿了么": {
+      "elasticity": -1.968,
+      "samples": 22,
+      "last_update": "2025-12-10"
+    }
+  },
+  "115793": {
+    "饿了么": {
+      "elasticity": -0.594,
+      "samples": 30,
+      "last_update": "2025-12-10"
     }
   },
   "116533": {
     "饿了么": {
-      "elasticity": -0.314,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -0.166,
+      "samples": 36,
+      "last_update": "2025-12-10"
     }
   },
-  "116938": {
+  "117003": {
+    "饿了么": {
+      "elasticity": -0.219,
+      "samples": 37,
+      "last_update": "2025-12-10"
+    }
+  },
+  "119327": {
+    "饿了么": {
+      "elasticity": -0.666,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "119609": {
+    "饿了么": {
+      "elasticity": -1.158,
+      "samples": 64,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
-      "elasticity": 0.0,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": 0.421,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "119710": {
+    "饿了么": {
+      "elasticity": -3.983,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "121845": {
+    "美团闪购": {
+      "elasticity": -0.122,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.272,
+      "samples": 6,
+      "last_update": "2025-12-10"
+    }
+  },
+  "123529": {
+    "饿了么": {
+      "elasticity": -3.477,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "12736": {
+    "饿了么": {
+      "elasticity": -2.186,
+      "samples": 23,
+      "last_update": "2025-12-10"
     }
   },
   "12790": {
     "美团共橙": {
-      "elasticity": 0.0,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.065,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -4.153,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.149,
+      "samples": 61,
+      "last_update": "2025-12-10"
+    }
+  },
+  "12845": {
+    "饿了么": {
+      "elasticity": -0.177,
+      "samples": 15,
+      "last_update": "2025-12-10"
+    }
+  },
+  "12850": {
+    "饿了么": {
+      "elasticity": -0.946,
+      "samples": 28,
+      "last_update": "2025-12-10"
+    }
+  },
+  "131262": {
+    "美团闪购": {
+      "elasticity": -0.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.415,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    }
+  },
+  "132441": {
+    "饿了么": {
+      "elasticity": -1.675,
+      "samples": 13,
+      "last_update": "2025-12-10"
     }
   },
   "134903": {
     "饿了么": {
-      "elasticity": -0.0,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": 0.0,
+      "samples": 15,
+      "last_update": "2025-12-10"
+    }
+  },
+  "135903": {
+    "饿了么": {
+      "elasticity": -2.217,
+      "samples": 19,
+      "last_update": "2025-12-10"
+    }
+  },
+  "137599": {
+    "美团闪购": {
+      "elasticity": 0.125,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.145,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "13776": {
+    "饿了么": {
+      "elasticity": -3.676,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "144061": {
+    "美团闪购": {
+      "elasticity": 0.0,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -3.13,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "145675": {
+    "美团闪购": {
+      "elasticity": -0.368,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": 0.139,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.167,
+      "samples": 3,
+      "last_update": "2025-12-10"
     }
   },
   "14688": {
     "美团共橙": {
-      "elasticity": -3.9,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -4.018,
+      "samples": 8,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -0.314,
-      "samples": 60,
-      "last_update": "2025-12-09"
+      "elasticity": -0.474,
+      "samples": 110,
+      "last_update": "2025-12-10"
     }
   },
   "14689": {
     "饿了么": {
-      "elasticity": -3.431,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -1.518,
+      "samples": 20,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -3.125000000000001,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "147575": {
-    "美团共橙": {
-      "elasticity": 0.608,
-      "samples": 10,
-      "last_update": "2025-12-09"
+    "美团闪购": {
+      "elasticity": -1.187,
+      "samples": 39,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -0.147,
-      "samples": 40,
-      "last_update": "2025-12-09"
+      "elasticity": 0.022,
+      "samples": 34,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.33,
+      "samples": 10,
+      "last_update": "2025-12-10"
+    }
+  },
+  "147576": {
+    "饿了么": {
+      "elasticity": -3.383,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.405128205128205,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "148517": {
+    "美团闪购": {
+      "elasticity": -0.116,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    }
+  },
+  "149013": {
+    "美团闪购": {
+      "elasticity": -1.452,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.47,
+      "samples": 28,
+      "last_update": "2025-12-10"
+    }
+  },
+  "150189": {
+    "美团闪购": {
+      "elasticity": 0.818,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
-      "elasticity": 0.0,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.32375478927203066,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.9191919191919196,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "150190": {
+    "美团闪购": {
+      "elasticity": -1.25,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": 0.028,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "150920": {
+    "美团闪购": {
+      "elasticity": -0.651,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    }
+  },
+  "150921": {
+    "美团闪购": {
+      "elasticity": -0.822,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "151791": {
+    "饿了么": {
+      "elasticity": -3.672,
+      "samples": 12,
+      "last_update": "2025-12-10"
     }
   },
   "153870": {
     "美团共橙": {
-      "elasticity": -2.918,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -1.627,
+      "samples": 35,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -1.294,
+      "samples": 53,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -1.203,
-      "samples": 50,
-      "last_update": "2025-12-09"
+      "elasticity": -1.702,
+      "samples": 41,
+      "last_update": "2025-12-10"
+    }
+  },
+  "153940": {
+    "美团闪购": {
+      "elasticity": -1.333,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -3.105,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    }
+  },
+  "153960": {
+    "美团闪购": {
+      "elasticity": -0.994,
+      "samples": 28,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.452,
+      "samples": 68,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.555,
+      "samples": 5,
+      "last_update": "2025-12-10"
+    }
+  },
+  "153961": {
+    "美团闪购": {
+      "elasticity": -0.989,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.231,
+      "samples": 58,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.303,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    }
+  },
+  "154055": {
+    "美团闪购": {
+      "elasticity": -1.032,
+      "samples": 28,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.23,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    }
+  },
+  "15497": {
+    "饿了么": {
+      "elasticity": -0.014,
+      "samples": 31,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.7272727272727267,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "156537": {
+    "饿了么": {
+      "elasticity": -2.575,
+      "samples": 15,
+      "last_update": "2025-12-10"
     }
   },
   "158162": {
+    "美团闪购": {
+      "elasticity": -1.455,
+      "samples": 27,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": 0.0,
-      "samples": 10,
-      "last_update": "2025-12-09"
-    }
-  },
-  "158519": {
+      "elasticity": -0.794,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
-      "elasticity": -1.313,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.614,
+      "samples": 5,
+      "last_update": "2025-12-10"
     }
   },
   "16314": {
     "美团共橙": {
-      "elasticity": -0.525,
-      "samples": 100,
-      "last_update": "2025-12-09"
+      "elasticity": -0.59,
+      "samples": 76,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.06,
+      "samples": 48,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -0.627,
-      "samples": 70,
-      "last_update": "2025-12-09"
+      "elasticity": -1.633,
+      "samples": 74,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -2.183,
+      "samples": 13,
+      "last_update": "2025-12-10"
     }
   },
   "16319": {
     "美团共橙": {
-      "elasticity": -2.353,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -1.988,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    }
+  },
+  "165001": {
+    "饿了么": {
+      "elasticity": -2.869,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    }
+  },
+  "165584": {
+    "美团闪购": {
+      "elasticity": 0.0,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 4,
+      "last_update": "2025-12-10"
     }
   },
   "1712": {
+    "美团闪购": {
+      "elasticity": -1.279,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.228,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -0.438,
+      "samples": 70,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.126,
+      "samples": 11,
+      "last_update": "2025-12-10"
+    }
+  },
+  "172237": {
+    "饿了么": {
+      "elasticity": -1.629,
+      "samples": 19,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -4.543,
+      "samples": 4,
+      "last_update": "2025-12-10"
     }
   },
   "172238": {
     "饿了么": {
-      "elasticity": -4.704,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -1.338,
+      "samples": 70,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -1.343,
+      "samples": 5,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -3.85714285714286,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "173050": {
+    "饿了么": {
+      "elasticity": 0.07,
+      "samples": 24,
+      "last_update": "2025-12-10"
+    }
+  },
+  "175337": {
+    "饿了么": {
+      "elasticity": -1.088,
+      "samples": 19,
+      "last_update": "2025-12-10"
+    }
+  },
+  "178541": {
+    "饿了么": {
+      "elasticity": -0.836,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.13,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    }
+  },
+  "179750": {
+    "饿了么": {
+      "elasticity": -0.817,
+      "samples": 18,
+      "last_update": "2025-12-10"
     }
   },
   "179754": {
     "饿了么": {
-      "elasticity": -0.891,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -1.442,
+      "samples": 20,
+      "last_update": "2025-12-10"
     }
   },
-  "181644": {
+  "182699": {
+    "美团闪购": {
+      "elasticity": -0.57,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "182924": {
+    "饿了么": {
+      "elasticity": -0.105,
+      "samples": 16,
+      "last_update": "2025-12-10"
+    }
+  },
+  "183148": {
+    "美团闪购": {
+      "elasticity": -2.214,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
-      "elasticity": -1.719,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -1.0000000000000009,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -3.022,
+      "samples": 5,
+      "last_update": "2025-12-10"
     }
   },
   "1888": {
     "美团共橙": {
-      "elasticity": -2.708,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": 0.087,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -2.541,
+      "samples": 34,
+      "last_update": "2025-12-10"
     }
   },
   "193584": {
     "饿了么": {
       "elasticity": -0.0,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "194163": {
+    "饿了么": {
+      "elasticity": -0.304,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.384,
+      "samples": 9,
+      "last_update": "2025-12-10"
     }
   },
   "194900": {
     "饿了么": {
-      "elasticity": -3.307,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -1.613,
+      "samples": 28,
+      "last_update": "2025-12-10"
     }
   },
   "195739": {
     "饿了么": {
-      "elasticity": -4.333,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -4.01,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "199424": {
+    "美团闪购": {
+      "elasticity": -2.838,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.737,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    }
+  },
+  "2001": {
+    "饿了么": {
+      "elasticity": -2.234,
+      "samples": 27,
+      "last_update": "2025-12-10"
     }
   },
   "201151": {
+    "京东到家": {
+      "elasticity": 0.102,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
-      "elasticity": -0.584,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.256,
+      "samples": 18,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -1.108,
+      "samples": 72,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.717,
+      "samples": 85,
+      "last_update": "2025-12-10"
+    }
+  },
+  "202018": {
+    "美团闪购": {
+      "elasticity": -2.571,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -2.622,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    }
+  },
+  "20221": {
+    "饿了么": {
+      "elasticity": -2.493,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "202406": {
+    "饿了么": {
+      "elasticity": -0.848,
+      "samples": 22,
+      "last_update": "2025-12-10"
     }
   },
   "20293": {
     "饿了么": {
-      "elasticity": -0.967,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -1.498,
+      "samples": 95,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "20299": {
+    "美团闪购": {
+      "elasticity": -1.419,
+      "samples": 27,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.657,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.083,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "20359": {
+    "美团闪购": {
+      "elasticity": -0.064,
+      "samples": 26,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.538,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    }
+  },
+  "204890": {
+    "饿了么": {
+      "elasticity": -0.26,
+      "samples": 24,
+      "last_update": "2025-12-10"
     }
   },
   "20518": {
     "饿了么": {
-      "elasticity": -0.02,
-      "samples": 50,
-      "last_update": "2025-12-09"
+      "elasticity": -0.304,
+      "samples": 42,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -0.01,
+      "samples": 11,
+      "last_update": "2025-12-10"
     }
   },
   "205416": {
+    "京东到家": {
+      "elasticity": -0.891,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
-      "elasticity": 0.0,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": 0.053,
+      "samples": 13,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -1.596,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -1.287,
+      "samples": 46,
+      "last_update": "2025-12-10"
     }
   },
-  "20745": {
+  "205977": {
     "饿了么": {
-      "elasticity": -4.837,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -2.29,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "206144": {
+    "美团闪购": {
+      "elasticity": -1.972,
+      "samples": 20,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -3.345,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "206865": {
+    "美团闪购": {
+      "elasticity": -2.438,
+      "samples": 26,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.383,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "208297": {
+    "饿了么": {
+      "elasticity": -1.157,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    }
+  },
+  "209868": {
+    "美团闪购": {
+      "elasticity": -3.106,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.8153846153846142,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "213203": {
+    "京东到家": {
+      "elasticity": -0.3,
+      "samples": 79,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.953,
+      "samples": 29,
+      "last_update": "2025-12-10"
+    }
+  },
+  "213601": {
+    "美团闪购": {
+      "elasticity": -0.532,
+      "samples": 40,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.3,
+      "samples": 78,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.839,
+      "samples": 20,
+      "last_update": "2025-12-10"
     }
   },
   "214192": {
     "饿了么": {
-      "elasticity": -2.271,
-      "samples": 30,
-      "last_update": "2025-12-09"
+      "elasticity": -0.84,
+      "samples": 21,
+      "last_update": "2025-12-10"
     }
   },
-  "214554": {
+  "215804": {
+    "美团闪购": {
+      "elasticity": -0.0,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    }
+  },
+  "216411": {
     "饿了么": {
-      "elasticity": -1.024,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -1.629,
+      "samples": 11,
+      "last_update": "2025-12-10"
     }
   },
   "217580": {
     "美团共橙": {
-      "elasticity": -1.498,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -2.313,
+      "samples": 19,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.52,
+      "samples": 52,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.713,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "217666": {
+    "饿了么": {
+      "elasticity": -0.446,
+      "samples": 55,
+      "last_update": "2025-12-10"
+    }
+  },
+  "217729": {
+    "美团闪购": {
+      "elasticity": -1.3,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.95,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "217745": {
+    "饿了么": {
+      "elasticity": -0.716,
+      "samples": 32,
+      "last_update": "2025-12-10"
+    }
+  },
+  "217773": {
+    "饿了么": {
+      "elasticity": -0.202,
+      "samples": 16,
+      "last_update": "2025-12-10"
     }
   },
   "218471": {
     "美团共橙": {
-      "elasticity": -0.564,
-      "samples": 50,
-      "last_update": "2025-12-09"
+      "elasticity": 0.06,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.561,
+      "samples": 20,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -0.233,
-      "samples": 70,
-      "last_update": "2025-12-09"
+      "elasticity": -0.608,
+      "samples": 62,
+      "last_update": "2025-12-10"
+    }
+  },
+  "218705": {
+    "美团闪购": {
+      "elasticity": -0.89,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -1.016,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "220116": {
+    "美团闪购": {
+      "elasticity": -4.333,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -2.241,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.154,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    }
+  },
+  "220180": {
+    "饿了么": {
+      "elasticity": -2.062,
+      "samples": 37,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": 0.7500000000000008,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.25,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "22106": {
+    "美团闪购": {
+      "elasticity": -1.01,
+      "samples": 34,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.628,
+      "samples": 27,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.556,
+      "samples": 35,
+      "last_update": "2025-12-10"
     }
   },
   "22224": {
-    "美团共橙": {
-      "elasticity": 0.992,
-      "samples": 10,
-      "last_update": "2025-12-09"
-    },
     "饿了么": {
-      "elasticity": -1.84,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -0.988,
+      "samples": 97,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -2.688,
+      "samples": 3,
+      "last_update": "2025-12-10"
     }
   },
   "22238": {
     "饿了么": {
-      "elasticity": -3.852,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.648,
+      "samples": 14,
+      "last_update": "2025-12-10"
     }
   },
-  "224690": {
+  "223937": {
     "饿了么": {
-      "elasticity": -3.088,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -0.489,
+      "samples": 103,
+      "last_update": "2025-12-10"
+    }
+  },
+  "229159": {
+    "京东到家": {
+      "elasticity": -0.0,
+      "samples": 6,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.38,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "229162": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 18,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.746,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "229983": {
+    "京东到家": {
+      "elasticity": -0.609,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.3,
+      "samples": 41,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.522,
+      "samples": 33,
+      "last_update": "2025-12-10"
     }
   },
   "232594": {
+    "美团闪购": {
+      "elasticity": -0.27,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -1.762,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -1.65,
+      "samples": 14,
+      "last_update": "2025-12-10"
     }
   },
   "2327": {
     "饿了么": {
-      "elasticity": -0.075,
-      "samples": 80,
-      "last_update": "2025-12-09"
+      "elasticity": -1.668,
+      "samples": 67,
+      "last_update": "2025-12-10"
     }
   },
   "232999": {
-    "美团共橙": {
-      "elasticity": -0.364,
-      "samples": 20,
-      "last_update": "2025-12-09"
+    "美团闪购": {
+      "elasticity": 0.221,
+      "samples": 13,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": 0.05,
+      "elasticity": -0.559,
       "samples": 90,
-      "last_update": "2025-12-09"
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.702,
+      "samples": 17,
+      "last_update": "2025-12-10"
     }
   },
   "2346": {
     "饿了么": {
-      "elasticity": -0.55,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -3.611,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    }
+  },
+  "235152": {
+    "美团闪购": {
+      "elasticity": -2.8,
+      "samples": 26,
+      "last_update": "2025-12-10"
+    }
+  },
+  "235755": {
+    "饿了么": {
+      "elasticity": -0.063,
+      "samples": 8,
+      "last_update": "2025-12-10"
     }
   },
   "236386": {
     "美团共橙": {
-      "elasticity": -4.022,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -2.035,
+      "samples": 26,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": 0.055,
+      "samples": 19,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -2.459,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -0.671,
+      "samples": 70,
+      "last_update": "2025-12-10"
+    }
+  },
+  "237685": {
+    "美团闪购": {
+      "elasticity": -3.308,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "237803": {
+    "饿了么": {
+      "elasticity": -0.804,
+      "samples": 31,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -3.333333333333336,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "238592": {
+    "饿了么": {
+      "elasticity": -1.428,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 5,
+      "last_update": "2025-12-10"
+    }
+  },
+  "238598": {
+    "饿了么": {
+      "elasticity": 0.355,
+      "samples": 18,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -3.621428571428578,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "238835": {
+    "美团闪购": {
+      "elasticity": -4.577,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.713333333333333,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "239273": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 6,
+      "last_update": "2025-12-10"
+    }
+  },
+  "241226": {
+    "饿了么": {
+      "elasticity": -1.292,
+      "samples": 29,
+      "last_update": "2025-12-10"
     }
   },
   "241864": {
     "饿了么": {
-      "elasticity": -0.664,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -2.032,
+      "samples": 32,
+      "last_update": "2025-12-10"
+    }
+  },
+  "241865": {
+    "饿了么": {
+      "elasticity": -1.683,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "242014": {
+    "美团闪购": {
+      "elasticity": -0.835,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    }
+  },
+  "2427": {
+    "饿了么": {
+      "elasticity": -0.277,
+      "samples": 41,
+      "last_update": "2025-12-10"
+    }
+  },
+  "2431": {
+    "美团闪购": {
+      "elasticity": -1.017,
+      "samples": 13,
+      "last_update": "2025-12-10"
     }
   },
   "24352": {
     "饿了么": {
-      "elasticity": -0.442,
-      "samples": 110,
-      "last_update": "2025-12-09"
+      "elasticity": -0.982,
+      "samples": 81,
+      "last_update": "2025-12-10"
     }
   },
   "24355": {
     "饿了么": {
-      "elasticity": -0.089,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -0.344,
+      "samples": 36,
+      "last_update": "2025-12-10"
+    }
+  },
+  "243645": {
+    "饿了么": {
+      "elasticity": -0.226,
+      "samples": 15,
+      "last_update": "2025-12-10"
+    }
+  },
+  "243952": {
+    "饿了么": {
+      "elasticity": -0.434,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -3.629629629629627,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "245264": {
+    "饿了么": {
+      "elasticity": -2.042,
+      "samples": 23,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "245533": {
+    "饿了么": {
+      "elasticity": -0.49,
+      "samples": 21,
+      "last_update": "2025-12-10"
     }
   },
   "24571": {
     "美团共橙": {
-      "elasticity": -1.615,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.963,
+      "samples": 12,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -0.203,
-      "samples": 40,
-      "last_update": "2025-12-09"
+      "elasticity": -1.35,
+      "samples": 25,
+      "last_update": "2025-12-10"
     }
   },
   "250448": {
     "饿了么": {
-      "elasticity": -0.618,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.675,
+      "samples": 19,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -2.077,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "252606": {
+    "美团闪购": {
+      "elasticity": -2.792,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.523,
+      "samples": 3,
+      "last_update": "2025-12-10"
     }
   },
   "253312": {
     "美团共橙": {
-      "elasticity": -0.504,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -0.149,
+      "samples": 12,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.688,
+      "samples": 3,
+      "last_update": "2025-12-10"
     }
   },
-  "254254": {
+  "253591": {
+    "美团闪购": {
+      "elasticity": -4.456,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    }
+  },
+  "253757": {
+    "京东到家": {
+      "elasticity": -0.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "253760": {
+    "美团闪购": {
+      "elasticity": 0.0,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -1.156,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "254200": {
+    "美团闪购": {
+      "elasticity": -4.76,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
-      "elasticity": -2.5,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "254375": {
+    "美团闪购": {
+      "elasticity": -2.8,
+      "samples": 7,
+      "last_update": "2025-12-10"
     }
   },
   "254439": {
+    "美团闪购": {
+      "elasticity": -0.43,
+      "samples": 20,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": 0.116,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
-      "elasticity": -0.429,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": 0.5294117647058825,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "254861": {
     "美团共橙": {
-      "elasticity": 0.571,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.692,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.046,
+      "samples": 28,
+      "last_update": "2025-12-10"
+    }
+  },
+  "255830": {
+    "饿了么": {
+      "elasticity": -2.89,
+      "samples": 7,
+      "last_update": "2025-12-10"
     }
   },
   "256258": {
-    "饿了么": {
-      "elasticity": -2.236,
+    "美团闪购": {
+      "elasticity": -0.373,
       "samples": 20,
-      "last_update": "2025-12-09"
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": 0.494,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": 0.19666666666666682,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.939,
+      "samples": 4,
+      "last_update": "2025-12-10"
     }
   },
   "2569": {
     "美团共橙": {
-      "elasticity": -1.971,
-      "samples": 40,
-      "last_update": "2025-12-09"
+      "elasticity": -2.205,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -0.427,
+      "samples": 35,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "257041": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 15,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "257269": {
+    "美团闪购": {
+      "elasticity": -1.478,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 6,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.476,
+      "samples": 7,
+      "last_update": "2025-12-10"
     }
   },
   "257847": {
     "美团共橙": {
-      "elasticity": -2.442,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -3.075,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": 0.465,
+      "samples": 13,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": 0.0,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -1.003,
+      "samples": 24,
+      "last_update": "2025-12-10"
     }
   },
   "257855": {
     "美团共橙": {
-      "elasticity": 0.404,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -0.291,
+      "samples": 22,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -2.086,
+      "samples": 32,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.695,
+      "samples": 47,
+      "last_update": "2025-12-10"
+    }
+  },
+  "257866": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 6,
+      "last_update": "2025-12-10"
+    }
+  },
+  "257870": {
+    "美团闪购": {
+      "elasticity": -0.1,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    }
+  },
+  "257873": {
+    "美团闪购": {
+      "elasticity": -2.614,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.582,
+      "samples": 18,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -2.235,
+      "samples": 5,
+      "last_update": "2025-12-10"
     }
   },
   "258028": {
     "美团共橙": {
+      "elasticity": -0.126,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "258778": {
+    "美团闪购": {
+      "elasticity": 0.493,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.026,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
       "elasticity": 0.0,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "259672": {
     "饿了么": {
-      "elasticity": -0.1,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": 0.295,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "259975": {
+    "美团闪购": {
+      "elasticity": -0.128,
+      "samples": 46,
+      "last_update": "2025-12-10"
+    }
+  },
+  "260562": {
+    "美团闪购": {
+      "elasticity": 0.8,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "260811": {
+    "美团闪购": {
+      "elasticity": -0.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.527,
+      "samples": 26,
+      "last_update": "2025-12-10"
+    }
+  },
+  "261081": {
+    "美团闪购": {
+      "elasticity": -2.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "261745": {
+    "美团闪购": {
+      "elasticity": -2.211,
+      "samples": 13,
+      "last_update": "2025-12-10"
     }
   },
   "261818": {
     "饿了么": {
-      "elasticity": -0.0,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": 0.335,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.0909090909090913,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "263958": {
     "饿了么": {
-      "elasticity": -0.107,
-      "samples": 100,
-      "last_update": "2025-12-09"
+      "elasticity": 0.047,
+      "samples": 57,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -3.0000000000000036,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "266722": {
+    "饿了么": {
+      "elasticity": -0.054,
+      "samples": 15,
+      "last_update": "2025-12-10"
     }
   },
   "2685": {
+    "美团闪购": {
+      "elasticity": 0.153,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.368,
+      "samples": 35,
+      "last_update": "2025-12-10"
+    }
+  },
+  "268874": {
+    "饿了么": {
+      "elasticity": -1.647,
+      "samples": 15,
+      "last_update": "2025-12-10"
+    }
+  },
+  "269047": {
+    "饿了么": {
+      "elasticity": -0.887,
+      "samples": 19,
+      "last_update": "2025-12-10"
+    }
+  },
+  "269056": {
+    "美团闪购": {
+      "elasticity": -2.7,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
       "elasticity": 0.0,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "samples": 11,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "269064": {
+    "美团闪购": {
+      "elasticity": 0.0,
+      "samples": 14,
+      "last_update": "2025-12-10"
     }
   },
   "269968": {
     "饿了么": {
-      "elasticity": -0.294,
-      "samples": 10,
-      "last_update": "2025-12-09"
-    }
-  },
-  "270357": {
-    "美团共橙": {
-      "elasticity": -0.327,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -1.178,
+      "samples": 47,
+      "last_update": "2025-12-10"
     }
   },
   "270589": {
     "美团共橙": {
-      "elasticity": -1.765,
+      "elasticity": -0.174,
+      "samples": 20,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -2.328,
       "samples": 10,
-      "last_update": "2025-12-09"
+      "last_update": "2025-12-10"
+    }
+  },
+  "270648": {
+    "饿了么": {
+      "elasticity": -0.345,
+      "samples": 20,
+      "last_update": "2025-12-10"
+    }
+  },
+  "270650": {
+    "美团闪购": {
+      "elasticity": -0.086,
+      "samples": 39,
+      "last_update": "2025-12-10"
+    }
+  },
+  "271262": {
+    "美团闪购": {
+      "elasticity": -1.831,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "271282": {
+    "美团闪购": {
+      "elasticity": 0.784,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "271494": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "272212": {
+    "饿了么": {
+      "elasticity": -0.41,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "272714": {
+    "饿了么咖啡": {
+      "elasticity": 0.686,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    }
+  },
+  "272870": {
+    "饿了么": {
+      "elasticity": -1.548,
+      "samples": 16,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "273442": {
+    "饿了么": {
+      "elasticity": -1.13,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "273829": {
+    "美团闪购": {
+      "elasticity": -0.569,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "274493": {
+    "美团闪购": {
+      "elasticity": -0.341,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.01,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "275054": {
+    "饿了么": {
+      "elasticity": -2.673,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    }
+  },
+  "275479": {
+    "美团闪购": {
+      "elasticity": 0.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "275798": {
+    "美团闪购": {
+      "elasticity": -0.033,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    }
+  },
+  "278236": {
+    "饿了么": {
+      "elasticity": -1.175,
+      "samples": 11,
+      "last_update": "2025-12-10"
+    }
+  },
+  "281368": {
+    "美团闪购": {
+      "elasticity": -2.133,
+      "samples": 13,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
       "elasticity": 0.0,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "samples": 9,
+      "last_update": "2025-12-10"
+    }
+  },
+  "281374": {
+    "饿了么": {
+      "elasticity": -1.048,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    }
+  },
+  "281670": {
+    "美团闪购": {
+      "elasticity": 0.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "282306": {
+    "美团闪购": {
+      "elasticity": 0.0,
+      "samples": 14,
+      "last_update": "2025-12-10"
     }
   },
   "282749": {
+    "美团闪购": {
+      "elasticity": -0.138,
+      "samples": 26,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.281,
+      "samples": 41,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
-      "elasticity": -0.25,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "282793": {
     "美团共橙": {
-      "elasticity": -1.113,
-      "samples": 40,
-      "last_update": "2025-12-09"
+      "elasticity": -1.495,
+      "samples": 29,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -1.912,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.564,
+      "samples": 22,
+      "last_update": "2025-12-10"
     }
   },
-  "284688": {
+  "284551": {
+    "美团闪购": {
+      "elasticity": -0.0,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    }
+  },
+  "284795": {
+    "美团闪购": {
+      "elasticity": 0.528,
+      "samples": 26,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
-      "elasticity": -4.107,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -3.7636363636363623,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "286984": {
+    "美团闪购": {
+      "elasticity": -1.675,
+      "samples": 33,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "286992": {
     "美团共橙": {
-      "elasticity": -0.364,
+      "elasticity": -0.33,
       "samples": 10,
-      "last_update": "2025-12-09"
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -1.647,
+      "samples": 26,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -3.8333333333333295,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "287018": {
+    "美团闪购": {
+      "elasticity": -2.95,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    }
+  },
+  "288345": {
+    "美团闪购": {
+      "elasticity": 0.0,
+      "samples": 20,
+      "last_update": "2025-12-10"
+    }
+  },
+  "289379": {
+    "饿了么": {
+      "elasticity": -0.864,
+      "samples": 73,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.16744186046511625,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "290976": {
+    "饿了么": {
+      "elasticity": -4.191,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "291133": {
+    "美团闪购": {
+      "elasticity": -1.098,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "291438": {
+    "饿了么": {
+      "elasticity": -1.642,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "291445": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 21,
+      "last_update": "2025-12-10"
     }
   },
   "291516": {
     "美团共橙": {
-      "elasticity": -0.941,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -1.177,
+      "samples": 18,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.275,
+      "samples": 52,
+      "last_update": "2025-12-10"
+    }
+  },
+  "292927": {
+    "饿了么": {
+      "elasticity": -1.49,
+      "samples": 35,
+      "last_update": "2025-12-10"
     }
   },
   "294813": {
+    "美团闪购": {
+      "elasticity": -0.149,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.25,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -1.338,
+      "samples": 23,
+      "last_update": "2025-12-10"
     }
   },
   "295200": {
     "饿了么": {
-      "elasticity": 0.0,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
     }
   },
-  "306165": {
+  "297681": {
+    "美团闪购": {
+      "elasticity": -2.24,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    }
+  },
+  "299643": {
+    "美团闪购": {
+      "elasticity": 0.264,
+      "samples": 46,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.7,
+      "samples": 16,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.301,
+      "samples": 25,
+      "last_update": "2025-12-10"
+    }
+  },
+  "299678": {
+    "美团闪购": {
+      "elasticity": -2.009,
+      "samples": 26,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -0.6675000000000001,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
       "elasticity": 0.0,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "300039": {
+    "饿了么": {
+      "elasticity": 0.038,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "303319": {
+    "美团闪购": {
+      "elasticity": 0.0,
+      "samples": 20,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.708,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "304061": {
+    "饿了么": {
+      "elasticity": 0.194,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    }
+  },
+  "304099": {
+    "饿了么": {
+      "elasticity": -0.007,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "306077": {
+    "饿了么": {
+      "elasticity": -0.437,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    }
+  },
+  "306078": {
+    "美团闪购": {
+      "elasticity": 0.0,
+      "samples": 26,
+      "last_update": "2025-12-10"
+    }
+  },
+  "306113": {
+    "饿了么": {
+      "elasticity": -1.063,
+      "samples": 33,
+      "last_update": "2025-12-10"
+    }
+  },
+  "306145": {
+    "饿了么": {
+      "elasticity": -0.676,
+      "samples": 34,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.237,
+      "samples": 4,
+      "last_update": "2025-12-10"
     }
   },
   "307286": {
     "美团共橙": {
-      "elasticity": -0.018,
-      "samples": 30,
-      "last_update": "2025-12-09"
-    }
-  },
-  "307338": {
+      "elasticity": -0.055,
+      "samples": 24,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -1.5,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -4.545,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.993,
+      "samples": 47,
+      "last_update": "2025-12-10"
     }
   },
   "307963": {
     "美团共橙": {
-      "elasticity": 0.0,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.236,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "30814": {
+    "美团闪购": {
+      "elasticity": -0.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "309245": {
+    "饿了么": {
+      "elasticity": -0.691,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "309665": {
+    "美团闪购": {
+      "elasticity": -0.462,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": 0.6923076923076923,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "309863": {
+    "美团闪购": {
+      "elasticity": -0.879,
+      "samples": 33,
+      "last_update": "2025-12-10"
+    }
+  },
+  "311116": {
+    "饿了么": {
+      "elasticity": -0.273,
+      "samples": 97,
+      "last_update": "2025-12-10"
+    }
+  },
+  "311347": {
+    "美团闪购": {
+      "elasticity": -1.46,
+      "samples": 7,
+      "last_update": "2025-12-10"
     }
   },
   "311619": {
+    "美团闪购": {
+      "elasticity": -0.798,
+      "samples": 35,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.48,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.657,
+      "samples": 95,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.025,
+      "samples": 11,
+      "last_update": "2025-12-10"
     }
   },
   "311620": {
     "饿了么": {
-      "elasticity": -2.45,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.693,
+      "samples": 38,
+      "last_update": "2025-12-10"
     }
   },
-  "313264": {
+  "312005": {
     "饿了么": {
-      "elasticity": -1.385,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "313234": {
+    "美团闪购": {
+      "elasticity": -3.071,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -2.769230769230771,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "313958": {
+    "美团闪购": {
+      "elasticity": 0.0,
+      "samples": 20,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "313997": {
+    "饿了么": {
+      "elasticity": -2.681,
+      "samples": 25,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -4.399999999999999,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "315114": {
+    "饿了么": {
+      "elasticity": -0.931,
+      "samples": 35,
+      "last_update": "2025-12-10"
     }
   },
   "315127": {
-    "美团共橙": {
-      "elasticity": -1.544,
-      "samples": 10,
-      "last_update": "2025-12-09"
-    },
     "饿了么": {
-      "elasticity": -3.333,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -1.6,
+      "samples": 14,
+      "last_update": "2025-12-10"
     }
   },
   "315128": {
-    "美团共橙": {
-      "elasticity": -0.643,
-      "samples": 10,
-      "last_update": "2025-12-09"
-    },
     "饿了么": {
-      "elasticity": -1.7,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.603,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -2.035714285714285,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.55,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
-  "316345": {
+  "315233": {
     "饿了么": {
-      "elasticity": -1.875,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": 0.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "315236": {
+    "美团闪购": {
+      "elasticity": 0.471,
+      "samples": 26,
+      "last_update": "2025-12-10"
+    }
+  },
+  "31556": {
+    "饿了么": {
+      "elasticity": -4.101,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    }
+  },
+  "315598": {
+    "美团闪购": {
+      "elasticity": 0.629,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -2.158,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "315657": {
+    "饿了么": {
+      "elasticity": -0.109,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "31604": {
+    "饿了么": {
+      "elasticity": -0.907,
+      "samples": 41,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.565,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    }
+  },
+  "31608": {
+    "饿了么": {
+      "elasticity": 0.011,
+      "samples": 35,
+      "last_update": "2025-12-10"
+    }
+  },
+  "316136": {
+    "饿了么": {
+      "elasticity": -0.754,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    }
+  },
+  "31622": {
+    "饿了么": {
+      "elasticity": -2.566,
+      "samples": 19,
+      "last_update": "2025-12-10"
+    }
+  },
+  "316243": {
+    "美团闪购": {
+      "elasticity": -0.585,
+      "samples": 47,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.866,
+      "samples": 13,
+      "last_update": "2025-12-10"
     }
   },
   "31732": {
     "饿了么": {
-      "elasticity": -2.812,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -2.458,
+      "samples": 12,
+      "last_update": "2025-12-10"
+    }
+  },
+  "31749": {
+    "京东到家": {
+      "elasticity": 0.072,
+      "samples": 19,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.543,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.252,
+      "samples": 80,
+      "last_update": "2025-12-10"
+    }
+  },
+  "317547": {
+    "美团闪购": {
+      "elasticity": -0.652,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    }
+  },
+  "31758": {
+    "饿了么": {
+      "elasticity": -0.863,
+      "samples": 27,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -2.6700000000000004,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "318050": {
     "饿了么": {
-      "elasticity": 0.956,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.883,
+      "samples": 41,
+      "last_update": "2025-12-10"
+    }
+  },
+  "318695": {
+    "美团闪购": {
+      "elasticity": -2.157,
+      "samples": 20,
+      "last_update": "2025-12-10"
+    }
+  },
+  "318740": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
     }
   },
   "319562": {
+    "美团闪购": {
+      "elasticity": -2.242,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
-      "elasticity": -2.5,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": 0.219,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "320012": {
+    "饿了么": {
+      "elasticity": 0.103,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "320017": {
+    "饿了么": {
+      "elasticity": -0.477,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    }
+  },
+  "320100": {
+    "美团闪购": {
+      "elasticity": -0.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.2666666666666668,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "32050": {
+    "京东到家": {
+      "elasticity": -0.565,
+      "samples": 23,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -4.750000000000003,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "321227": {
+    "饿了么": {
+      "elasticity": -0.118,
+      "samples": 175,
+      "last_update": "2025-12-10"
+    }
+  },
+  "321228": {
+    "美团闪购": {
+      "elasticity": 0.353,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "321244": {
+    "饿了么": {
+      "elasticity": -0.559,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "321320": {
+    "饿了么": {
+      "elasticity": -1.015,
+      "samples": 15,
+      "last_update": "2025-12-10"
+    }
+  },
+  "321356": {
+    "美团闪购": {
+      "elasticity": -0.824,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "324227": {
+    "美团闪购": {
+      "elasticity": -0.178,
+      "samples": 20,
+      "last_update": "2025-12-10"
     }
   },
   "324471": {
+    "美团闪购": {
+      "elasticity": -0.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": 0.176,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -0.454,
+      "samples": 45,
+      "last_update": "2025-12-10"
     }
   },
   "326026": {
     "饿了么": {
-      "elasticity": -2.94,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.252,
+      "samples": 61,
+      "last_update": "2025-12-10"
     }
   },
   "326036": {
     "饿了么": {
-      "elasticity": -0.24,
-      "samples": 50,
-      "last_update": "2025-12-09"
+      "elasticity": -0.046,
+      "samples": 91,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.325,
+      "samples": 12,
+      "last_update": "2025-12-10"
+    }
+  },
+  "326046": {
+    "美团闪购": {
+      "elasticity": 0.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "32804": {
+    "饿了么": {
+      "elasticity": -0.01,
+      "samples": 28,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -0.4166666666666666,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "32906": {
-    "美团共橙": {
-      "elasticity": -3.197,
-      "samples": 10,
-      "last_update": "2025-12-09"
+    "美团闪购": {
+      "elasticity": -2.773,
+      "samples": 21,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -4.433,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -1.66,
+      "samples": 20,
+      "last_update": "2025-12-10"
     }
   },
   "32908": {
     "美团共橙": {
-      "elasticity": -0.882,
-      "samples": 50,
-      "last_update": "2025-12-09"
+      "elasticity": -0.218,
+      "samples": 45,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.84,
+      "samples": 34,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.579,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    }
+  },
+  "32920": {
+    "美团闪购": {
+      "elasticity": -0.524,
+      "samples": 72,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.916,
+      "samples": 34,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -3.495,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "32952": {
+    "京东到家": {
+      "elasticity": -0.409,
+      "samples": 48,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.025,
+      "samples": 38,
+      "last_update": "2025-12-10"
     }
   },
   "32958": {
+    "美团闪购": {
+      "elasticity": -1.678,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.134,
-      "samples": 60,
-      "last_update": "2025-12-09"
+      "elasticity": -0.397,
+      "samples": 100,
+      "last_update": "2025-12-10"
+    },
+    "闪购小程序": {
+      "elasticity": -0.0,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "32962": {
+    "饿了么": {
+      "elasticity": -0.199,
+      "samples": 19,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.187,
+      "samples": 4,
+      "last_update": "2025-12-10"
     }
   },
   "32966": {
+    "京东到家": {
+      "elasticity": -0.781,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.5,
-      "samples": 90,
-      "last_update": "2025-12-09"
+      "elasticity": -0.853,
+      "samples": 52,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.092,
+      "samples": 22,
+      "last_update": "2025-12-10"
     }
   },
   "32970": {
-    "美团共橙": {
-      "elasticity": -2.9,
-      "samples": 10,
-      "last_update": "2025-12-09"
-    },
     "饿了么": {
-      "elasticity": -0.392,
-      "samples": 50,
-      "last_update": "2025-12-09"
+      "elasticity": -0.683,
+      "samples": 23,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.7903225806451613,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "32982": {
+    "饿了么": {
+      "elasticity": -1.256,
+      "samples": 30,
+      "last_update": "2025-12-10"
     }
   },
   "32988": {
     "饿了么": {
-      "elasticity": -4.593,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.66,
+      "samples": 6,
+      "last_update": "2025-12-10"
     }
   },
   "32990": {
     "饿了么": {
-      "elasticity": -0.471,
-      "samples": 40,
-      "last_update": "2025-12-09"
+      "elasticity": -1.122,
+      "samples": 49,
+      "last_update": "2025-12-10"
     }
   },
-  "33104": {
-    "美团共橙": {
-      "elasticity": -0.906,
-      "samples": 10,
-      "last_update": "2025-12-09"
+  "32994": {
+    "美团闪购": {
+      "elasticity": -0.0,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    }
+  },
+  "330313": {
+    "饿了么": {
+      "elasticity": -3.54,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "330491": {
+    "饿了么": {
+      "elasticity": -0.521,
+      "samples": 20,
+      "last_update": "2025-12-10"
+    }
+  },
+  "33114": {
+    "美团闪购": {
+      "elasticity": -1.51,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.0,
+      "samples": 24,
+      "last_update": "2025-12-10"
+    }
+  },
+  "331226": {
+    "饿了么": {
+      "elasticity": -1.29,
+      "samples": 20,
+      "last_update": "2025-12-10"
     }
   },
   "33156": {
     "美团共橙": {
-      "elasticity": -0.0,
+      "elasticity": -0.003,
       "samples": 10,
-      "last_update": "2025-12-09"
+      "last_update": "2025-12-10"
     }
   },
   "33158": {
     "饿了么": {
-      "elasticity": -3.005,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -1.21,
+      "samples": 22,
+      "last_update": "2025-12-10"
+    }
+  },
+  "33160": {
+    "饿了么": {
+      "elasticity": -0.484,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    }
+  },
+  "331822": {
+    "饿了么": {
+      "elasticity": -0.972,
+      "samples": 16,
+      "last_update": "2025-12-10"
     }
   },
   "33256": {
+    "京东到家": {
+      "elasticity": 0.6,
+      "samples": 27,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": 0.0,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -1.551,
+      "samples": 24,
+      "last_update": "2025-12-10"
     }
   },
-  "33276": {
+  "33268": {
     "饿了么": {
-      "elasticity": -1.319,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -2.06,
+      "samples": 22,
+      "last_update": "2025-12-10"
+    }
+  },
+  "333150": {
+    "饿了么": {
+      "elasticity": -1.196,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    }
+  },
+  "334268": {
+    "饿了么": {
+      "elasticity": 0.64,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "334908": {
+    "美团闪购": {
+      "elasticity": -0.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -3.699999999999995,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "334915": {
+    "饿了么": {
+      "elasticity": -1.985,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "3435": {
+    "饿了么": {
+      "elasticity": -0.881,
+      "samples": 58,
+      "last_update": "2025-12-10"
     }
   },
   "3437": {
     "美团共橙": {
-      "elasticity": -0.093,
-      "samples": 50,
-      "last_update": "2025-12-09"
+      "elasticity": 0.002,
+      "samples": 39,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -2.574,
+      "samples": 14,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -2.933,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -2.592,
+      "samples": 20,
+      "last_update": "2025-12-10"
     }
   },
   "3451": {
+    "京东到家": {
+      "elasticity": -0.508,
+      "samples": 12,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
-      "elasticity": -0.271,
-      "samples": 140,
-      "last_update": "2025-12-09"
+      "elasticity": -0.375,
+      "samples": 66,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.642,
+      "samples": 28,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.093,
+      "samples": 17,
+      "last_update": "2025-12-10"
+    }
+  },
+  "3456": {
+    "美团闪购": {
+      "elasticity": -1.677,
+      "samples": 39,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -2.52,
+      "samples": 8,
+      "last_update": "2025-12-10"
     }
   },
   "3619": {
     "美团共橙": {
-      "elasticity": 0.956,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": 0.017,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -2.281,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -3.548,
+      "samples": 8,
+      "last_update": "2025-12-10"
     }
   },
   "3647": {
+    "美团闪购": {
+      "elasticity": -3.482,
+      "samples": 20,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": 0.095,
-      "samples": 30,
-      "last_update": "2025-12-09"
+      "elasticity": -1.475,
+      "samples": 78,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.767,
+      "samples": 5,
+      "last_update": "2025-12-10"
+    }
+  },
+  "37309": {
+    "饿了么": {
+      "elasticity": -0.942,
+      "samples": 38,
+      "last_update": "2025-12-10"
     }
   },
   "37390": {
-    "美团共橙": {
-      "elasticity": -4.385,
-      "samples": 10,
-      "last_update": "2025-12-09"
+    "美团闪购": {
+      "elasticity": -0.43,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": 0.0,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "37595": {
     "饿了么": {
-      "elasticity": -0.708,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.794,
+      "samples": 30,
+      "last_update": "2025-12-10"
+    }
+  },
+  "38198": {
+    "美团闪购": {
+      "elasticity": -0.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.62,
+      "samples": 24,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.398,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "38270": {
+    "饿了么": {
+      "elasticity": 0.25,
+      "samples": 9,
+      "last_update": "2025-12-10"
     }
   },
   "38303": {
     "饿了么": {
-      "elasticity": -1.638,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": 0.507,
+      "samples": 6,
+      "last_update": "2025-12-10"
+    }
+  },
+  "38307": {
+    "饿了么": {
+      "elasticity": -1.76,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -2.914,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "38418": {
+    "饿了么": {
+      "elasticity": -1.479,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    }
+  },
+  "38439": {
+    "饿了么": {
+      "elasticity": -0.955,
+      "samples": 39,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -0.349,
+      "samples": 2,
+      "last_update": "2025-12-10"
     }
   },
   "38608": {
     "美团共橙": {
-      "elasticity": -2.513,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": 0.0,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -3.496,
+      "samples": 15,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": 0.107,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    }
+  },
+  "39255": {
+    "饿了么": {
+      "elasticity": 0.05,
+      "samples": 14,
+      "last_update": "2025-12-10"
     }
   },
   "39257": {
     "美团共橙": {
-      "elasticity": -1.077,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -1.173,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -3.0,
+      "samples": 13,
+      "last_update": "2025-12-10"
     }
   },
   "39259": {
     "美团共橙": {
-      "elasticity": -0.065,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": 0.065,
+      "samples": 15,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -1.307,
+      "samples": 52,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -0.159,
-      "samples": 60,
-      "last_update": "2025-12-09"
+      "elasticity": -0.977,
+      "samples": 122,
+      "last_update": "2025-12-10"
+    }
+  },
+  "39261": {
+    "美团闪购": {
+      "elasticity": -0.231,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    }
+  },
+  "39268": {
+    "饿了么": {
+      "elasticity": -0.627,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.238,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "3994": {
+    "饿了么": {
+      "elasticity": -0.812,
+      "samples": 25,
+      "last_update": "2025-12-10"
     }
   },
   "4006": {
+    "京东到家": {
+      "elasticity": -0.843,
+      "samples": 35,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
-      "elasticity": -1.636,
-      "samples": 40,
-      "last_update": "2025-12-09"
+      "elasticity": -1.378,
+      "samples": 24,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.721,
+      "samples": 61,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": 0.275,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -1.278,
+      "samples": 104,
+      "last_update": "2025-12-10"
     }
   },
   "40234": {
+    "京东到家": {
+      "elasticity": 0.217,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": 0.855,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -2.054,
-      "samples": 30,
-      "last_update": "2025-12-09"
+      "elasticity": -0.224,
+      "samples": 65,
+      "last_update": "2025-12-10"
     }
   },
   "40277": {
     "饿了么": {
-      "elasticity": -1.003,
-      "samples": 30,
-      "last_update": "2025-12-09"
+      "elasticity": -1.087,
+      "samples": 33,
+      "last_update": "2025-12-10"
+    }
+  },
+  "40689": {
+    "饿了么": {
+      "elasticity": 0.026,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    }
+  },
+  "40902": {
+    "饿了么": {
+      "elasticity": -1.407,
+      "samples": 15,
+      "last_update": "2025-12-10"
+    }
+  },
+  "40983": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 6,
+      "last_update": "2025-12-10"
     }
   },
   "40987": {
-    "美团共橙": {
-      "elasticity": -2.167,
-      "samples": 10,
-      "last_update": "2025-12-09"
-    },
     "饿了么": {
-      "elasticity": -0.96,
-      "samples": 70,
-      "last_update": "2025-12-09"
+      "elasticity": -1.109,
+      "samples": 105,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -2.152173913043479,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "40989": {
     "饿了么": {
-      "elasticity": -0.571,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.915,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "41003": {
+    "饿了么": {
+      "elasticity": -2.848,
+      "samples": 34,
+      "last_update": "2025-12-10"
+    }
+  },
+  "41079": {
+    "美团闪购": {
+      "elasticity": 0.365,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.542,
+      "samples": 2,
+      "last_update": "2025-12-10"
     }
   },
   "41285": {
+    "美团闪购": {
+      "elasticity": -0.928,
+      "samples": 28,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -1.113,
-      "samples": 40,
-      "last_update": "2025-12-09"
+      "elasticity": -1.21,
+      "samples": 51,
+      "last_update": "2025-12-10"
     }
   },
   "41293": {
     "美团共橙": {
-      "elasticity": 0.206,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": 0.211,
+      "samples": 11,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.79,
+      "samples": 7,
+      "last_update": "2025-12-10"
     }
   },
   "41318": {
     "饿了么": {
-      "elasticity": -2.995,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -1.009,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    }
+  },
+  "41353": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 6,
+      "last_update": "2025-12-10"
+    }
+  },
+  "41427": {
+    "饿了么": {
+      "elasticity": -2.254,
+      "samples": 11,
+      "last_update": "2025-12-10"
+    }
+  },
+  "41455": {
+    "饿了么": {
+      "elasticity": -0.582,
+      "samples": 9,
+      "last_update": "2025-12-10"
     }
   },
   "41520": {
     "饿了么": {
-      "elasticity": -3.75,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -1.234,
+      "samples": 24,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": 0.405,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.884615384615386,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
-  "41564": {
+  "41531": {
+    "美团闪购": {
+      "elasticity": 0.164,
+      "samples": 20,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.0,
+      "elasticity": -2.957,
       "samples": 10,
-      "last_update": "2025-12-09"
+      "last_update": "2025-12-10"
+    }
+  },
+  "41559": {
+    "饿了么": {
+      "elasticity": -0.059,
+      "samples": 13,
+      "last_update": "2025-12-10"
     }
   },
   "42098": {
     "饿了么": {
-      "elasticity": -0.0,
+      "elasticity": -0.658,
       "samples": 10,
-      "last_update": "2025-12-09"
-    }
-  },
-  "42857": {
-    "美团共橙": {
-      "elasticity": -0.0,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "last_update": "2025-12-10"
     }
   },
   "4418": {
     "饿了么": {
-      "elasticity": 0.096,
-      "samples": 60,
-      "last_update": "2025-12-09"
+      "elasticity": 0.105,
+      "samples": 47,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.038,
+      "samples": 3,
+      "last_update": "2025-12-10"
     }
   },
   "44888": {
     "美团共橙": {
-      "elasticity": -1.187,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.141,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.352,
+      "samples": 24,
+      "last_update": "2025-12-10"
+    }
+  },
+  "44908": {
+    "饿了么": {
+      "elasticity": -1.63,
+      "samples": 40,
+      "last_update": "2025-12-10"
+    }
+  },
+  "4491": {
+    "美团闪购": {
+      "elasticity": -0.896,
+      "samples": 54,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.091,
+      "samples": 24,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.752,
+      "samples": 8,
+      "last_update": "2025-12-10"
     }
   },
   "44910": {
     "饿了么": {
-      "elasticity": -0.154,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -2.118,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "45007": {
+    "美团共橙": {
+      "elasticity": -0.298,
+      "samples": 15,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.857,
+      "samples": 30,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -3.062,
+      "samples": 6,
+      "last_update": "2025-12-10"
     }
   },
   "45116": {
+    "美团闪购": {
+      "elasticity": -2.731,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.0,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.955,
+      "samples": 30,
+      "last_update": "2025-12-10"
+    }
+  },
+  "45135": {
+    "饿了么": {
+      "elasticity": -1.475,
+      "samples": 35,
+      "last_update": "2025-12-10"
+    }
+  },
+  "45175": {
+    "饿了么": {
+      "elasticity": -0.307,
+      "samples": 24,
+      "last_update": "2025-12-10"
+    }
+  },
+  "45291": {
+    "饿了么": {
+      "elasticity": -0.014,
+      "samples": 29,
+      "last_update": "2025-12-10"
     }
   },
   "45429": {
-    "美团共橙": {
-      "elasticity": -4.615,
-      "samples": 10,
-      "last_update": "2025-12-09"
-    },
     "饿了么": {
-      "elasticity": 0.094,
-      "samples": 50,
-      "last_update": "2025-12-09"
+      "elasticity": -0.713,
+      "samples": 53,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -2.794,
+      "samples": 3,
+      "last_update": "2025-12-10"
     }
   },
   "45450": {
+    "京东到家": {
+      "elasticity": -0.305,
+      "samples": 49,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
-      "elasticity": -0.446,
-      "samples": 30,
-      "last_update": "2025-12-09"
+      "elasticity": -0.798,
+      "samples": 29,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -1.349,
+      "samples": 73,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -0.406,
-      "samples": 180,
-      "last_update": "2025-12-09"
+      "elasticity": -1.035,
+      "samples": 170,
+      "last_update": "2025-12-10"
+    }
+  },
+  "45641": {
+    "饿了么": {
+      "elasticity": -2.023,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "45653": {
+    "饿了么": {
+      "elasticity": -0.467,
+      "samples": 15,
+      "last_update": "2025-12-10"
+    }
+  },
+  "45669": {
+    "饿了么": {
+      "elasticity": -4.667,
+      "samples": 6,
+      "last_update": "2025-12-10"
+    }
+  },
+  "45677": {
+    "饿了么": {
+      "elasticity": -0.686,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "45732": {
+    "饿了么": {
+      "elasticity": -0.718,
+      "samples": 18,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "46095": {
     "美团共橙": {
       "elasticity": -1.05,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.038461538461538464,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "46515": {
+    "饿了么": {
+      "elasticity": -4.846,
+      "samples": 6,
+      "last_update": "2025-12-10"
     }
   },
   "46605": {
     "饿了么": {
-      "elasticity": -1.214,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -1.161,
+      "samples": 55,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.7692307692307692,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "48213": {
+    "美团闪购": {
+      "elasticity": -0.762,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -3.171,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -1.146,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "48217": {
+    "饿了么": {
+      "elasticity": -1.97,
+      "samples": 10,
+      "last_update": "2025-12-10"
     }
   },
   "48932": {
+    "美团闪购": {
+      "elasticity": 0.513,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.249,
-      "samples": 60,
-      "last_update": "2025-12-09"
+      "elasticity": -0.48,
+      "samples": 79,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -1.025,
+      "samples": 5,
+      "last_update": "2025-12-10"
     }
   },
   "49108": {
+    "京东到家": {
+      "elasticity": 0.215,
+      "samples": 34,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -1.168,
+      "elasticity": -1.077,
       "samples": 30,
-      "last_update": "2025-12-09"
+      "last_update": "2025-12-10"
     }
   },
   "49809": {
+    "美团闪购": {
+      "elasticity": -2.636,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.433,
-      "samples": 140,
-      "last_update": "2025-12-09"
+      "elasticity": -0.643,
+      "samples": 137,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.097,
+      "samples": 15,
+      "last_update": "2025-12-10"
     }
   },
   "49813": {
+    "美团闪购": {
+      "elasticity": 0.519,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.266,
-      "samples": 60,
-      "last_update": "2025-12-09"
+      "elasticity": -1.22,
+      "samples": 47,
+      "last_update": "2025-12-10"
+    }
+  },
+  "5014": {
+    "饿了么": {
+      "elasticity": -2.367,
+      "samples": 26,
+      "last_update": "2025-12-10"
     }
   },
   "5029": {
+    "美团闪购": {
+      "elasticity": -0.239,
+      "samples": 27,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.378,
-      "samples": 30,
-      "last_update": "2025-12-09"
+      "elasticity": -0.559,
+      "samples": 59,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.78125,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "5030": {
+    "饿了么": {
+      "elasticity": -0.275,
+      "samples": 32,
+      "last_update": "2025-12-10"
+    }
+  },
+  "50636": {
+    "饿了么": {
+      "elasticity": -0.74,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    }
+  },
+  "51377": {
+    "饿了么": {
+      "elasticity": -0.102,
+      "samples": 26,
+      "last_update": "2025-12-10"
     }
   },
   "52183": {
     "美团共橙": {
-      "elasticity": 0.337,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": 0.096,
+      "samples": 8,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -0.943,
-      "samples": 30,
-      "last_update": "2025-12-09"
+      "elasticity": -0.634,
+      "samples": 29,
+      "last_update": "2025-12-10"
+    }
+  },
+  "52297": {
+    "美团闪购": {
+      "elasticity": -0.307,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -2.15,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "52399": {
-    "饿了么": {
-      "elasticity": -0.134,
+    "美团闪购": {
+      "elasticity": -0.818,
       "samples": 20,
-      "last_update": "2025-12-09"
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.989,
+      "samples": 25,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
-  "52418": {
+  "53370": {
+    "美团闪购": {
+      "elasticity": -0.223,
+      "samples": 28,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": 0.0,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.775,
+      "samples": 25,
+      "last_update": "2025-12-10"
+    }
+  },
+  "53373": {
+    "京东到家": {
+      "elasticity": -0.176,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": 0.565,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -2.061,
+      "samples": 51,
+      "last_update": "2025-12-10"
     }
   },
   "53377": {
     "饿了么": {
-      "elasticity": -0.357,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -0.65,
+      "samples": 33,
+      "last_update": "2025-12-10"
+    }
+  },
+  "53593": {
+    "饿了么": {
+      "elasticity": -4.295,
+      "samples": 7,
+      "last_update": "2025-12-10"
     }
   },
   "53594": {
+    "美团闪购": {
+      "elasticity": -0.097,
+      "samples": 20,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.886,
-      "samples": 80,
-      "last_update": "2025-12-09"
+      "elasticity": -0.91,
+      "samples": 100,
+      "last_update": "2025-12-10"
+    }
+  },
+  "53602": {
+    "饿了么": {
+      "elasticity": -0.33,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": 0.31681034482758624,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "53606": {
+    "饿了么": {
+      "elasticity": -1.505,
+      "samples": 20,
+      "last_update": "2025-12-10"
     }
   },
   "54139": {
     "饿了么": {
-      "elasticity": -0.278,
-      "samples": 80,
-      "last_update": "2025-12-09"
+      "elasticity": -0.34,
+      "samples": 102,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.8076923076923077,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "55095": {
+    "饿了么": {
+      "elasticity": -0.391,
+      "samples": 23,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -0.192,
+      "samples": 12,
+      "last_update": "2025-12-10"
     }
   },
   "56316": {
     "饿了么": {
-      "elasticity": 0.232,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.71,
+      "samples": 46,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.709,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "56375": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 35,
+      "last_update": "2025-12-10"
+    }
+  },
+  "5703": {
+    "饿了么": {
+      "elasticity": -0.035,
+      "samples": 15,
+      "last_update": "2025-12-10"
+    }
+  },
+  "57282": {
+    "饿了么": {
+      "elasticity": -0.616,
+      "samples": 38,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": 0.189,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "57284": {
+    "饿了么": {
+      "elasticity": -1.566,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -2.4705882352941213,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "57308": {
     "饿了么": {
-      "elasticity": -0.049,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -3.2,
+      "samples": 6,
+      "last_update": "2025-12-10"
+    }
+  },
+  "5747": {
+    "饿了么": {
+      "elasticity": -0.875,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "57890": {
+    "美团闪购": {
+      "elasticity": -0.748,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.2814814814814817,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "57948": {
+    "饿了么": {
+      "elasticity": 0.826,
+      "samples": 7,
+      "last_update": "2025-12-10"
     }
   },
   "58947": {
     "美团共橙": {
-      "elasticity": 0.095,
-      "samples": 40,
-      "last_update": "2025-12-09"
+      "elasticity": 0.173,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.534,
+      "samples": 13,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": 0.0,
-      "samples": 30,
-      "last_update": "2025-12-09"
+      "elasticity": -1.733,
+      "samples": 94,
+      "last_update": "2025-12-10"
+    }
+  },
+  "59109": {
+    "美团闪购": {
+      "elasticity": -0.241,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.128,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    }
+  },
+  "59490": {
+    "饿了么": {
+      "elasticity": 0.338,
+      "samples": 13,
+      "last_update": "2025-12-10"
     }
   },
   "60759": {
-    "美团共橙": {
-      "elasticity": -2.7,
-      "samples": 10,
-      "last_update": "2025-12-09"
+    "美团闪购": {
+      "elasticity": -0.685,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.232,
+      "samples": 52,
+      "last_update": "2025-12-10"
     }
   },
   "61175": {
+    "美团闪购": {
+      "elasticity": -0.284,
+      "samples": 34,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.25,
+      "samples": 64,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
-      "elasticity": 0.3,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -0.519,
+      "samples": 2,
+      "last_update": "2025-12-10"
     }
   },
   "61742": {
     "美团共橙": {
-      "elasticity": -3.687,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -2.212,
+      "samples": 28,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.649,
+      "samples": 41,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -2.526,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -1.387,
+      "samples": 63,
+      "last_update": "2025-12-10"
+    },
+    "闪购小程序": {
+      "elasticity": -3.1499999999999986,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "62135": {
     "美团共橙": {
-      "elasticity": -0.024,
-      "samples": 60,
-      "last_update": "2025-12-09"
+      "elasticity": -0.236,
+      "samples": 25,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -1.258,
+      "samples": 20,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -0.552,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -1.149,
+      "samples": 50,
+      "last_update": "2025-12-10"
     }
   },
   "62139": {
     "美团共橙": {
-      "elasticity": -0.046,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -0.584,
+      "samples": 17,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -0.486,
-      "samples": 30,
-      "last_update": "2025-12-09"
+      "elasticity": -0.776,
+      "samples": 50,
+      "last_update": "2025-12-10"
     }
   },
   "62568": {
     "美团共橙": {
-      "elasticity": -0.471,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.839,
+      "samples": 7,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -2.25,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.731,
+      "samples": 65,
+      "last_update": "2025-12-10"
+    }
+  },
+  "62572": {
+    "美团闪购": {
+      "elasticity": -0.499,
+      "samples": 39,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": 0.12,
+      "samples": 7,
+      "last_update": "2025-12-10"
     }
   },
   "62573": {
     "美团共橙": {
-      "elasticity": -0.41,
+      "elasticity": -0.572,
+      "samples": 29,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.677,
       "samples": 40,
-      "last_update": "2025-12-09"
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": 0.933,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.97,
+      "samples": 19,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -0.6233766233766236,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "62575": {
     "美团共橙": {
-      "elasticity": -0.309,
-      "samples": 70,
-      "last_update": "2025-12-09"
+      "elasticity": -0.089,
+      "samples": 50,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.7,
+      "samples": 7,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -2.438,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -1.197,
+      "samples": 56,
+      "last_update": "2025-12-10"
     }
   },
   "62576": {
+    "美团共橙": {
+      "elasticity": 0.336,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -1.112,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -0.913,
+      "samples": 38,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": 0.35164835164835156,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "6306": {
     "美团共橙": {
       "elasticity": -2.213,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.043,
+      "samples": 60,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -0.388,
-      "samples": 160,
-      "last_update": "2025-12-09"
+      "elasticity": -0.218,
+      "samples": 124,
+      "last_update": "2025-12-10"
+    }
+  },
+  "63299": {
+    "饿了么": {
+      "elasticity": -1.015,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    }
+  },
+  "63330": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 13,
+      "last_update": "2025-12-10"
     }
   },
   "63332": {
     "饿了么": {
-      "elasticity": -0.613,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -0.045,
+      "samples": 24,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.5000000000000002,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "6377": {
+    "饿了么": {
+      "elasticity": -0.561,
+      "samples": 32,
+      "last_update": "2025-12-10"
+    }
+  },
+  "6414": {
+    "京东到家": {
+      "elasticity": -0.473,
+      "samples": 37,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.168,
+      "samples": 54,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.21,
+      "samples": 11,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.282,
+      "samples": 27,
+      "last_update": "2025-12-10"
     }
   },
   "6424": {
+    "美团闪购": {
+      "elasticity": -0.364,
+      "samples": 40,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -1.757,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.981,
+      "samples": 27,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.525,
+      "samples": 47,
+      "last_update": "2025-12-10"
+    },
+    "闪购小程序": {
+      "elasticity": -0.308,
+      "samples": 2,
+      "last_update": "2025-12-10"
     }
   },
   "6426": {
+    "京东到家": {
+      "elasticity": -1.47,
+      "samples": 30,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -1.603,
+      "samples": 47,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.805,
-      "samples": 50,
-      "last_update": "2025-12-09"
+      "elasticity": -0.888,
+      "samples": 147,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.25,
+      "samples": 12,
+      "last_update": "2025-12-10"
+    }
+  },
+  "64949": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 6,
+      "last_update": "2025-12-10"
     }
   },
   "65562": {
+    "美团闪购": {
+      "elasticity": -0.289,
+      "samples": 48,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.446,
-      "samples": 110,
-      "last_update": "2025-12-09"
+      "elasticity": -1.001,
+      "samples": 127,
+      "last_update": "2025-12-10"
+    }
+  },
+  "65565": {
+    "饿了么": {
+      "elasticity": -0.105,
+      "samples": 8,
+      "last_update": "2025-12-10"
     }
   },
   "66058": {
     "美团共橙": {
-      "elasticity": -1.226,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -0.331,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.052,
+      "samples": 93,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -0.107,
-      "samples": 170,
-      "last_update": "2025-12-09"
+      "elasticity": -0.776,
+      "samples": 158,
+      "last_update": "2025-12-10"
+    }
+  },
+  "6606": {
+    "饿了么": {
+      "elasticity": 0.885,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "66627": {
+    "美团闪购": {
+      "elasticity": -0.304,
+      "samples": 26,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.1919504643962848,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "66958": {
+    "美团闪购": {
+      "elasticity": -1.057,
+      "samples": 68,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": 0.052,
+      "samples": 15,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.113,
+      "samples": 5,
+      "last_update": "2025-12-10"
     }
   },
   "6867": {
+    "美团闪购": {
+      "elasticity": 0.019,
+      "samples": 20,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": 0.031,
-      "samples": 50,
-      "last_update": "2025-12-09"
+      "elasticity": -1.115,
+      "samples": 95,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -0.042,
+      "samples": 5,
+      "last_update": "2025-12-10"
+    }
+  },
+  "6875": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 6,
+      "last_update": "2025-12-10"
     }
   },
   "69005": {
+    "美团闪购": {
+      "elasticity": -1.037,
+      "samples": 82,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 29,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
-      "elasticity": -2.353,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -1.894,
+      "samples": 15,
+      "last_update": "2025-12-10"
     }
   },
   "6949": {
-    "美团共橙": {
-      "elasticity": -2.333,
+    "京东到家": {
+      "elasticity": -3.073,
       "samples": 10,
-      "last_update": "2025-12-09"
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -2.761,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -2.942,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    }
+  },
+  "6951": {
+    "饿了么": {
+      "elasticity": -2.13,
+      "samples": 30,
+      "last_update": "2025-12-10"
+    }
+  },
+  "6955": {
+    "饿了么": {
+      "elasticity": -1.628,
+      "samples": 24,
+      "last_update": "2025-12-10"
+    }
+  },
+  "6957": {
+    "美团闪购": {
+      "elasticity": -1.409,
+      "samples": 20,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -2.362,
+      "samples": 37,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "73183": {
     "饿了么": {
-      "elasticity": -3.514,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -2.338,
+      "samples": 13,
+      "last_update": "2025-12-10"
     }
   },
   "73227": {
-    "美团共橙": {
-      "elasticity": 0.0,
-      "samples": 20,
-      "last_update": "2025-12-09"
-    },
     "饿了么": {
-      "elasticity": -1.093,
-      "samples": 40,
-      "last_update": "2025-12-09"
+      "elasticity": -0.792,
+      "samples": 68,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -0.029,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.108,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "73230": {
+    "饿了么": {
+      "elasticity": -2.206,
+      "samples": 35,
+      "last_update": "2025-12-10"
     }
   },
   "73343": {
-    "美团共橙": {
-      "elasticity": -3.404,
-      "samples": 10,
-      "last_update": "2025-12-09"
-    },
     "饿了么": {
-      "elasticity": 0.0,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -1.318,
+      "samples": 46,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.129,
+      "samples": 5,
+      "last_update": "2025-12-10"
     }
   },
   "73382": {
+    "美团闪购": {
+      "elasticity": -0.343,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -4.667,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -2.729,
+      "samples": 12,
+      "last_update": "2025-12-10"
     }
   },
   "73384": {
     "美团共橙": {
-      "elasticity": -0.637,
-      "samples": 40,
-      "last_update": "2025-12-09"
+      "elasticity": -0.519,
+      "samples": 33,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -0.216,
-      "samples": 60,
-      "last_update": "2025-12-09"
+      "elasticity": -0.966,
+      "samples": 92,
+      "last_update": "2025-12-10"
     }
   },
   "74514": {
     "饿了么": {
-      "elasticity": 0.178,
-      "samples": 40,
-      "last_update": "2025-12-09"
+      "elasticity": 0.172,
+      "samples": 14,
+      "last_update": "2025-12-10"
     }
   },
-  "75041": {
+  "74740": {
+    "饿了么": {
+      "elasticity": -0.011,
+      "samples": 47,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.59,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    }
+  },
+  "74776": {
+    "饿了么": {
+      "elasticity": -0.588,
+      "samples": 65,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.241,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    }
+  },
+  "74925": {
+    "美团闪购": {
+      "elasticity": -2.889,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
       "elasticity": 0.0,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
-  "79561": {
+  "75020": {
+    "饿了么": {
+      "elasticity": -0.073,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    }
+  },
+  "75110": {
+    "饿了么": {
+      "elasticity": 0.108,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    }
+  },
+  "75537": {
+    "饿了么": {
+      "elasticity": -0.434,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
-      "elasticity": -3.598,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.2970000000000001,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "77997": {
+    "饿了么": {
+      "elasticity": -1.062,
+      "samples": 33,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -2.566666666666668,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "78874": {
+    "饿了么": {
+      "elasticity": -0.426,
+      "samples": 25,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.53,
+      "samples": 3,
+      "last_update": "2025-12-10"
     }
   },
   "80099": {
     "饿了么": {
-      "elasticity": -0.633,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -0.698,
+      "samples": 69,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.216,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "80102": {
+    "美团闪购": {
+      "elasticity": -1.054,
+      "samples": 33,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.615,
+      "samples": 48,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.389,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "80103": {
+    "饿了么": {
+      "elasticity": -1.375,
+      "samples": 9,
+      "last_update": "2025-12-10"
     }
   },
   "80104": {
     "美团共橙": {
-      "elasticity": -3.879,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -3.936,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -1.082,
+      "samples": 52,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -3.429,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.522,
+      "samples": 20,
+      "last_update": "2025-12-10"
+    }
+  },
+  "80105": {
+    "美团闪购": {
+      "elasticity": -3.579,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.399,
+      "samples": 94,
+      "last_update": "2025-12-10"
+    }
+  },
+  "80107": {
+    "饿了么": {
+      "elasticity": -0.56,
+      "samples": 74,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.4062500000000005,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "80108": {
+    "美团闪购": {
+      "elasticity": -0.006,
+      "samples": 35,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.516,
-      "samples": 60,
-      "last_update": "2025-12-09"
+      "elasticity": -1.474,
+      "samples": 72,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.213,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    }
+  },
+  "80217": {
+    "饿了么": {
+      "elasticity": -2.249,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    }
+  },
+  "80273": {
+    "收银机订单": {
+      "elasticity": 0.0,
+      "samples": 14,
+      "last_update": "2025-12-10"
     }
   },
   "80429": {
     "美团共橙": {
-      "elasticity": -0.276,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -0.359,
+      "samples": 25,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.46,
+      "samples": 46,
+      "last_update": "2025-12-10"
     }
   },
   "80616": {
-    "饿了么": {
-      "elasticity": -0.028,
+    "美团共橙": {
+      "elasticity": 0.169,
       "samples": 20,
-      "last_update": "2025-12-09"
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": 0.049,
+      "samples": 47,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.442,
+      "samples": 74,
+      "last_update": "2025-12-10"
     }
   },
   "80640": {
     "美团共橙": {
-      "elasticity": -0.094,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -0.136,
+      "samples": 33,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": -0.242,
+      "samples": 151,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -0.222,
-      "samples": 70,
-      "last_update": "2025-12-09"
+      "elasticity": -0.225,
+      "samples": 125,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": 0.165,
+      "samples": 15,
+      "last_update": "2025-12-10"
     }
   },
   "80645": {
+    "美团闪购": {
+      "elasticity": 0.588,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.316,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.154,
+      "samples": 40,
+      "last_update": "2025-12-10"
+    }
+  },
+  "80774": {
+    "饿了么": {
+      "elasticity": -3.083,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "81132": {
+    "饿了么": {
+      "elasticity": -0.187,
+      "samples": 22,
+      "last_update": "2025-12-10"
+    }
+  },
+  "81168": {
+    "饿了么": {
+      "elasticity": -0.042,
+      "samples": 42,
+      "last_update": "2025-12-10"
     }
   },
   "81571": {
-    "美团共橙": {
-      "elasticity": -0.573,
-      "samples": 10,
-      "last_update": "2025-12-09"
+    "美团闪购": {
+      "elasticity": -2.546,
+      "samples": 7,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -3.923,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -1.687,
+      "samples": 75,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.5743589743589742,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "81839": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 8,
+      "last_update": "2025-12-10"
     }
   },
   "81986": {
-    "美团共橙": {
-      "elasticity": -0.039,
-      "samples": 10,
-      "last_update": "2025-12-09"
+    "京东到家": {
+      "elasticity": -1.436,
+      "samples": 12,
+      "last_update": "2025-12-10"
+    },
+    "美团闪购": {
+      "elasticity": 0.094,
+      "samples": 20,
+      "last_update": "2025-12-10"
     },
     "饿了么": {
-      "elasticity": -0.021,
-      "samples": 50,
-      "last_update": "2025-12-09"
+      "elasticity": -1.36,
+      "samples": 71,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.781,
+      "samples": 17,
+      "last_update": "2025-12-10"
+    }
+  },
+  "82296": {
+    "饿了么": {
+      "elasticity": -1.155,
+      "samples": 37,
+      "last_update": "2025-12-10"
     }
   },
   "83274": {
+    "美团闪购": {
+      "elasticity": -0.388,
+      "samples": 82,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.454,
-      "samples": 70,
-      "last_update": "2025-12-09"
+      "elasticity": -0.384,
+      "samples": 59,
+      "last_update": "2025-12-10"
+    },
+    "京东到家": {
+      "elasticity": -1.436,
+      "samples": 5,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.498,
+      "samples": 10,
+      "last_update": "2025-12-10"
+    }
+  },
+  "83512": {
+    "饿了么": {
+      "elasticity": -2.415,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "83534": {
+    "饿了么": {
+      "elasticity": -0.071,
+      "samples": 14,
+      "last_update": "2025-12-10"
     }
   },
   "83540": {
+    "美团闪购": {
+      "elasticity": -0.327,
+      "samples": 34,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -2.51,
-      "samples": 30,
-      "last_update": "2025-12-09"
+      "elasticity": -1.305,
+      "samples": 34,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.851,
+      "samples": 32,
+      "last_update": "2025-12-10"
     }
   },
   "83844": {
+    "美团闪购": {
+      "elasticity": -3.089,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.981,
-      "samples": 30,
-      "last_update": "2025-12-09"
+      "elasticity": -1.161,
+      "samples": 64,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.412,
+      "samples": 6,
+      "last_update": "2025-12-10"
+    }
+  },
+  "8468": {
+    "饿了么": {
+      "elasticity": 0.026,
+      "samples": 12,
+      "last_update": "2025-12-10"
+    }
+  },
+  "8470": {
+    "饿了么": {
+      "elasticity": -0.532,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    },
+    "闪购小程序": {
+      "elasticity": -1.5999999999999996,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "85207": {
+    "美团闪购": {
+      "elasticity": -0.591,
+      "samples": 41,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -2.889,
+      "samples": 3,
+      "last_update": "2025-12-10"
     }
   },
   "8524": {
     "饿了么": {
-      "elasticity": -0.376,
-      "samples": 110,
-      "last_update": "2025-12-09"
+      "elasticity": 0.008,
+      "samples": 65,
+      "last_update": "2025-12-10"
     }
   },
   "86420": {
+    "美团闪购": {
+      "elasticity": -4.112,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
-      "elasticity": -0.653,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": 0.8533333333333332,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "87209": {
+    "饿了么": {
+      "elasticity": -3.219,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -3.2499999999999996,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "87212": {
     "饿了么": {
-      "elasticity": -2.237,
-      "samples": 20,
-      "last_update": "2025-12-09"
+      "elasticity": -0.789,
+      "samples": 44,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -4.500000000000002,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "88830": {
+    "饿了么": {
+      "elasticity": 0.208,
+      "samples": 27,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.899,
+      "samples": 3,
+      "last_update": "2025-12-10"
+    }
+  },
+  "90603": {
+    "美团闪购": {
+      "elasticity": 0.0,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.5177514792899408,
+      "samples": 1,
+      "last_update": "2025-12-10"
     }
   },
   "91108": {
+    "美团闪购": {
+      "elasticity": -1.231,
+      "samples": 39,
+      "last_update": "2025-12-10"
+    },
     "美团共橙": {
-      "elasticity": -0.718,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.382,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": 0.4482758620689666,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "91907": {
+    "饿了么": {
+      "elasticity": -1.628,
+      "samples": 15,
+      "last_update": "2025-12-10"
+    }
+  },
+  "92038": {
+    "饿了么": {
+      "elasticity": -0.838,
+      "samples": 9,
+      "last_update": "2025-12-10"
     }
   },
   "92044": {
+    "美团闪购": {
+      "elasticity": -0.595,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    },
     "饿了么": {
-      "elasticity": -0.576,
-      "samples": 10,
-      "last_update": "2025-12-09"
+      "elasticity": -0.73,
+      "samples": 39,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": 0.623,
+      "samples": 3,
+      "last_update": "2025-12-10"
+    }
+  },
+  "92251": {
+    "美团闪购": {
+      "elasticity": -4.243,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "9480": {
+    "美团闪购": {
+      "elasticity": -1.92,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 12,
+      "last_update": "2025-12-10"
+    }
+  },
+  "95686": {
+    "饿了么": {
+      "elasticity": 0.064,
+      "samples": 34,
+      "last_update": "2025-12-10"
+    }
+  },
+  "9607": {
+    "美团闪购": {
+      "elasticity": 0.277,
+      "samples": 28,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.307,
+      "samples": 3,
+      "last_update": "2025-12-10"
     }
   },
   "96508": {
     "饿了么": {
-      "elasticity": 0.001,
-      "samples": 30,
-      "last_update": "2025-12-09"
+      "elasticity": 0.168,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "99546": {
+    "美团闪购": {
+      "elasticity": -1.092,
+      "samples": 26,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.053,
+      "samples": 44,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -1.95,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "239274": {
+    "美团闪购": {
+      "elasticity": 0.0,
+      "samples": 12,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "293145": {
+    "美团闪购": {
+      "elasticity": 0.0,
+      "samples": 6,
+      "last_update": "2025-12-10"
+    }
+  },
+  "39264": {
+    "饿了么": {
+      "elasticity": -0.086,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "100063": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 5,
+      "last_update": "2025-12-10"
+    }
+  },
+  "101326": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "103825": {
+    "饿了么": {
+      "elasticity": -0.23076923076923078,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "103913": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "10470": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    }
+  },
+  "105481": {
+    "饿了么": {
+      "elasticity": -1.2500000000000004,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "10928": {
+    "饿了么": {
+      "elasticity": -0.77,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "112588": {
+    "美团共橙": {
+      "elasticity": -1.594,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.494,
+      "samples": 3,
+      "last_update": "2025-12-10"
+    }
+  },
+  "112661": {
+    "饿了么": {
+      "elasticity": -2.316176470588236,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "114137": {
+    "美团共橙": {
+      "elasticity": -1.709,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -4.383,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "114138": {
+    "美团共橙": {
+      "elasticity": -1.235,
+      "samples": 3,
+      "last_update": "2025-12-10"
+    }
+  },
+  "114250": {
+    "京东到家": {
+      "elasticity": -1.9999999999999996,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "116964": {
+    "饿了么": {
+      "elasticity": -3.278,
+      "samples": 5,
+      "last_update": "2025-12-10"
+    }
+  },
+  "118355": {
+    "饿了么": {
+      "elasticity": -4.5238095238095255,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "119332": {
+    "饿了么": {
+      "elasticity": -1.765,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "120051": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "125430": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "12696": {
+    "美团共橙": {
+      "elasticity": -0.254,
+      "samples": 3,
+      "last_update": "2025-12-10"
+    }
+  },
+  "12919": {
+    "饿了么": {
+      "elasticity": -1.165991902834008,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "12921": {
+    "饿了么": {
+      "elasticity": -0.239,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "131096": {
+    "美团共橙": {
+      "elasticity": -0.19111111111111106,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "131106": {
+    "美团共橙": {
+      "elasticity": -2.6666666666666674,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "132436": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "132720": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "13547": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "135770": {
+    "京东到家": {
+      "elasticity": -3.391608391608394,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "135777": {
+    "饿了么": {
+      "elasticity": -1.548,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "135802": {
+    "饿了么": {
+      "elasticity": -0.6862745098039227,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "137084": {
+    "美团共橙": {
+      "elasticity": -2.4444444444444424,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "139771": {
+    "美团共橙": {
+      "elasticity": -2.977,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    }
+  },
+  "139773": {
+    "美团共橙": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "143112": {
+    "京东到家": {
+      "elasticity": 0.4166666666666669,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.842,
+      "samples": 3,
+      "last_update": "2025-12-10"
+    }
+  },
+  "143390": {
+    "饿了么": {
+      "elasticity": -3.8156862745098037,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "145173": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "145693": {
+    "饿了么": {
+      "elasticity": -2.7272727272727284,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "146821": {
+    "饿了么": {
+      "elasticity": 0.95,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "148810": {
+    "饿了么": {
+      "elasticity": -1.2647058823529398,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "149119": {
+    "饿了么": {
+      "elasticity": -2.8923076923076914,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "149700": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "150200": {
+    "京东到家": {
+      "elasticity": -1.0476190476190481,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "150655": {
+    "美团共橙": {
+      "elasticity": -0.9084249084249083,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.443,
+      "samples": 3,
+      "last_update": "2025-12-10"
+    }
+  },
+  "150935": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "15121": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "151272": {
+    "美团共橙": {
+      "elasticity": -3.8999999999999977,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "151293": {
+    "美团共橙": {
+      "elasticity": -0.523,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "154449": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "156872": {
+    "美团共橙": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "158443": {
+    "美团共橙": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "158519": {
+    "美团共橙": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.41739130434782623,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "164169": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "168317": {
+    "美团共橙": {
+      "elasticity": -3.264,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "169619": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "172235": {
+    "美团共橙": {
+      "elasticity": -1.917,
+      "samples": 5,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.643,
+      "samples": 6,
+      "last_update": "2025-12-10"
+    }
+  },
+  "172236": {
+    "饿了么": {
+      "elasticity": -1.397,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "17312": {
+    "饿了么": {
+      "elasticity": -1.219,
+      "samples": 3,
+      "last_update": "2025-12-10"
+    }
+  },
+  "181343": {
+    "美团共橙": {
+      "elasticity": 0.207,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "191495": {
+    "饿了么": {
+      "elasticity": -2.1000000000000005,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "195988": {
+    "美团共橙": {
+      "elasticity": -2.449,
+      "samples": 5,
+      "last_update": "2025-12-10"
+    }
+  },
+  "201104": {
+    "美团共橙": {
+      "elasticity": -1.15,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "202081": {
+    "饿了么": {
+      "elasticity": -0.24898785425101233,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "202142": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "20297": {
+    "京东到家": {
+      "elasticity": -0.396,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -3.389,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "20510": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "20512": {
+    "饿了么": {
+      "elasticity": -1.4222222222222207,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "206369": {
+    "美团共橙": {
+      "elasticity": -4.349999999999996,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "207066": {
+    "饿了么": {
+      "elasticity": -2.2666666666666675,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "20737": {
+    "饿了么": {
+      "elasticity": -0.229,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "20745": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "208475": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 5,
+      "last_update": "2025-12-10"
+    }
+  },
+  "209564": {
+    "饿了么": {
+      "elasticity": -0.817,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "211749": {
+    "饿了么": {
+      "elasticity": 0.6388888888888888,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "211871": {
+    "饿了么": {
+      "elasticity": -3.029,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "211961": {
+    "京东到家": {
+      "elasticity": -1.959,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.4554655870445344,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "213599": {
+    "饿了么": {
+      "elasticity": -2.343195266272188,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "214554": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "214841": {
+    "饿了么": {
+      "elasticity": -0.162,
+      "samples": 12,
+      "last_update": "2025-12-10"
+    }
+  },
+  "215425": {
+    "美团共橙": {
+      "elasticity": -1.462,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "217656": {
+    "饿了么": {
+      "elasticity": -2.246,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "218309": {
+    "饿了么": {
+      "elasticity": -1.243,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "221265": {
+    "饿了么": {
+      "elasticity": -0.558,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    }
+  },
+  "224546": {
+    "美团共橙": {
+      "elasticity": -1.301,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "224690": {
+    "饿了么": {
+      "elasticity": -1.501,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "225606": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "226975": {
+    "饿了么": {
+      "elasticity": -3.222,
+      "samples": 10,
+      "last_update": "2025-12-10"
+    }
+  },
+  "233601": {
+    "美团共橙": {
+      "elasticity": -0.657,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "238035": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "238076": {
+    "饿了么": {
+      "elasticity": -0.771,
+      "samples": 11,
+      "last_update": "2025-12-10"
+    }
+  },
+  "238400": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "238593": {
+    "美团共橙": {
+      "elasticity": 0.8076923076923079,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.066,
+      "samples": 6,
+      "last_update": "2025-12-10"
+    }
+  },
+  "239267": {
+    "美团共橙": {
+      "elasticity": 0.4683257918552036,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "239310": {
+    "美团共橙": {
+      "elasticity": -1.833333333333334,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "241519": {
+    "饿了么": {
+      "elasticity": -0.722,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "242826": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "24353": {
+    "饿了么": {
+      "elasticity": 0.135,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "243648": {
+    "饿了么": {
+      "elasticity": -3.11538461538462,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "24367": {
+    "美团共橙": {
+      "elasticity": -0.881,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    }
+  },
+  "24542": {
+    "美团共橙": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "253313": {
+    "饿了么": {
+      "elasticity": 0.9487179487179483,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "253560": {
+    "京东到家": {
+      "elasticity": -2.794117647058825,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "253566": {
+    "美团共橙": {
+      "elasticity": -1.798,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "253593": {
+    "饿了么": {
+      "elasticity": -0.6000000000000001,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "254204": {
+    "饿了么": {
+      "elasticity": -1.4999999999999996,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "254329": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "254377": {
+    "美团共橙": {
+      "elasticity": -0.17,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "254397": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "254483": {
+    "美团共橙": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "255533": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "255749": {
+    "饿了么": {
+      "elasticity": -1.5,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "255802": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "255826": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "256103": {
+    "美团共橙": {
+      "elasticity": -0.825,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "256402": {
+    "饿了么": {
+      "elasticity": -0.722,
+      "samples": 17,
+      "last_update": "2025-12-10"
+    }
+  },
+  "257783": {
+    "美团共橙": {
+      "elasticity": -1.2971014492753614,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "257874": {
+    "美团共橙": {
+      "elasticity": 0.434,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "257876": {
+    "饿了么": {
+      "elasticity": -0.141,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "258104": {
+    "美团共橙": {
+      "elasticity": -1.3,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "258195": {
+    "饿了么": {
+      "elasticity": -1.652,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "258619": {
+    "美团共橙": {
+      "elasticity": -1.6666666666666667,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "258724": {
+    "美团共橙": {
+      "elasticity": -0.0,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "258739": {
+    "美团共橙": {
+      "elasticity": -3.5576923076923057,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "258772": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "260537": {
+    "美团共橙": {
+      "elasticity": -0.275,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "261287": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "264428": {
+    "美团共橙": {
+      "elasticity": -2.7692307692307687,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -2.96,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "2649": {
+    "饿了么": {
+      "elasticity": -1.426,
+      "samples": 3,
+      "last_update": "2025-12-10"
+    }
+  },
+  "269060": {
+    "饿了么": {
+      "elasticity": -1.3846153846153848,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "269874": {
+    "美团共橙": {
+      "elasticity": 0.9272727272727279,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "270357": {
+    "美团共橙": {
+      "elasticity": -1.7391304347826089,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "270961": {
+    "饿了么": {
+      "elasticity": -2.111,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "271392": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "271831": {
+    "饿了么": {
+      "elasticity": -4.2142857142857135,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "272169": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "272339": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "272382": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "273778": {
+    "饿了么": {
+      "elasticity": -0.6969696969696964,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "273843": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "274212": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "274215": {
+    "美团共橙": {
+      "elasticity": -0.9062500000000002,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -2.4615384615384586,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "275711": {
+    "饿了么": {
+      "elasticity": -0.073,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "276127": {
+    "美团共橙": {
+      "elasticity": -0.9333333333333331,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "277132": {
+    "美团共橙": {
+      "elasticity": -1.235,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.923,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "277267": {
+    "美团共橙": {
+      "elasticity": -2.887,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.427,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "277794": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "281538": {
+    "饿了么": {
+      "elasticity": -2.957142857142857,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "282436": {
+    "美团共橙": {
+      "elasticity": -0.0,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "283072": {
+    "饿了么": {
+      "elasticity": -2.8846153846153837,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "283371": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "283747": {
+    "美团共橙": {
+      "elasticity": -0.094,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "283788": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "283848": {
+    "饿了么": {
+      "elasticity": -1.4444444444444469,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "284652": {
+    "美团共橙": {
+      "elasticity": 0.94,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "284688": {
+    "美团共橙": {
+      "elasticity": -4.107142857142857,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "285473": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "286622": {
+    "美团共橙": {
+      "elasticity": 0.74,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "286626": {
+    "美团共橙": {
+      "elasticity": -2.483,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "286995": {
+    "美团共橙": {
+      "elasticity": -1.035,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "28805": {
+    "饿了么": {
+      "elasticity": 0.7777777777777779,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "288190": {
+    "美团共橙": {
+      "elasticity": 0.3,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "288704": {
+    "饿了么": {
+      "elasticity": -2.8717948717948727,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "290716": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "291653": {
+    "美团共橙": {
+      "elasticity": -2.849999999999998,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "291915": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 5,
+      "last_update": "2025-12-10"
+    }
+  },
+  "291995": {
+    "美团共橙": {
+      "elasticity": -1.235,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.804,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    }
+  },
+  "292314": {
+    "美团共橙": {
+      "elasticity": -0.306,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "293240": {
+    "饿了么": {
+      "elasticity": -1.8461538461538458,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "295674": {
+    "美团共橙": {
+      "elasticity": -1.5126050420168067,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "297185": {
+    "美团共橙": {
+      "elasticity": -0.708,
+      "samples": 5,
+      "last_update": "2025-12-10"
+    }
+  },
+  "297679": {
+    "美团共橙": {
+      "elasticity": -1.327,
+      "samples": 6,
+      "last_update": "2025-12-10"
+    }
+  },
+  "298004": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "299693": {
+    "美团共橙": {
+      "elasticity": -0.757,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "300154": {
+    "美团共橙": {
+      "elasticity": -2.382,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "301729": {
+    "饿了么": {
+      "elasticity": -3.2272727272727275,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "304000": {
+    "京东到家": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "304082": {
+    "饿了么": {
+      "elasticity": -0.41428571428571376,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "304116": {
+    "饿了么": {
+      "elasticity": -0.597,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "306165": {
+    "美团共橙": {
+      "elasticity": -1.831932773109244,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "306467": {
+    "饿了么": {
+      "elasticity": 0.7391304347826071,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "307338": {
+    "饿了么": {
+      "elasticity": -1.428,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "30798": {
+    "饿了么": {
+      "elasticity": -0.106,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "308099": {
+    "饿了么": {
+      "elasticity": -0.6374999999999993,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "308162": {
+    "美团共橙": {
+      "elasticity": -0.4999999999999999,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "30820": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "308275": {
+    "美团共橙": {
+      "elasticity": -0.46486486486486484,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "30830": {
+    "饿了么": {
+      "elasticity": -2.3700000000000006,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "308301": {
+    "饿了么": {
+      "elasticity": -0.495,
+      "samples": 13,
+      "last_update": "2025-12-10"
+    }
+  },
+  "310463": {
+    "美团共橙": {
+      "elasticity": -2.225,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -3.5538461538461537,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "310857": {
+    "饿了么": {
+      "elasticity": -0.456,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "311279": {
+    "美团共橙": {
+      "elasticity": -1.9411764705882362,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "311571": {
+    "美团共橙": {
+      "elasticity": -0.22747252747252752,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "311626": {
+    "美团共橙": {
+      "elasticity": -1.4705882352941189,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "313557": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "313818": {
+    "美团共橙": {
+      "elasticity": 0.39107142857142846,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "315049": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "315371": {
+    "饿了么": {
+      "elasticity": -0.034,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "315445": {
+    "美团共橙": {
+      "elasticity": 0.879,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "31570": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "31572": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "31574": {
+    "饿了么": {
+      "elasticity": -0.173,
+      "samples": 11,
+      "last_update": "2025-12-10"
+    }
+  },
+  "31614": {
+    "美团共橙": {
+      "elasticity": -2.250000000000001,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "316932": {
+    "美团共橙": {
+      "elasticity": 0.119,
+      "samples": 11,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.524,
+      "samples": 10,
+      "last_update": "2025-12-10"
+    }
+  },
+  "317425": {
+    "饿了么": {
+      "elasticity": -4.076,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "318058": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "320162": {
+    "美团共橙": {
+      "elasticity": 0.075,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "32056": {
+    "美团共橙": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.49,
+      "samples": 10,
+      "last_update": "2025-12-10"
+    }
+  },
+  "322890": {
+    "饿了么": {
+      "elasticity": 0.36923076923076903,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "323905": {
+    "美团共橙": {
+      "elasticity": -0.461,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "324469": {
+    "美团共橙": {
+      "elasticity": -0.8055555555555554,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "324485": {
+    "饿了么": {
+      "elasticity": -0.777,
+      "samples": 12,
+      "last_update": "2025-12-10"
+    }
+  },
+  "326031": {
+    "饿了么": {
+      "elasticity": 0.64,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "32766": {
+    "美团共橙": {
+      "elasticity": -4.862745098039217,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "32784": {
+    "美团共橙": {
+      "elasticity": -0.26,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "32788": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "32968": {
+    "美团共橙": {
+      "elasticity": -0.114,
+      "samples": 28,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.449,
+      "samples": 40,
+      "last_update": "2025-12-10"
+    }
+  },
+  "32996": {
+    "饿了么": {
+      "elasticity": -3.105,
+      "samples": 6,
+      "last_update": "2025-12-10"
+    }
+  },
+  "330438": {
+    "美团共橙": {
+      "elasticity": -0.202,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.688,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "33104": {
+    "京东到家": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "33154": {
+    "美团共橙": {
+      "elasticity": -1.01,
+      "samples": 6,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.983,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "33260": {
+    "饿了么": {
+      "elasticity": -0.604,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "33274": {
+    "美团共橙": {
+      "elasticity": 0.2,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": 0.7794117647058824,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "33276": {
+    "美团共橙": {
+      "elasticity": 0.102,
+      "samples": 20,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.246,
+      "samples": 21,
+      "last_update": "2025-12-10"
+    }
+  },
+  "33278": {
+    "饿了么": {
+      "elasticity": -0.572,
+      "samples": 14,
+      "last_update": "2025-12-10"
+    }
+  },
+  "33288": {
+    "美团共橙": {
+      "elasticity": -3.043,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "332901": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "33296": {
+    "饿了么": {
+      "elasticity": 0.024,
+      "samples": 3,
+      "last_update": "2025-12-10"
+    }
+  },
+  "333157": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "334900": {
+    "美团共橙": {
+      "elasticity": 0.764,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "343631": {
+    "饿了么": {
+      "elasticity": -2.0307692307692293,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "3534": {
+    "美团共橙": {
+      "elasticity": -0.225,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "37109": {
+    "美团共橙": {
+      "elasticity": 0.48351648351648274,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "37488": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "38266": {
+    "美团共橙": {
+      "elasticity": -1.789,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "38269": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "38278": {
+    "饿了么": {
+      "elasticity": 0.212,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "38420": {
+    "饿了么": {
+      "elasticity": -1.606,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "38422": {
+    "饿了么": {
+      "elasticity": -1.267,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "38443": {
+    "美团共橙": {
+      "elasticity": -0.317,
+      "samples": 3,
+      "last_update": "2025-12-10"
+    }
+  },
+  "38449": {
+    "饿了么": {
+      "elasticity": -0.091,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "38684": {
+    "美团共橙": {
+      "elasticity": -3.0833333333333353,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "3884": {
+    "饿了么": {
+      "elasticity": -1.2173913043478244,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "39215": {
+    "饿了么": {
+      "elasticity": -0.796,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "39217": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "39219": {
+    "饿了么": {
+      "elasticity": -2.852,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "4009": {
+    "美团共橙": {
+      "elasticity": -0.45454545454545453,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.069,
+      "samples": 28,
+      "last_update": "2025-12-10"
+    }
+  },
+  "40238": {
+    "饿了么": {
+      "elasticity": 0.7578947368421052,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "40246": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "40267": {
+    "美团共橙": {
+      "elasticity": 0.42500000000000004,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "40721": {
+    "饿了么": {
+      "elasticity": -2.97142857142857,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "40753": {
+    "美团共橙": {
+      "elasticity": -0.143,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "40774": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "41027": {
+    "美团共橙": {
+      "elasticity": 0.325,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.653,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "41204": {
+    "美团共橙": {
+      "elasticity": 0.7142857142857146,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.6263736263736263,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "41298": {
+    "饿了么": {
+      "elasticity": -4.869565217391306,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "41325": {
+    "美团共橙": {
+      "elasticity": 0.025,
+      "samples": 6,
+      "last_update": "2025-12-10"
+    }
+  },
+  "41457": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "41516": {
+    "饿了么": {
+      "elasticity": -0.374,
+      "samples": 22,
+      "last_update": "2025-12-10"
+    }
+  },
+  "41564": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 3,
+      "last_update": "2025-12-10"
+    }
+  },
+  "41572": {
+    "饿了么": {
+      "elasticity": -1.989,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    }
+  },
+  "42247": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "42409": {
+    "饿了么": {
+      "elasticity": -0.13461538461538475,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "42838": {
+    "饿了么": {
+      "elasticity": 0.6818181818181825,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "42853": {
+    "饿了么": {
+      "elasticity": -2.537,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "42857": {
+    "美团共橙": {
+      "elasticity": -2.625,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "44890": {
+    "饿了么": {
+      "elasticity": 0.5982142857142848,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "44902": {
+    "饿了么": {
+      "elasticity": -0.839,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "44916": {
+    "饿了么": {
+      "elasticity": -1.984,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "44950": {
+    "饿了么": {
+      "elasticity": -4.722222222222222,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "45095": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "45171": {
+    "美团共橙": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "45440": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "45472": {
+    "美团共橙": {
+      "elasticity": -2.381,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "46069": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "46525": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "46631": {
+    "美团共橙": {
+      "elasticity": 0.4876160990712074,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "48267": {
+    "美团共橙": {
+      "elasticity": 0.471,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    }
+  },
+  "48797": {
+    "饿了么": {
+      "elasticity": -1.0381355932203387,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "48936": {
+    "饿了么": {
+      "elasticity": -0.264,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "49022": {
+    "美团共橙": {
+      "elasticity": -0.6153846153846154,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.403,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "5033": {
+    "饿了么": {
+      "elasticity": -0.7291666666666669,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "51053": {
+    "饿了么": {
+      "elasticity": -1.763,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "5121": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 3,
+      "last_update": "2025-12-10"
+    }
+  },
+  "52418": {
+    "美团共橙": {
+      "elasticity": -0.109,
+      "samples": 10,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -3.1,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "5307": {
+    "饿了么": {
+      "elasticity": -0.37908496732026126,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "53364": {
+    "美团共橙": {
+      "elasticity": 0.571,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "53618": {
+    "饿了么": {
+      "elasticity": -1.3541666666666667,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "53635": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "5672": {
+    "美团共橙": {
+      "elasticity": -0.544,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -1.093,
+      "samples": 3,
+      "last_update": "2025-12-10"
+    }
+  },
+  "57311": {
+    "饿了么": {
+      "elasticity": -3.0428571428571463,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "57825": {
+    "饿了么": {
+      "elasticity": 0.104,
+      "samples": 11,
+      "last_update": "2025-12-10"
+    }
+  },
+  "57919": {
+    "美团共橙": {
+      "elasticity": -1.3333333333333353,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "57934": {
+    "京东到家": {
+      "elasticity": -0.512,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "58991": {
+    "饿了么": {
+      "elasticity": -4.159999999999999,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "59079": {
+    "饿了么": {
+      "elasticity": -0.357,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "59092": {
+    "美团共橙": {
+      "elasticity": 0.284,
+      "samples": 5,
+      "last_update": "2025-12-10"
+    }
+  },
+  "59700": {
+    "饿了么": {
+      "elasticity": -0.227,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    },
+    "美团共橙": {
+      "elasticity": -3.222,
+      "samples": 3,
+      "last_update": "2025-12-10"
+    }
+  },
+  "59854": {
+    "饿了么": {
+      "elasticity": -3.411764705882349,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "59856": {
+    "饿了么": {
+      "elasticity": -2.173,
+      "samples": 16,
+      "last_update": "2025-12-10"
+    }
+  },
+  "60662": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "62871": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "62877": {
+    "饿了么": {
+      "elasticity": -1.4685314685314692,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "63314": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "6369": {
+    "美团共橙": {
+      "elasticity": 0.084,
+      "samples": 20,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "6372": {
+    "美团共橙": {
+      "elasticity": -0.217,
+      "samples": 15,
+      "last_update": "2025-12-10"
+    }
+  },
+  "6394": {
+    "饿了么": {
+      "elasticity": -2.666666666666668,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "6412": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "6422": {
+    "美团共橙": {
+      "elasticity": 0.143,
+      "samples": 9,
+      "last_update": "2025-12-10"
+    }
+  },
+  "64838": {
+    "美团共橙": {
+      "elasticity": -1.435897435897436,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "65124": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "65557": {
+    "饿了么": {
+      "elasticity": -0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "66594": {
+    "美团共橙": {
+      "elasticity": -4.226,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "66599": {
+    "美团共橙": {
+      "elasticity": -0.8653846153846153,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "66611": {
+    "美团共橙": {
+      "elasticity": -3.3333333333333357,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "68994": {
+    "饿了么": {
+      "elasticity": -1.625,
+      "samples": 20,
+      "last_update": "2025-12-10"
+    }
+  },
+  "70004": {
+    "京东到家": {
+      "elasticity": -0.7424242424242424,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "7010": {
+    "饿了么": {
+      "elasticity": -0.287,
+      "samples": 3,
+      "last_update": "2025-12-10"
+    }
+  },
+  "70960": {
+    "饿了么": {
+      "elasticity": -0.459,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "70970": {
+    "饿了么": {
+      "elasticity": -2.533333333333336,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "72749": {
+    "美团共橙": {
+      "elasticity": -0.27272727272727276,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "73027": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 3,
+      "last_update": "2025-12-10"
+    }
+  },
+  "73305": {
+    "饿了么": {
+      "elasticity": -0.15,
+      "samples": 5,
+      "last_update": "2025-12-10"
+    }
+  },
+  "73499": {
+    "饿了么": {
+      "elasticity": -4.94117647058824,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "75022": {
+    "饿了么": {
+      "elasticity": -1.3199999999999996,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "75041": {
+    "饿了么": {
+      "elasticity": -3.1714975845410613,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "75261": {
+    "饿了么": {
+      "elasticity": -3.8076923076923106,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "75525": {
+    "饿了么": {
+      "elasticity": -0.426,
+      "samples": 15,
+      "last_update": "2025-12-10"
+    }
+  },
+  "78076": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 3,
+      "last_update": "2025-12-10"
+    }
+  },
+  "78784": {
+    "饿了么": {
+      "elasticity": -3.487179487179488,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "79140": {
+    "饿了么": {
+      "elasticity": -3.2307692307692273,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "79472": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "79561": {
+    "京东到家": {
+      "elasticity": -0.901,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    }
+  },
+  "80098": {
+    "饿了么": {
+      "elasticity": -0.907,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "80100": {
+    "美团共橙": {
+      "elasticity": -4.432,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.695,
+      "samples": 7,
+      "last_update": "2025-12-10"
+    }
+  },
+  "80216": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "80880": {
+    "饿了么": {
+      "elasticity": -4.333333333333339,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "82508": {
+    "美团共橙": {
+      "elasticity": 0.0,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -3.2600000000000007,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "82794": {
+    "饿了么": {
+      "elasticity": -1.607,
+      "samples": 12,
+      "last_update": "2025-12-10"
+    }
+  },
+  "83538": {
+    "美团共橙": {
+      "elasticity": 0.034,
+      "samples": 4,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.619,
+      "samples": 6,
+      "last_update": "2025-12-10"
+    }
+  },
+  "83689": {
+    "饿了么": {
+      "elasticity": -0.661,
+      "samples": 10,
+      "last_update": "2025-12-10"
+    }
+  },
+  "83692": {
+    "饿了么": {
+      "elasticity": -0.349,
+      "samples": 11,
+      "last_update": "2025-12-10"
+    }
+  },
+  "84017": {
+    "饿了么": {
+      "elasticity": -1.346153846153846,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "84022": {
+    "饿了么": {
+      "elasticity": -0.48333333333333317,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "84127": {
+    "饿了么": {
+      "elasticity": -1.019,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "85807": {
+    "美团共橙": {
+      "elasticity": -2.700000000000001,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "86784": {
+    "美团共橙": {
+      "elasticity": -0.5000000000000004,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "87182": {
+    "饿了么": {
+      "elasticity": -3.272727272727273,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "8721": {
+    "美团共橙": {
+      "elasticity": 0.068,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    },
+    "饿了么": {
+      "elasticity": -0.213,
+      "samples": 19,
+      "last_update": "2025-12-10"
+    }
+  },
+  "88070": {
+    "饿了么": {
+      "elasticity": -0.476,
+      "samples": 22,
+      "last_update": "2025-12-10"
+    }
+  },
+  "88694": {
+    "饿了么": {
+      "elasticity": -0.696,
+      "samples": 5,
+      "last_update": "2025-12-10"
+    }
+  },
+  "89290": {
+    "饿了么": {
+      "elasticity": -0.382,
+      "samples": 19,
+      "last_update": "2025-12-10"
+    }
+  },
+  "8942": {
+    "饿了么": {
+      "elasticity": 0.0,
+      "samples": 8,
+      "last_update": "2025-12-10"
+    }
+  },
+  "91091": {
+    "饿了么": {
+      "elasticity": -0.838,
+      "samples": 5,
+      "last_update": "2025-12-10"
+    }
+  },
+  "91100": {
+    "美团共橙": {
+      "elasticity": 0.4916666666666665,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "9375": {
+    "饿了么": {
+      "elasticity": 0.362,
+      "samples": 2,
+      "last_update": "2025-12-10"
+    }
+  },
+  "9477": {
+    "饿了么": {
+      "elasticity": -2.3499999999999983,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "96838": {
+    "美团共橙": {
+      "elasticity": -4.5294117647058885,
+      "samples": 1,
+      "last_update": "2025-12-10"
+    }
+  },
+  "100887": {
+    "美团共橙": {
+      "elasticity": 0.146,
+      "samples": 3,
+      "last_update": "2025-12-10"
     }
   }
 }

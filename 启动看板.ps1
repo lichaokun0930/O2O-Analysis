@@ -91,23 +91,45 @@ Write-Host "💡 提示: 如需查看详细调试日志，请使用:" -Foregroun
 Write-Host "   .\启动看板-调试模式.ps1" -ForegroundColor Cyan
 Write-Host ""
 
-Write-Host "检测已有看板进程..." -ForegroundColor Yellow
-$running = Get-CimInstance Win32_Process -Filter "name='python.exe'" -ErrorAction SilentlyContinue |
-	Where-Object { $_.CommandLine -match "智能门店看板_Dash版\.py" }
-
-if ($running) {
-	$running | ForEach-Object {
-		Write-Host "停止PID $($_.ProcessId) -> $($_.CommandLine)" -ForegroundColor DarkYellow
-		Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
-	}
-	Start-Sleep -Seconds 1
-} else {
-	Write-Host "未发现正在运行的看板实例。" -ForegroundColor DarkGreen
+Write-Host "🔍 检测已有看板进程..." -ForegroundColor Yellow
+# 查找所有Python进程(包括python.exe, python3.exe, python3.11.exe等)
+$allPythonProcs = Get-Process python* -ErrorAction SilentlyContinue
+$dashboardProcs = @()
+foreach ($proc in $allPythonProcs) {
+    try {
+        $cmdLine = (Get-CimInstance Win32_Process -Filter "ProcessId=$($proc.Id)").CommandLine
+        if ($cmdLine -match "智能门店看板_Dash版\.py") {
+            $dashboardProcs += $proc
+        }
+    } catch { }
 }
 
-Write-Host "正在启动应用..." -ForegroundColor Yellow
-Write-Host "访问地址: http://localhost:8050" -ForegroundColor Green
-Write-Host "按 Ctrl+C 停止服务" -ForegroundColor Yellow
+if ($dashboardProcs.Count -gt 0) {
+    Write-Host "⚠️  发现 $($dashboardProcs.Count) 个运行中的看板实例,正在清理..." -ForegroundColor Yellow
+    foreach ($proc in $dashboardProcs) {
+        Write-Host "   停止进程 PID=$($proc.Id) (内存: $([math]::Round($proc.WS/1MB,2))MB)" -ForegroundColor DarkYellow
+        Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+    }
+    Start-Sleep -Seconds 2
+    Write-Host "✅ 旧进程已清理" -ForegroundColor Green
+} else {
+    Write-Host "✅ 未发现运行中的看板实例" -ForegroundColor Green
+}
+
+Write-Host ""
+Write-Host "🚀 正在启动应用..." -ForegroundColor Yellow
+Write-Host "📍 访问地址: http://localhost:8051" -ForegroundColor Green
+Write-Host "🌐 局域网访问: http://192.168.1.213:8051" -ForegroundColor Green
+Write-Host "⚠️  按 Ctrl+C 停止服务" -ForegroundColor Yellow
 Write-Host ""
 
-& $pythonExe "智能门店看板_Dash版.py"
+# 启动应用 (添加错误处理)
+try {
+    & $pythonExe "智能门店看板_Dash版.py"
+} catch {
+    Write-Host ""
+    Write-Host "❌ 启动失败: $_" -ForegroundColor Red
+    Write-Host "   提示: 使用 .\生产环境启动.ps1 获取详细检查" -ForegroundColor Gray
+    Read-Host "按回车键退出"
+    exit 1
+}

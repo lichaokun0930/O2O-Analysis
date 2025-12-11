@@ -685,7 +685,7 @@ def analyze_watch_issues(df: pd.DataFrame) -> Dict[str, Any]:
         date_col = '日期' if '日期' in df.columns else '下单时间'
         sales_col = '月售' if '月售' in df.columns else '销量'
         
-        df = df.copy()
+        df = df.copy()  # 保持原有逻辑，避免引入bug
         df[date_col] = pd.to_datetime(df[date_col])
         yesterday = df[date_col].max().normalize()
         

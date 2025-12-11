@@ -338,6 +338,7 @@ def analyze_customer_downgrade(
     
     if date_col is None:
         print(f"  ❌ 缺少日期字段")
+        print(f"  🔴 [RETURN POINT 1] 返回_empty_distribution_result()")
         return _empty_distribution_result()
     
     # 检查客单价字段（必须使用'实收价格'，与Tab1订单数据概览一致）
@@ -345,6 +346,7 @@ def analyze_customer_downgrade(
         print(f"  ❌ 缺少'实收价格'字段，无法计算客单价")
         print(f"  📌 提示: 客单价 = 实收价格总和 / 订单数（消费者实际支付金额）")
         print(f"  📌 实收价格 = 平台补贴后价格（反映真实购买力）")
+        print(f"  🔴 [RETURN POINT 2] 返回_empty_distribution_result()")
         return _empty_distribution_result()
     
     # 确保日期格式
@@ -400,7 +402,10 @@ def analyze_customer_downgrade(
     
     if len(history_orders) == 0 or len(recent_orders) == 0:
         print(f"  ❌ 数据不足，无法对比")
-        return _empty_distribution_result()
+        print(f"  🔴 [RETURN POINT 4] 返回_empty_distribution_result()")
+        result = _empty_distribution_result()
+        print(f"  📊 [DEBUG] result keys: {list(result.keys())}")
+        return result
     
     # ========== 3. 计算整体客单价（与订单数据概览保持一致）==========
     history_total_sales = history_orders['实收价格'].sum()
@@ -589,14 +594,18 @@ def analyze_customer_downgrade(
     }
     
     print(f"✅ [订单分布分析] 完成")
+    print(f"  🟢 [RETURN POINT 5 - NORMAL] 返回正常结果，包含5个键")
     
-    return {
+    result = {
         'severe': severe_list,
         'moderate': moderate_list,
         'mild': mild_list,
         'trend': trend_data,
         'summary': summary
     }
+    print(f"  📊 [DEBUG] result keys: {list(result.keys())}")
+    print(f"  📊 [DEBUG] result['summary'] keys: {list(result['summary'].keys())}")
+    return result
 
 
 def _analyze_downgrade_reasons(
@@ -874,11 +883,16 @@ def analyze_product_drag(
     print(f"  🔄 识别机会商品...")
     opportunity_products = _identify_opportunity_products(df, order_agg, start_date, max_date, price_field)
     
-    # 汇总统计
+    # 汇总统计（添加防御性检查）
+    avg_aov_value = period_orders['实收价格'].mean()
+    if pd.isna(avg_aov_value):  # 防止NaN
+        avg_aov_value = 0.0
+        print(f"  ⚠️ avg_aov计算为NaN，已设为0")
+    
     summary = {
         'period_days': period_days,
         'total_orders': len(period_orders),
-        'avg_aov': round(period_orders['实收价格'].mean(), 2),
+        'avg_aov': round(avg_aov_value, 2),
         'low_price_ratio': low_price_trend['current_ratio'],
         'drag_product_count': len(product_analysis.get('core_drag', [])),
         'high_price_star_count': len(product_analysis.get('high_price', {}).get('star', []))
@@ -1454,11 +1468,22 @@ def _empty_product_result() -> Dict:
         },
         'drag_products': [],
         'opportunity_products': [],
+        'product_analysis': {  # 新增：四层分析结构
+            'core_drag': [],
+            'abnormal': [],
+            'new_low': [],
+            'high_price': {
+                'star': [],
+                'stable': [],
+                'decline': []
+            }
+        },
         'summary': {
             'period_days': 30,
             'total_orders': 0,
             'avg_aov': 0,
             'low_price_ratio': 0,
-            'drag_product_count': 0
+            'drag_product_count': 0,
+            'high_price_star_count': 0  # 新增：高价爆品数量
         }
     }

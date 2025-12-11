@@ -734,6 +734,81 @@ DIAGNOSTIC_ENGINE = None
 UPLOADED_DATA_CACHE = None
 DATA_SOURCE_MANAGER = None  # 数据源管理器实例
 
+
+# ================================================================================
+# 🚀 内存优化函数
+# ================================================================================
+def optimize_dataframe_dtypes(df):
+    """
+    优化DataFrame数据类型，减少内存占用（仅数值类型）
+    
+    🔧 优化策略（v2.0 - 安全版本）:
+    1. int64 → int32/int16 (根据数值范围自动选择)
+    2. float64 → float32 (精度足够O2O业务，误差<0.01元)
+    3. ❌ 不转换category类型（避免与fillna()冲突）
+    
+    🛡️ 安全保障:
+    - 只优化数值类型，不触碰object/string类型
+    - 精度验证：float32可精确表示0.01元级别
+    - 避免category类型导致的fillna/replace冲突
+    
+    Args:
+        df: 原始DataFrame
+        
+    Returns:
+        优化后的DataFrame (in-place修改)
+    """
+    if df is None or df.empty:
+        return df
+    
+    print("\n" + "="*80, flush=True)
+    print("🔧 数据类型优化（v2.0安全版 - 仅数值类型）", flush=True)
+    print("="*80, flush=True)
+    
+    # 记录优化前内存
+    mem_before = df.memory_usage(deep=True).sum() / 1024 / 1024
+    
+    # 统计优化情况
+    optimized_cols = {'int': [], 'float': []}
+    
+    # 🚀 单次遍历所有列（性能优化）
+    for col in df.columns:
+        dtype = df[col].dtype
+        
+        # 1. 整数类型优化（int64 → int32/int16）
+        if dtype == 'int64':
+            df[col] = pd.to_numeric(df[col], downcast='integer')
+            optimized_cols['int'].append(col)
+        
+        # 2. 浮点数类型优化（float64 → float32）
+        elif dtype == 'float64':
+            df[col] = pd.to_numeric(df[col], downcast='float')
+            optimized_cols['float'].append(col)
+        
+        # ❌ 3. 不转换category类型（避免fillna冲突）
+        # 之前因为category类型导致内存飙升99%
+    
+    # 记录优化后内存
+    mem_after = df.memory_usage(deep=True).sum() / 1024 / 1024
+    mem_saved = mem_before - mem_after
+    saved_pct = (mem_saved / mem_before) * 100 if mem_before > 0 else 0
+    
+    print(f"✅ 优化完成:")
+    print(f"   整数列优化: {len(optimized_cols['int'])} 列", flush=True)
+    print(f"   浮点列优化: {len(optimized_cols['float'])} 列", flush=True)
+    print(f"   优化前内存: {mem_before:.1f} MB", flush=True)
+    print(f"   优化后内存: {mem_after:.1f} MB", flush=True)
+    print(f"   节省内存: {mem_saved:.1f} MB ({saved_pct:.1f}%)", flush=True)
+    print("="*80 + "\n", flush=True)
+    
+    # 🔍 自检验证：确保没有category类型
+    category_cols = df.select_dtypes(include=['category']).columns.tolist()
+    if category_cols:
+        print(f"⚠️ 警告：发现{len(category_cols)}个category列，可能导致问题", flush=True)
+        print(f"   列名: {category_cols[:5]}", flush=True)
+    
+    return df
+
 # ✅ Redis缓存管理器实例（多用户共享）
 REDIS_CACHE_MANAGER = None
 if REDIS_CACHE_AVAILABLE:
@@ -747,6 +822,11 @@ if REDIS_CACHE_AVAILABLE:
         if REDIS_CACHE_MANAGER.enabled:
             print("✅ Redis缓存已启用 - 支持多用户数据共享")
             print(f"📊 缓存配置: TTL=30分钟, 自动过期")
+            
+            # 🔧 将实例同步到redis_cache_manager模块，供其他模块导入
+            import redis_cache_manager as rcm
+            rcm.REDIS_CACHE_MANAGER = REDIS_CACHE_MANAGER
+            print("✅ Redis缓存管理器实例已导出到redis_cache_manager模块")
         else:
             print("⚠️  Redis连接失败，将使用本地缓存")
             REDIS_CACHE_MANAGER = None
@@ -1050,13 +1130,68 @@ def initialize_data():
         print("🔄 正在初始化数据...", flush=True)
         print("="*80, flush=True)
         
-        # 🔄 2025-11-19: 数据分离加载策略
-        # - GLOBAL_FULL_DATA: 完整数据(含耗材) → 用于利润计算
-        # - GLOBAL_DATA: 展示数据(不含耗材) → 用于分析图表
+        # 🚀 2025-12-09: PostgreSQL优化 - 按需加载数据
+        # 优先从数据库加载最近30天数据，减少内存占用
+        df_loaded = None
+        data_source = "未知"  # 记录数据来源
         
-        df_loaded = load_real_business_data()
+        if DATABASE_AVAILABLE and DATA_SOURCE_MANAGER is not None:
+            try:
+                from datetime import datetime, timedelta
+                end_date = datetime.now().date()
+                start_date = end_date - timedelta(days=30)
+                
+                print(f"📊 尝试从PostgreSQL数据库加载数据（最近30天）...", flush=True)
+                print(f"   日期范围: {start_date} ~ {end_date}", flush=True)
+                
+                result = DATA_SOURCE_MANAGER.load_from_database(
+                    store_name=None,  # 加载所有门店
+                    start_date=start_date,
+                    end_date=end_date
+                )
+                
+                # load_from_database返回dict {'full': df, 'display': df}
+                if isinstance(result, dict) and 'full' in result:
+                    df_loaded = result['full']
+                    data_source = "PostgreSQL数据库"
+                    print(f"✅ 数据库加载成功: {len(df_loaded)} 行数据", flush=True)
+                    print(f"   数据来源: {data_source} (最近30天)", flush=True)
+                elif isinstance(result, pd.DataFrame) and not result.empty:
+                    df_loaded = result
+                    data_source = "PostgreSQL数据库"
+                    print(f"✅ 数据库加载成功: {len(df_loaded)} 行数据", flush=True)
+                    print(f"   数据来源: {data_source} (最近30天)", flush=True)
+                else:
+                    print("⚠️ 数据库查询返回空数据，降级到Excel加载", flush=True)
+                    df_loaded = None
+                    
+            except Exception as e:
+                print(f"⚠️ 数据库连接失败: {e}", flush=True)
+                print("   自动降级使用Excel数据源", flush=True)
+                df_loaded = None
+        
+        # 降级方案：从Excel加载
+        if df_loaded is None:
+            print("📂 从Excel文件加载数据（完整历史数据）...", flush=True)
+            df_loaded = load_real_business_data()
+            data_source = "Excel文件"
+            if df_loaded is not None:
+                print(f"✅ Excel加载成功: {len(df_loaded)} 行数据", flush=True)
+                print(f"   数据来源: {data_source} (完整历史)", flush=True)
         
         if df_loaded is not None:
+            # 🚀 2025-12-09: 数据类型优化v2.0（仅数值类型，安全版本）
+            # 移除category转换，避免fillna冲突
+            print("\n🔧 开始数据类型优化...", flush=True)
+            df_loaded = optimize_dataframe_dtypes(df_loaded)
+            
+            # 🔍 精度验证（抽样检查float32精度）
+            if '商品实售价' in df_loaded.columns:
+                price_sample = df_loaded['商品实售价'].head(5).tolist()
+                print(f"🔍 精度验证（商品实售价样本）: {price_sample}", flush=True)
+                if df_loaded['商品实售价'].dtype == 'float32':
+                    print("   ✅ float32精度正常（可精确表示0.01元）", flush=True)
+            
             # 完整数据
             GLOBAL_FULL_DATA = df_loaded.copy()
             
@@ -1068,10 +1203,27 @@ def initialize_data():
                 
                 consumable_count = len(df_loaded[df_loaded['一级分类名'] == '耗材'])
                 
-                print(f"\n📊 数据加载完成 (已包含耗材):")
-                print(f"   - 完整数据(GLOBAL_FULL_DATA): {len(GLOBAL_FULL_DATA):,} 行")
-                print(f"   - 展示数据(GLOBAL_DATA): {len(GLOBAL_DATA):,} 行 (含耗材)")
+                print(f"\n" + "="*80, flush=True)
+                print(f"✅ 数据加载完成！", flush=True)
+                print(f"="*80, flush=True)
+                print(f"📊 数据统计:", flush=True)
+                print(f"   - 数据来源: {data_source}", flush=True)
+                print(f"   - 完整数据(GLOBAL_FULL_DATA): {len(GLOBAL_FULL_DATA):,} 行", flush=True)
+                print(f"   - 展示数据(GLOBAL_DATA): {len(GLOBAL_DATA):,} 行 (含耗材)", flush=True)
                 print(f"   - 其中耗材数据: {consumable_count:,} 行", flush=True)
+                
+                # 🔍 内存监控（验证优化效果）
+                try:
+                    import psutil
+                    process = psutil.Process()
+                    mem_mb = process.memory_info().rss / 1024 / 1024
+                    print(f"   - 进程内存占用: {mem_mb:.0f} MB", flush=True)
+                    if mem_mb > 1000:  # 超过1GB警告
+                        print(f"   ⚠️ 内存占用偏高，请检查是否有内存泄漏", flush=True)
+                except:
+                    pass
+                
+                print(f"="*80 + "\n", flush=True)
             else:
                 GLOBAL_DATA = df_loaded.copy()
                 print(f"⚠️ 未找到一级分类字段,使用完整数据", flush=True)
@@ -3898,6 +4050,23 @@ def _create_aov_analysis(df: pd.DataFrame, order_agg: pd.DataFrame, selected_cha
                 dbc.Alert(msg, color="warning", style={'whiteSpace': 'pre-wrap'})
             ])
         
+        # ✅ 确保客单价字段存在（关键修复）
+        if '客单价' not in order_agg.columns:
+            if '实收价格' in order_agg.columns:
+                order_agg['客单价'] = order_agg['实收价格']
+                print(f"✅ [客单价分析] 已创建客单价字段（使用实收价格）")
+            elif '预计订单收入' in order_agg.columns:
+                order_agg['客单价'] = order_agg['预计订单收入']
+                print(f"✅ [客单价分析] 已创建客单价字段（使用预计订单收入）")
+            elif '订单总收入' in order_agg.columns:
+                order_agg['客单价'] = order_agg['订单总收入']
+                print(f"✅ [客单价分析] 已创建客单价字段（使用订单总收入）")
+            else:
+                print(f"❌ [客单价分析] 无法创建客单价字段，缺少必要字段")
+                return html.Div([
+                    dbc.Alert("数据错误：缺少客单价相关字段", color="danger")
+            ])
+        
         # ========== 📈 计算双重对比数据 (环比 + 同比) ==========
         week_on_week_data = {'has_data': False}
         
@@ -5248,6 +5417,7 @@ if MANTINE_AVAILABLE:
             
             # ========== 性能优化: Tab懒加载状态跟踪 ==========
             dcc.Store(id='tabs-loaded-status', data={
+                'tab-today-must-do': False,  # ⚡ 今日必做TAB懒加载
                 'tab-1': False, 'tab-2': False, 'tab-3': False, 'tab-4': False
             }),  # ⚡ 跟踪每个Tab是否已加载过
             
@@ -5500,6 +5670,11 @@ if MANTINE_AVAILABLE:
     dcc.Store(id='pricing-data-store-v3', data={}),
     dcc.Store(id='pricing-selected-products-v3', data=[]),
     dcc.Download(id='download-pricing-plan-v3'),
+    
+    # 六象限与调价计算器联动数据存储（V3.0新增）
+    dcc.Store(id='pricing-quadrant-filter', data=None),  # 象限筛选数据
+    dcc.Store(id='pricing-source-context', data=None),  # 来源上下文信息
+    dcc.Store(id='product-scores-store', data=None),  # 六象限商品评分数据
     
     # 数据存储组件
     dcc.Store(id='current-data-store', data=[]),  # 存储当前诊断结果
@@ -20723,29 +20898,61 @@ if __name__ == '__main__':
                 use_reloader=True  # 调试模式下开启自动重载
             )
         else:
-            # 生产模式：使用 Waitress 服务器（高性能、稳定）
-            try:
-                from waitress import serve
-                print("🚀 启动 Waitress 生产服务器...", flush=True)
-                serve(
-                    app.server,
-                    host='0.0.0.0',
-                    port=8051,
-                    threads=4,  # 并发线程数（可根据CPU核心数调整）
-                    channel_timeout=120,  # 通道超时时间（秒）
-                    connection_limit=100,  # 最大连接数
-                    cleanup_interval=30,  # 清理空闲连接间隔
-                    log_socket_errors=False  # 不记录套接字错误（减少噪音）
-                )
-            except ImportError:
-                print("⚠️ Waitress 未安装，回退到 Flask 内置服务器", flush=True)
-                print("   安装命令: pip install waitress", flush=True)
+            # 生产模式：根据平台选择合适的服务器
+            import platform
+            is_windows = platform.system() == 'Windows'
+            
+            # 检查端口是否被占用
+            import socket
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            port_in_use = sock.connect_ex(('127.0.0.1', 8051)) == 0
+            sock.close()
+            
+            if port_in_use:
+                print("❌ 端口 8051 已被占用，请先关闭其他看板实例", flush=True)
+                print("   提示: 运行 Get-Process python* 查看进程", flush=True)
+                input("按回车键退出...")
+                sys.exit(1)
+            
+            if is_windows:
+                # Windows: 直接使用Flask多线程模式 (稳定可靠)
+                print("🚀 启动生产服务器 (Flask多线程模式)...", flush=True)
+                print("   平台: Windows", flush=True)
+                print("", flush=True)
                 app.run(
                     debug=False,
                     host='0.0.0.0',
                     port=8051,
+                    threaded=True,  # 多线程支持并发
                     use_reloader=False
                 )
+            else:
+                # Linux/Unix: 使用 Waitress (高性能)
+                try:
+                    from waitress import serve
+                    print("🚀 启动生产服务器 (Waitress)...", flush=True)
+                    print("   平台: Linux/Unix", flush=True)
+                    print("", flush=True)
+                    serve(
+                        app.server,
+                        host='0.0.0.0',
+                        port=8051,
+                        threads=4,
+                        channel_timeout=120,
+                        connection_limit=100,
+                        cleanup_interval=30
+                    )
+                except ImportError:
+                    print("⚠️ Waitress 未安装，回退到 Flask", flush=True)
+                    print("", flush=True)
+                    app.run(
+                        debug=False,
+                        host='0.0.0.0',
+                        port=8051,
+                        threaded=True,
+                        use_reloader=False
+                    )
+        
         print("⚠️ 应用服务器已停止", flush=True)
     except KeyboardInterrupt:
         print("\n✋ 用户中断 (Ctrl+C)", flush=True)

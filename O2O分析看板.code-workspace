@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.exclude": {
+			"**/__pycache__": true,
+			"**/*.pyc": true,
+			"**/*.pyo": true,
+			"**/.venv": true,
+			"**/venv": true,
+			"**/.git": true,
+			"**/node_modules": true,
+			"**/.vs": true,
+			"**/学习数据仓库": true,
+			"**/实际数据": true
+		}
+	}
+}
