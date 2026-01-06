@@ -1,0 +1,78 @@
+// ==========================================
+// 订单数据看板 - 全局样式变量
+// ==========================================
+
+// 主题色系 - 来自 Dash 版本配色
+$primary-color: #1890ff;
+$success-color: #52c41a;
+$warning-color: #faad14;
+$danger-color: #ff4d4f;
+$info-color: #909399;
+
+// 紧急程度颜色
+$urgent-color: #ff4d4f;      // 🔴 紧急处理
+$watch-color: #faad14;       // 🟡 关注观察
+$highlight-color: #52c41a;   // 🟢 亮点表现
+
+// 背景色
+$bg-color: #f5f7fa;
+$bg-color-light: #ffffff;
+$bg-color-dark: #001529;
+
+// 文字颜色
+$text-primary: #303133;
+$text-regular: #606266;
+$text-secondary: #909399;
+$text-placeholder: #c0c4cc;
+
+// 边框颜色
+$border-color: #e4e7ed;
+$border-color-light: #ebeef5;
+$border-color-dark: #dcdfe6;
+
+// 阴影
+$shadow-base: 0 2px 8px rgba(0, 0, 0, 0.08);
+$shadow-light: 0 2px 4px rgba(0, 0, 0, 0.04);
+$shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.12);
+
+// 圆角
+$border-radius-base: 8px;
+$border-radius-small: 4px;
+$border-radius-large: 12px;
+
+// 间距
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+
+// 布局
+$header-height: 60px;
+$sidebar-width: 220px;
+$sidebar-collapsed-width: 64px;
+
+// 断点
+$breakpoint-sm: 576px;
+$breakpoint-md: 768px;
+$breakpoint-lg: 992px;
+$breakpoint-xl: 1200px;
+
+// KPI卡片颜色渐变
+$kpi-gradient-red: linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%);
+$kpi-gradient-orange: linear-gradient(135deg, #faad14 0%, #ffc53d 100%);
+$kpi-gradient-green: linear-gradient(135deg, #52c41a 0%, #95de64 100%);
+$kpi-gradient-blue: linear-gradient(135deg, #1890ff 0%, #69c0ff 100%);
+
+// 图表颜色方案 (与 Dash 版保持一致)
+$chart-colors: (
+  '#1890ff',  // 蓝
+  '#52c41a',  // 绿
+  '#faad14',  // 橙
+  '#ff4d4f',  // 红
+  '#722ed1',  // 紫
+  '#13c2c2',  // 青
+  '#eb2f96',  // 粉
+  '#2f54eb',  // 靛蓝
+);
+

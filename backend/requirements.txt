@@ -1,0 +1,43 @@
+# Web Framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# Database
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.9
+asyncpg>=0.29.0
+
+# Cache
+redis>=5.0.0
+
+# Data Processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Auth
+python-jose[cryptography]>=3.3.0
+passlib>=1.7.4
+bcrypt==4.0.1
+python-multipart>=0.0.6
+
+# Validation
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+email-validator>=2.1.0
+
+# File Processing
+openpyxl>=3.1.0
+
+# DateTime
+python-dateutil>=2.8.2
+
+# Utils
+httpx>=0.25.0
+tenacity>=8.2.0
+orjson>=3.9.0
+
+# Logging
+loguru>=0.7.0
+
+# Environment
+python-dotenv>=1.0.0

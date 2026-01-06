@@ -16,11 +16,16 @@
 
 print("🚀 [DEBUG] components.today_must_do.callbacks 模块正在加载...")
 
-from dash import html, dcc, Input, Output, State, callback_context, no_update, ALL, callback
+from dash import html, dcc, Input, Output, State, callback_context, no_update, ALL, callback, clientside_callback
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 from dash import dash_table
-import dash_ag_grid as dag
+try:
+    import dash_ag_grid as dag
+    AG_GRID_AVAILABLE = True
+except ImportError:
+    AG_GRID_AVAILABLE = False
+    dag = None
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -65,6 +70,39 @@ from components.today_must_do.marketing_analysis import (
     get_discount_analysis_by_range,
     identify_discount_overflow_orders
 )
+
+# V8.0 企业级性能优化：骨架屏组件
+from components.today_must_do.skeleton_screens import (
+    create_today_must_do_skeleton,
+    create_diagnosis_card_skeleton,
+    create_product_health_skeleton,
+    create_loading_spinner,
+    SKELETON_CSS
+)
+
+# V8.8 前端体验优化：防抖工具
+from components.today_must_do.debounce_utils import (
+    debounce,
+    throttle
+)
+
+# V8.8 前端体验优化：增强的加载和错误组件
+from components.today_must_do.loading_components import (
+    create_enhanced_loading_spinner,
+    create_error_alert,
+    create_timeout_alert,
+    create_no_data_alert,
+    LOADING_ANIMATION_CSS
+)
+
+# V8.9 数据分页优化：分页工具
+from components.today_must_do.pagination_utils import (
+    get_pagination_config,
+    create_paginated_datatable,
+    create_backend_paginated_table,
+    get_page_data
+)
+
 # 导入V3.0诊断分析模块
 from components.today_must_do.diagnosis_analysis import (
     analyze_urgent_issues,
@@ -639,6 +677,14 @@ def register_today_must_do_callbacks(app):
     """注册今日必做功能的所有回调函数"""
     print("[DEBUG] 开始注册今日必做回调函数...")
     
+    # V8.10.3: 注册性能监控面板回调（TOP 5展示）
+    try:
+        from components.performance_panel import register_performance_panel_callbacks
+        register_performance_panel_callbacks(app, panel_id='today-must-do-performance-panel', top_n=5)
+        print("✅ 性能监控面板回调已注册（TOP 5模式）")
+    except Exception as e:
+        print(f"⚠️ 性能监控面板回调注册失败: {e}")
+    
     @app.callback(
         Output('today-must-do-content', 'children'),
         [Input('main-tabs', 'value'),
@@ -646,6 +692,7 @@ def register_today_must_do_callbacks(app):
         [State('db-store-filter', 'value')],
         prevent_initial_call=False  # 允许首次加载
     )
+    @debounce(wait_ms=300)  # V8.8: 添加300ms防抖，避免快速切换Tab时的重复请求
     def update_today_must_do_content(active_tab, data_trigger, selected_stores):
         """主内容渲染回调 - 响应TAB切换和数据更新"""
         ctx = callback_context
@@ -707,6 +754,185 @@ def register_today_must_do_callbacks(app):
             traceback.print_exc()
             print(f"{'='*80}\n")
             return create_error_message(f"渲染失败: {str(e)}")
+
+    # V7.5性能优化：异步加载经营诊断卡片
+    @app.callback(
+        [Output('today-must-do-diagnosis-container', 'children'),
+         Output('today-must-do-performance-panel-data', 'data')],  # V8.10.3: 输出性能数据
+        Input('today-must-do-content', 'children'),  # 等待主布局渲染完成
+        State('db-store-filter', 'value'),
+        prevent_initial_call=True
+    )
+    def load_diagnosis_async(layout_children, selected_stores):
+        """
+        异步加载经营诊断卡片
+        
+        V8.1性能优化：
+        - 优先从Redis缓存读取（<1秒）
+        - 缓存未命中时实时计算（70秒）
+        - 后台任务每5分钟更新缓存
+        
+        V8.10.3性能监控：
+        - 返回性能数据供前端显示
+        - 监控数据加载耗时
+        - 重置监控器以开始新的监控周期
+        """
+        print(f"\n{'='*80}")
+        print(f"[异步加载] 开始加载经营诊断...")
+        
+        import time
+        start_time = time.time()
+        
+        try:
+            # V8.10.3: 获取性能监控器并重置（开始新的监控周期）
+            from components.today_must_do.performance_monitor import get_global_monitor
+            monitor = get_global_monitor()
+            monitor.reset()  # 重置监控器，清除之前的数据
+            print("[DEBUG] 性能监控器已重置")
+            
+            # V8.3: 智能缓存 - 基于门店筛选
+            from redis_cache_manager import REDIS_CACHE_MANAGER
+            
+            # 缓存未命中，实时计算
+            print(f"[异步加载] ⚠️ 缓存未命中，开始实时计算...")
+            
+            # V8.10.3: 监控数据获取
+            with monitor.measure('0.数据获取', print_result=True):
+                GLOBAL_DATA = get_real_global_data()
+            
+            if GLOBAL_DATA is None or GLOBAL_DATA.empty:
+                print("[异步加载] GLOBAL_DATA为空，返回提示")
+                return dbc.Alert("暂无数据", color="warning", className="mb-4"), None
+            
+            # V8.10.3: 监控数据筛选
+            with monitor.measure('0.数据筛选', print_result=True):
+                # 应用门店筛选
+                filtered_df = GLOBAL_DATA
+                if selected_stores and len(selected_stores) > 0:
+                    if isinstance(selected_stores, str):
+                        selected_stores = [selected_stores]
+                    if '门店名称' in filtered_df.columns:
+                        filtered_df = filtered_df[filtered_df['门店名称'].isin(selected_stores)]
+            
+            print(f"[异步加载] 筛选后数据行数: {len(filtered_df)}")
+            
+            # V8.10.3: 获取诊断结果（包含性能数据）
+            from components.today_must_do.diagnosis_analysis import get_diagnosis_summary
+            diagnosis = get_diagnosis_summary(filtered_df)
+            
+            # 提取性能数据（合并数据加载的性能）
+            performance_data = diagnosis.get('performance', None)
+            
+            # V8.10.3: 监控卡片创建
+            with monitor.measure('6.卡片创建', print_result=True):
+                result = create_business_diagnosis_card(filtered_df)
+            load_time = time.time() - start_time
+            
+            print(f"[异步加载] ✅ 经营诊断加载完成，耗时: {load_time:.2f}秒")
+            print(f"{'='*80}\n")
+            
+            # V8.10.3: 获取完整的性能报告（包含数据加载）
+            performance_data = monitor.get_report()
+            
+            return result, performance_data
+            
+        except Exception as e:
+            print(f"[异步加载] ❌ 加载失败: {e}")
+            import traceback
+            traceback.print_exc()
+            print(f"{'='*80}\n")
+            
+            return dbc.Alert([
+                html.H5("加载失败", className="alert-heading"),
+                html.P(f"错误信息: {str(e)}")
+            ], color="danger", className="mb-4"), None
+
+    # V7.5性能优化：异步加载商品健康分析（在诊断卡片加载完成后）
+    @app.callback(
+        [Output('product-scoring-section-container', 'children', allow_duplicate=True),
+         Output('today-must-do-performance-panel-data', 'data', allow_duplicate=True)],  # V8.10.3: 更新性能数据
+        Input('today-must-do-diagnosis-container', 'children'),  # 等待诊断卡片加载完成
+        [State('db-store-filter', 'value'),
+         State('today-must-do-performance-panel-data', 'data')],  # V8.10.3: 获取之前的性能数据
+        prevent_initial_call=True
+    )
+    def load_product_scoring_async(diagnosis_content, selected_stores, previous_performance_data):
+        """
+        异步加载商品健康分析
+        
+        V8.6.3性能优化：
+        - 在主布局渲染完成后才开始加载
+        - 显示详细的加载进度
+        - 优先使用Redis缓存
+        - 用户可以先看到诊断卡片和调价计算器
+        
+        V8.10.3性能监控：
+        - 添加商品健康分析的性能监控
+        - 累积之前的性能数据（不覆盖）
+        - 更新性能面板数据
+        """
+        print(f"\n{'='*80}")
+        print(f"[V8.6.3异步加载] 开始加载商品健康分析...")
+        print(f"[DEBUG] 之前的性能数据: {previous_performance_data is not None}")
+        
+        import time
+        total_start = time.time()
+        
+        try:
+            # V8.10.3: 获取性能监控器（继续使用同一个实例，不重置）
+            from components.today_must_do.performance_monitor import get_global_monitor
+            monitor = get_global_monitor()
+            
+            GLOBAL_DATA = get_real_global_data()
+            
+            if GLOBAL_DATA is None or GLOBAL_DATA.empty:
+                print("[异步加载] GLOBAL_DATA为空，返回提示")
+                # 返回之前的性能数据，不覆盖
+                return dbc.Alert("暂无数据", color="warning", className="mb-4"), previous_performance_data
+            
+            # 应用门店筛选
+            filtered_df = GLOBAL_DATA
+            if selected_stores and len(selected_stores) > 0:
+                if isinstance(selected_stores, str):
+                    selected_stores = [selected_stores]
+                if '门店名称' in filtered_df.columns:
+                    filtered_df = filtered_df[filtered_df['门店名称'].isin(selected_stores)]
+            
+            print(f"[异步加载] 筛选后数据: {len(filtered_df)}行")
+            
+            # V8.6.3: 显示数据规模和预估时间
+            estimated_time = len(filtered_df) / 1000  # 粗略估算：每1000行约1秒
+            if estimated_time > 30:
+                print(f"⚠️ [异步加载] 数据量较大，预计需要 {estimated_time:.0f}秒")
+            
+            # V8.10.3: 监控商品健康分析
+            with monitor.measure('5.商品健康分析', print_result=True):
+                result = create_product_scoring_section(filtered_df)
+            
+            total_time = time.time() - total_start
+            print(f"[异步加载] ✅ 商品健康分析加载完成")
+            print(f"   总耗时: {total_time:.2f}秒")
+            print(f"   数据行数: {len(filtered_df)}")
+            print(f"   性能: {len(filtered_df)/total_time:.0f} 行/秒")
+            print(f"{'='*80}\n")
+            
+            # V8.10.3: 获取累积的性能报告（包含之前的"0.数据获取"等）
+            performance_data = monitor.get_report()
+            print(f"[DEBUG] 累积的性能数据包含 {len(performance_data.get('measurements', {}))} 个模块")
+            
+            return result, performance_data
+            
+        except Exception as e:
+            print(f"[异步加载] ❌ 加载失败: {e}")
+            import traceback
+            traceback.print_exc()
+            print(f"{'='*80}\n")
+            
+            # 返回之前的性能数据，不覆盖
+            return dbc.Alert([
+                html.H5("加载失败", className="alert-heading"),
+                html.P(f"错误信息: {str(e)}")
+            ], color="danger", className="mb-4"), previous_performance_data
 
     @app.callback(
         [Output("product-detail-modal", "is_open"),
@@ -830,6 +1056,13 @@ def register_today_must_do_callbacks(app):
             return is_open, no_update, no_update, no_update
         
         trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        trigger_value = ctx.triggered[0]['value']
+        
+        # V7.5.2 BUG修复：防止异步加载时自动打开弹窗
+        # 只有当n_clicks > 0时才打开（排除初始化和异步加载的情况）
+        if trigger_id != 'diagnosis-detail-modal-close' and (trigger_value is None or trigger_value == 0):
+            print(f"[诊断弹窗] 忽略触发: {trigger_id}, n_clicks={trigger_value}")
+            return is_open, no_update, no_update, no_update
         
         # 关闭按钮
         if trigger_id == 'diagnosis-detail-modal-close':
@@ -1561,19 +1794,19 @@ def register_today_must_do_callbacks(app):
     )
     def filter_scoring_table(octant_clicks, quadrant_clicks, category_clicks, score_level_clicks, clear_clicks, date_btn_clicks, selected_stores, selected_channel, current_active_tab, current_category_label, current_days):
         """
-        点击象限/品类/评分等级按钮筛选表格数据 + 联动更新Tab内容
+        点击象限/品类按钮筛选表格数据 + 联动更新Tab内容
         
         V5.0更新：
         - 简化为四象限分类（明星/潜力/引流/问题）
         - 点击四象限按钮 → 按象限筛选表格 + 自动展开表格
         - 点击品类按钮 → 按品类筛选表格 + 联动更新评分概览/象限分布Tab
-        - 点击评分等级按钮 → 按评分等级筛选表格 + 自动展开表格
         - 点击清除按钮 → 显示全部数据 + 恢复Tab内容
         
         V5.2修复：保持当前Tab状态，切换分类时不跳转Tab
-        V5.3修复：四象限/评分等级筛选时保持当前分类筛选状态
+        V5.3修复：四象限筛选时保持当前分类筛选状态
         V6.0新增：独立日期选择器，支持7/15/30/60/90天分析周期
         V6.1修复：应用渠道筛选，避免显示全部渠道混合数据
+        V7.4更新：删除评分等级筛选功能（评分体系已删除）
         """
         ctx = callback_context
         if not ctx.triggered:
@@ -1707,25 +1940,10 @@ def register_today_must_do_callbacks(app):
             except Exception as e:
                 print(f"解析品类筛选ID失败: {e}")
         elif 'score-level-filter-btn' in triggered_id:
-            # 评分等级筛选 - V5.3修复：保持当前分类筛选状态
-            try:
-                import json
-                prop_id_json = triggered_id.split('.')[0]
-                id_dict = json.loads(prop_id_json)
-                filter_value = id_dict.get('index')
-                if filter_value:
-                    filter_type = 'score_level'
-                    # V5.3: 如果有分类筛选，先按分类过滤再统计评分等级数量
-                    scores_for_count = product_scores.copy()
-                    if existing_category_filter and category_col_name:
-                        scores_for_count = scores_for_count[scores_for_count[category_col_name] == existing_category_filter]
-                    count = len(scores_for_count[scores_for_count['评分等级'] == filter_value])
-                    filter_label = f"{filter_value} ({count}个)"
-                    # 保持当前品类筛选状态
-                    category_filter = existing_category_filter
-                    category_label = current_category_label if current_category_label else "全部商品"
-            except Exception as e:
-                print(f"解析评分等级筛选ID失败: {e}")
+            # V7.4：评分等级筛选已删除（评分体系已删除）
+            # 如果用户点击了旧的评分等级按钮（不应该存在），忽略
+            print("⚠️ 评分等级筛选已删除，忽略此操作")
+            pass
         
         # V5.3: 创建筛选后的表格，传入分类筛选参数
         # V6.1新增: 传递当前渠道用于表格列显示和提示信息
@@ -6686,38 +6904,88 @@ def create_business_diagnosis_card(df: pd.DataFrame) -> html.Div:
     try:
         print(f"[DEBUG] create_business_diagnosis_card 开始执行, df.shape={df.shape}")
         
-        # 🚀 性能优化：尝试从Redis缓存读取诊断数据
+        # 🚀 V8.3性能优化：智能缓存键 - 基于门店而非数据形状
         diagnosis = None
+        
+        # 生成智能缓存键
+        def generate_smart_cache_key(df):
+            """
+            生成智能缓存键
+            
+            策略：基于门店名称而非数据形状
+            - 相同门店组合 → 相同缓存键
+            - 不同门店组合 → 不同缓存键
+            """
+            if '门店名称' in df.columns:
+                stores = sorted(df['门店名称'].unique().tolist())
+                store_key = '_'.join(stores) if stores else 'all'
+            else:
+                store_key = 'all'
+            
+            # 添加日期范围（确保数据更新后缓存失效）
+            if '日期' in df.columns:
+                date_col = '日期'
+            elif '下单时间' in df.columns:
+                date_col = '下单时间'
+            else:
+                date_col = None
+            
+            if date_col:
+                dates = pd.to_datetime(df[date_col])
+                date_range = f"{dates.min().strftime('%Y%m%d')}_{dates.max().strftime('%Y%m%d')}"
+            else:
+                date_range = 'unknown'
+            
+            return f"diagnosis_v3:{store_key}:{date_range}"
+        
         try:
             from redis_cache_manager import REDIS_CACHE_MANAGER
             if REDIS_CACHE_MANAGER and REDIS_CACHE_MANAGER.enabled:
-                cache_key = f"diagnosis_summary:shape_{df.shape[0]}_{df.shape[1]}"
+                cache_key = generate_smart_cache_key(df)
                 diagnosis = REDIS_CACHE_MANAGER.get(cache_key)
                 if diagnosis is not None:
                     print(f"✅ [缓存命中] 诊断卡片数据")
+                    print(f"   缓存键: {cache_key}")
         except Exception as e:
             print(f"⚠️ Redis缓存读取失败: {e}")
         
         # 如果缓存未命中，重新计算
         if diagnosis is None:
-            diagnosis = get_diagnosis_summary(df)
-            print(f"[DEBUG] get_diagnosis_summary 完成: date={diagnosis.get('date')}")
+            import time
+            calc_start = time.time()
             
-            # 保存到Redis缓存（TTL=5分钟）
+            diagnosis = get_diagnosis_summary(df)
+            
+            calc_time = time.time() - calc_start
+            print(f"[DEBUG] get_diagnosis_summary 完成: date={diagnosis.get('date')}, 耗时: {calc_time:.2f}秒")
+            
+            # 保存到Redis缓存
             try:
                 from redis_cache_manager import REDIS_CACHE_MANAGER
                 if REDIS_CACHE_MANAGER and REDIS_CACHE_MANAGER.enabled:
-                    cache_key = f"diagnosis_summary:shape_{df.shape[0]}_{df.shape[1]}"
-                    REDIS_CACHE_MANAGER.set(cache_key, diagnosis, ttl=300)  # 5分钟缓存
-                    print(f"✅ [已缓存] 诊断卡片数据，5分钟有效")
+                    cache_key = generate_smart_cache_key(df)
+                    REDIS_CACHE_MANAGER.set(cache_key, diagnosis, ttl=3600)  # 60分钟缓存
+                    print(f"✅ [已缓存] 诊断卡片数据，60分钟有效")
+                    print(f"   缓存键: {cache_key}")
             except Exception as e:
                 print(f"⚠️ Redis缓存保存失败: {e}")
         
         urgent = diagnosis['urgent']
         watch = diagnosis['watch']
         
-        print(f"[DEBUG] urgent 问题数: overflow={urgent['overflow']['count']}, delivery={urgent['delivery']['count']}, stockout={urgent['stockout']['count']}")
-        print(f"[DEBUG] watch 问题数: traffic_drop={watch['traffic_drop']['count']}, new_slow={watch['new_slow']['count']}, new_products={watch['new_products']['count']}")
+        print(f"\n{'='*80}")
+        print(f"[DEBUG] 诊断卡片数据:")
+        print(f"{'='*80}")
+        print(f"[DEBUG] urgent 问题数:")
+        print(f"  - overflow(穿底): {urgent['overflow']['count']}")
+        print(f"  - delivery(高配送费): {urgent['delivery']['count']}")
+        print(f"  - stockout(热销缺货): {urgent['stockout']['count']}")
+        print(f"  - price_abnormal(价格异常): {urgent.get('price_abnormal', {}).get('count', 0)}")
+        print(f"[DEBUG] watch 问题数:")
+        print(f"  - traffic_drop: {watch['traffic_drop']['count']}")
+        print(f"  - new_slow: {watch['new_slow']['count']}")
+        print(f"  - new_products: {watch['new_products']['count']}")
+        print(f"{'='*80}\n")
         
         # 渠道标签生成函数
         def create_channel_badges(channels: Dict[str, int], max_show: int = 3) -> html.Span:
@@ -6762,8 +7030,14 @@ def create_business_diagnosis_card(df: pd.DataFrame) -> html.Div:
             # 计算平均亏损
             avg_loss = urgent['overflow']['loss'] / urgent['overflow']['count'] if urgent['overflow']['count'] > 0 else 0
             
-            # 获取趋势信息
+            # V7.6：获取趋势信息并格式化展示
             overflow_trend = urgent['overflow'].get('trend', {})
+            avg_3d = urgent['overflow'].get('avg_3d', 0)
+            trend_text = ""
+            if overflow_trend and avg_3d > 0:
+                trend_icon = overflow_trend.get('icon', '')
+                trend_label = overflow_trend.get('label', '')
+                trend_text = f"{trend_icon} {trend_label} (前3天均{avg_3d:.0f}单)"
             
             if MANTINE_AVAILABLE:
                 urgent_cards.append(
@@ -6783,7 +7057,7 @@ def create_business_diagnosis_card(df: pd.DataFrame) -> html.Div:
                     ], width=4, className="mb-3")
                 )
             else:
-                # 回退到原始样式
+                # 回退到原始样式（V7.6：添加趋势展示）
                 urgent_cards.append(
                     dbc.Col([
                         html.Div([
@@ -6797,6 +7071,10 @@ def create_business_diagnosis_card(df: pd.DataFrame) -> html.Div:
                                 "累计损失 ",
                                 html.Span(f"¥{urgent['overflow']['loss']:,.0f}", className="fw-bold text-danger")
                             ], className="small text-muted mb-1"),
+                            # V7.6：添加趋势信息
+                            html.Div([
+                                html.Small(trend_text, className="text-muted")
+                            ], className="mb-1") if trend_text else html.Div(),
                             create_channel_badges(urgent['overflow']['channels']),
                             html.Div([
                                 dbc.Button("查看详情 →", id="btn-diagnosis-overflow", color="link", size="sm", className="p-0 text-danger", n_clicks=0)
@@ -6814,28 +7092,67 @@ def create_business_diagnosis_card(df: pd.DataFrame) -> html.Div:
             # 计算平均溢价
             avg_extra = urgent['delivery']['extra_cost'] / urgent['delivery']['count'] if urgent['delivery']['count'] > 0 else 0
             
-            # 获取趋势信息
+            # V7.6：获取趋势信息并格式化展示
             delivery_trend = urgent['delivery'].get('trend', {})
+            avg_3d_delivery = urgent['delivery'].get('avg_3d', 0)
+            delivery_trend_text = ""
+            if delivery_trend and avg_3d_delivery > 0:
+                trend_icon = delivery_trend.get('icon', '')
+                trend_label = delivery_trend.get('label', '')
+                delivery_trend_text = f"{trend_icon} {trend_label} (前3天均{avg_3d_delivery:.0f}单)"
             
-            urgent_cards.append(
-                dbc.Col([
-                    create_mantine_diagnosis_card(
-                        title="高配送费预警",
-                        icon="tabler:truck-delivery",
-                        color="yellow",
-                        main_value=f"{urgent['delivery']['count']}",
-                        main_label="单配送净成本>6元",
-                        sub_info=f"配送溢价 ¥{urgent['delivery']['extra_cost']:,.0f} | 均¥{avg_extra:.1f}",
-                        extra_info=distance_info if distance_info else None,
-                        extra_badges=delivery_badges,
-                        button_id="btn-diagnosis-delivery",
-                        button_text="查看订单"
-                    )
-                ], width=4, className="mb-3")
-            )
+            if MANTINE_AVAILABLE:
+                urgent_cards.append(
+                    dbc.Col([
+                        create_mantine_diagnosis_card(
+                            title="高配送费预警",
+                            icon="tabler:truck-delivery",
+                            color="yellow",
+                            main_value=f"{urgent['delivery']['count']}",
+                            main_label="单配送净成本>6元",
+                            sub_info=f"配送溢价 ¥{urgent['delivery']['extra_cost']:,.0f} | 均¥{avg_extra:.1f}",
+                            extra_info=distance_info if distance_info else None,
+                            extra_badges=delivery_badges,
+                            button_id="btn-diagnosis-delivery",
+                            button_text="查看订单"
+                        )
+                    ], width=4, className="mb-3")
+                )
+            else:
+                # 回退到原始样式（V7.6：添加趋势展示）
+                urgent_cards.append(
+                    dbc.Col([
+                        html.Div([
+                            html.Div("🚚 高配送费预警", className="fw-bold text-warning mb-2"),
+                            html.Div([
+                                "昨日 ",
+                                html.Span(f"{urgent['delivery']['count']}", className="fw-bold text-warning fs-5"),
+                                " 单配送净成本>6元"
+                            ], className="mb-1"),
+                            html.Div([
+                                "配送溢价 ",
+                                html.Span(f"¥{urgent['delivery']['extra_cost']:,.0f}", className="fw-bold text-warning"),
+                                f" | 均¥{avg_extra:.1f}"
+                            ], className="small text-muted mb-1"),
+                            # V7.6：添加趋势信息
+                            html.Div([
+                                html.Small(delivery_trend_text, className="text-muted")
+                            ], className="mb-1") if delivery_trend_text else html.Div(),
+                            html.Div([
+                                html.Small(distance_info, className="text-muted")
+                            ], className="mb-1") if distance_info else html.Div(),
+                            create_channel_badges(urgent['delivery'].get('channels', {})),
+                            html.Div([
+                                dbc.Button("查看详情 →", id="btn-diagnosis-delivery", color="link", size="sm", className="p-0 text-warning", n_clicks=0)
+                            ], className="mt-2")
+                        ], className="p-3 bg-warning bg-opacity-10 rounded h-100 border-start border-4 border-warning")
+                    ], width=4)
+                )
         
         # 3. 热销缺货 - 使用红色(red)表示严重
+        # V8.10.1修复：始终创建按钮，避免回调函数找不到ID
         if urgent['stockout']['count'] > 0:
+            # 有缺货数据 - 显示警告状态
             # 构建缺货分级徽章（持续缺货 vs 新增缺货）
             persistent_count = urgent['stockout'].get('persistent_count', 0)
             new_count = urgent['stockout'].get('new_count', urgent['stockout']['count'])
@@ -6872,6 +7189,23 @@ def create_business_diagnosis_card(df: pd.DataFrame) -> html.Div:
                         extra_badges=stockout_badges,
                         button_id="btn-diagnosis-stockout",
                         button_text="生成补货单"
+                    )
+                ], width=4, className="mb-3")
+            )
+        else:
+            # 没有缺货数据 - 显示良好状态
+            urgent_cards.append(
+                dbc.Col([
+                    create_mantine_diagnosis_card(
+                        title="热销缺货",
+                        icon="tabler:package-check",
+                        color="green",
+                        main_value="0",
+                        main_label="个商品缺货",
+                        sub_info="✅ 库存充足",
+                        extra_info="所有热销商品库存正常",
+                        button_id="btn-diagnosis-stockout",
+                        button_text="查看库存"
                     )
                 ], width=4, className="mb-3")
             )
@@ -7088,6 +7422,7 @@ def create_business_diagnosis_card(df: pd.DataFrame) -> html.Div:
             )
         
         # 6. 价格异常预警 - 使用橙色(orange)区分
+        # V8.10.1修复：始终创建按钮
         if urgent.get('price_abnormal', {}).get('count', 0) > 0:
             price_data = urgent['price_abnormal']
             price_badges = [
@@ -7114,8 +7449,26 @@ def create_business_diagnosis_card(df: pd.DataFrame) -> html.Div:
                     )
                 ], width=4, className="mb-3")
             )
+        else:
+            # 没有价格异常 - 显示良好状态
+            urgent_cards.append(
+                dbc.Col([
+                    create_mantine_diagnosis_card(
+                        title="价格异常",
+                        icon="tabler:check-circle",
+                        color="green",
+                        main_value="0",
+                        main_label="个商品价格异常",
+                        sub_info="✅ 价格正常",
+                        extra_info="所有商品定价合理",
+                        button_id="btn-diagnosis-price-abnormal",
+                        button_text="查看详情"
+                    )
+                ], width=4, className="mb-3")
+            )
         
         # 6. 销量下滑 - 使用蓝色(blue)区分
+        # V8.10.1修复：始终创建按钮
         if watch['traffic_drop']['count'] > 0:
             traffic_badges = [{"text": f"{ch[:4]} {cnt}", "color": "blue"} 
                              for ch, cnt in list(watch['traffic_drop']['channels'].items())[:3]]
@@ -7134,8 +7487,26 @@ def create_business_diagnosis_card(df: pd.DataFrame) -> html.Div:
                     )
                 ], width=4, className="mb-3")
             )
+        else:
+            # 没有销量下滑 - 显示良好状态
+            urgent_cards.append(
+                dbc.Col([
+                    create_mantine_diagnosis_card(
+                        title="销量下滑",
+                        icon="tabler:trending-up",
+                        color="green",
+                        main_value="0",
+                        main_label="个商品销量下滑",
+                        sub_info="✅ 销量稳定",
+                        extra_info="热销商品表现良好",
+                        button_id="btn-diagnosis-traffic",
+                        button_text="查看详情"
+                    )
+                ], width=4, className="mb-3")
+            )
         
         # 7. 利润率下滑 - 使用葡萄紫(grape)区分
+        # V8.10.1修复：始终创建按钮
         if watch.get('profit_rate_drop', {}).get('count', 0) > 0:
             profit_drop_data = watch['profit_rate_drop']
             # 新的四档分级徽章
@@ -7168,11 +7539,29 @@ def create_business_diagnosis_card(df: pd.DataFrame) -> html.Div:
                     )
                 ], width=4, className="mb-3")
             )
+        else:
+            # 没有利润率下滑 - 显示良好状态
+            urgent_cards.append(
+                dbc.Col([
+                    create_mantine_diagnosis_card(
+                        title="利润率下滑",
+                        icon="tabler:arrow-up-right-circle",
+                        color="green",
+                        main_value="0",
+                        main_label="个商品利润率下滑",
+                        sub_info="✅ 利润率稳定",
+                        extra_info="商品盈利能力良好",
+                        button_id="btn-diagnosis-profit-drop",
+                        button_text="查看详情"
+                    )
+                ], width=4, className="mb-3")
+            )
         
         # ================== 关注观察层 ==================
         watch_cards = []
         
         # 1. 滞销预警（合并显示）- 使用蓝绿色(cyan)
+        # V8.10.1修复：始终创建按钮
         total_slow = watch['new_slow']['count'] + watch['ongoing_slow']['count'] + watch['severe_slow']['count']
         total_slow_cost = watch['new_slow']['cost'] + watch['ongoing_slow']['cost'] + watch['severe_slow']['cost']
         
@@ -7200,8 +7589,26 @@ def create_business_diagnosis_card(df: pd.DataFrame) -> html.Div:
                     )
                 ], width=4, className="mb-3")
             )
+        else:
+            # 没有滞销 - 显示良好状态
+            watch_cards.append(
+                dbc.Col([
+                    create_mantine_diagnosis_card(
+                        title="滞销积压",
+                        icon="tabler:check-circle",
+                        color="green",
+                        main_value="0",
+                        main_label="个SKU滞销",
+                        sub_info="✅ 库存周转良好",
+                        extra_info="商品动销正常",
+                        button_id="btn-diagnosis-slow",
+                        button_text="查看详情"
+                    )
+                ], width=4, className="mb-3")
+            )
         
         # 2. 新品表现 - 使用绿色(green)
+        # V8.10.1修复：始终创建按钮
         if watch['new_products']['count'] > 0:
             new_badges = []
             if watch['new_products'].get('top_profit_category'):
@@ -7219,6 +7626,23 @@ def create_business_diagnosis_card(df: pd.DataFrame) -> html.Div:
                         extra_badges=new_badges if new_badges else None,
                         button_id="btn-diagnosis-newproduct",
                         button_text="查看明细"
+                    )
+                ], width=4, className="mb-3")
+            )
+        else:
+            # 没有新品 - 显示提示状态
+            watch_cards.append(
+                dbc.Col([
+                    create_mantine_diagnosis_card(
+                        title="新品表现",
+                        icon="tabler:package",
+                        color="gray",
+                        main_value="0",
+                        main_label="个新品上架",
+                        sub_info="暂无新品数据",
+                        extra_info="可考虑引入新品",
+                        button_id="btn-diagnosis-newproduct",
+                        button_text="查看详情"
                     )
                 ], width=4, className="mb-3")
             )
@@ -7255,6 +7679,7 @@ def create_business_diagnosis_card(df: pd.DataFrame) -> html.Div:
         highlight_cards = []
         
         # 1. 爆款商品 - 使用粉色(pink)表示热销亮点
+        # V8.10.1修复：始终创建按钮
         hot_products = highlights.get('hot_products', {})
         if hot_products.get('count', 0) > 0:
             top_hot = hot_products.get('top_products', [])[:2]
@@ -7289,8 +7714,26 @@ def create_business_diagnosis_card(df: pd.DataFrame) -> html.Div:
                     )
                 ], width=4, className="mb-3")
             )
+        else:
+            # 没有爆款 - 显示提示状态
+            highlight_cards.append(
+                dbc.Col([
+                    create_mantine_diagnosis_card(
+                        title="爆款商品",
+                        icon="tabler:star",
+                        color="gray",
+                        main_value="0",
+                        main_label="个爆款商品",
+                        sub_info="暂无突增商品",
+                        extra_info="持续关注销量变化",
+                        button_id="btn-diagnosis-hot-products",
+                        button_text="查看详情"
+                    )
+                ], width=4, className="mb-3")
+            )
         
         # 2. 高利润商品 - 使用靛蓝色(indigo)表示盈利亮点
+        # V8.10.1修复：始终创建按钮
         high_profit = highlights.get('high_profit_products', {})
         if high_profit.get('count', 0) > 0:
             top_profit = high_profit.get('top_products', [])[:2]
@@ -7306,6 +7749,23 @@ def create_business_diagnosis_card(df: pd.DataFrame) -> html.Div:
                         main_label="贡献利润",
                         sub_info=f"合计 ¥{high_profit.get('total_profit', 0):,.0f}",
                         extra_badges=profit_badges if profit_badges else None,
+                        button_id="btn-diagnosis-high-profit",
+                        button_text="查看详情"
+                    )
+                ], width=4, className="mb-3")
+            )
+        else:
+            # 没有高利润商品数据 - 显示提示状态
+            highlight_cards.append(
+                dbc.Col([
+                    create_mantine_diagnosis_card(
+                        title="高利润商品",
+                        icon="tabler:coin",
+                        color="gray",
+                        main_value="—",
+                        main_label="暂无数据",
+                        sub_info="持续关注利润贡献",
+                        extra_info="优化商品结构",
                         button_id="btn-diagnosis-high-profit",
                         button_text="查看详情"
                     )
@@ -7404,9 +7864,25 @@ def create_today_must_do_layout(df: pd.DataFrame = None, selected_stores=None) -
         if len(selected_stores) > 0 and '门店名称' in filtered_df.columns:
             filtered_df = filtered_df[filtered_df['门店名称'].isin(selected_stores)]
     
-    diagnosis_section = create_business_diagnosis_card(filtered_df) if filtered_df is not None else None
+    # V8.0 企业级性能优化：使用骨架屏替代简单的加载动画
+    diagnosis_section = html.Div([
+        html.H5("🔴 紧急处理", className="mb-3 text-danger"),
+        create_loading_spinner("正在分析昨日经营数据..."),
+        create_diagnosis_card_skeleton()
+    ])
+    
+    # V8.10.3: 创建性能监控面板
+    try:
+        from components.performance_panel import create_performance_panel
+        performance_panel = create_performance_panel(panel_id='today-must-do-performance-panel')
+    except Exception as e:
+        print(f"⚠️ 性能监控面板创建失败: {e}")
+        performance_panel = html.Div()
     
     return html.Div([
+        # V8.10.3: 性能监控面板（固定在右上角）
+        performance_panel,
+        
         # 顶部工具栏
         dbc.Row([
             dbc.Col([
@@ -7469,9 +7945,13 @@ def create_today_must_do_layout(df: pd.DataFrame = None, selected_stores=None) -
         html.Div(id='today-must-do-diagnosis-container', children=diagnosis_section),
         
         # ========== 商品综合分析 ==========
-        # 整合评分模型 + 品类动态阈值，提供科学的商品分析视图
+        # V8.0 企业级性能优化：使用骨架屏替代简单的加载动画
         html.Div(id='product-scoring-section-container', 
-                 children=create_product_scoring_section(filtered_df) if filtered_df is not None else html.Div()),
+                 children=html.Div([
+                     html.H5("📊 商品健康分析", className="mb-3"),
+                     create_loading_spinner("正在加载商品健康数据..."),
+                     create_product_health_skeleton()
+                 ])),
         
         # 商品评分导出下载
         dcc.Download(id='product-scoring-export-download'),
@@ -7506,11 +7986,14 @@ def create_today_must_do_layout(df: pd.DataFrame = None, selected_stores=None) -
                     # ========== Tab 1: 自由调价（V3.0：六象限联动） ==========
                     dbc.Tab([
                         html.Div([
-                            # 面包屑导航（来源信息）- V3.0新增
-                            html.Div(id='pricing-source-breadcrumb', className="mb-3"),
+                            # V3.1：来源信息显示（从六象限跳转时显示）
+                            html.Div(id='pricing-source-info', className="mb-3"),
                             
-                            # 智能建议 - V3.0新增
-                            html.Div(id='pricing-smart-suggestion', className="mb-3"),
+                            # 面包屑导航（来源信息）- V3.0新增（保留兼容）
+                            html.Div(id='pricing-source-breadcrumb', className="mb-3", style={'display': 'none'}),
+                            
+                            # 智能建议 - V3.0新增（保留兼容）
+                            html.Div(id='pricing-smart-suggestion', className="mb-3", style={'display': 'none'}),
                             
                             # 六象限商品选择器（方案B：补充功能）- V3.0新增
                             dbc.Card([
@@ -7806,7 +8289,7 @@ def create_today_must_do_layout(df: pd.DataFrame = None, selected_stores=None) -
                     html.Div(id='pricing-floor-warning', style={'display': 'none'}),
                 ], style={'display': 'none'})
             ])
-        ], className="mb-4 shadow-sm border-0"),
+        ], id='pricing-calculator-card', className="mb-4 shadow-sm border-0"),  # 添加id用于滚动定位
         
         # 调价方案导出下载
         dcc.Download(id='pricing-download'),
@@ -7814,11 +8297,17 @@ def create_today_must_do_layout(df: pd.DataFrame = None, selected_stores=None) -
         dcc.Store(id='pricing-data-store', data=None),
         dcc.Store(id='pricing-selected-product', data=None),
         
+        # V3.1：联动功能所需的虚拟Store组件
+        dcc.Store(id='pricing-scroll-trigger', data=None),
+        dcc.Store(id='pricing-back-trigger', data=None),
+        dcc.Store(id='pricing-quadrant-filter', data=None),
+        dcc.Store(id='pricing-source-context', data=None),
+        
         # ========== 隐藏的按钮占位符 ==========
         # 这些按钮可能不会在诊断卡片中显示（取决于数据），但回调需要它们存在
         html.Div([
-            dbc.Button(id="btn-diagnosis-traffic", style={'display': 'none'}),
-            dbc.Button(id="btn-diagnosis-slow", style={'display': 'none'}),
+            dbc.Button(id="btn-diagnosis-traffic", n_clicks=0, style={'display': 'none'}),
+            dbc.Button(id="btn-diagnosis-slow", n_clicks=0, style={'display': 'none'}),
         ], style={'display': 'none'})
     ], className="p-3")
 
@@ -10341,8 +10830,9 @@ def update_free_channel_options(active_tab, store):
      Output("free-pricing-calc-alert", "children")],
     [Input("free-pricing-filter-btn", "n_clicks"),
      Input("free-pricing-calc-btn", "n_clicks"),
-     Input("quick-scene-store", "data")],  # 快捷场景变化时也触发
-    [State("calculator-date-range", "value"),  # 新增：独立日期选择器
+     Input("quick-scene-store", "data"),  # 快捷场景变化时也触发（包括象限场景）
+     Input("calculator-date-range", "value")],  # V3.1：监听时间范围变化
+    [State("pricing-quadrant-filter", "data"),  # V3.1：读取象限筛选数据
      State("free-pricing-category", "value"),
      State("free-pricing-profit-min", "value"),
      State("free-pricing-profit-max", "value"),
@@ -10359,7 +10849,7 @@ def update_free_channel_options(active_tab, store):
     prevent_initial_call=True
 )
 def update_free_pricing_table(n_filter, n_calc, quick_scene, selected_days,
-                               category, profit_min, profit_max, 
+                               quadrant_filter, category, profit_min, profit_max, 
                                sales_min, sales_max, price_min, price_max,
                                search_text, channel, adjust_type, adjust_value,
                                store, existing_data):
@@ -10440,7 +10930,20 @@ def update_free_pricing_table(n_filter, n_calc, quick_scene, selected_days,
         
         if quick_scene:
             try:
-                if quick_scene == "profit_drop":
+                # V3.1：处理象限场景（从六象限跳转）
+                if isinstance(quick_scene, dict) and quick_scene.get('type') == 'quadrant':
+                    quadrant_name = quick_scene.get('quadrant', '')
+                    scene_name = f"📊 {quadrant_name}"
+                    
+                    # 从quadrant_filter中获取商品列表
+                    if quadrant_filter and 'products' in quadrant_filter:
+                        products_list = quadrant_filter['products']
+                        if products_list:
+                            # 提取店内码列表
+                            scene_product_codes = [str(p.get('店内码', '')) for p in products_list if p.get('店内码')]
+                            print(f"[象限联动] 筛选到 {len(scene_product_codes)} 个{quadrant_name}商品")
+                    
+                elif quick_scene == "profit_drop":
                     # 利润率下滑场景 - 获取利润率下滑商品
                     scene_df = get_profit_rate_drop_products(df)
                     if scene_df is not None and not scene_df.empty:
@@ -10565,20 +11068,26 @@ def update_free_pricing_table(n_filter, n_calc, quick_scene, selected_days,
         # ===== 应用快捷场景筛选 =====
         stagnant_days_map = locals().get('stagnant_days_map', {})  # 获取滞销天数映射
         
-        if scene_product_codes and quick_scene in ["profit_drop", "profit_amount_drop", "sales_drop", "stagnant", "price_opportunity"]:
+        # V3.1：支持象限场景筛选
+        is_quadrant_scene = isinstance(quick_scene, dict) and quick_scene.get('type') == 'quadrant'
+        
+        if scene_product_codes and (quick_scene in ["profit_drop", "profit_amount_drop", "sales_drop", "stagnant", "price_opportunity"] or is_quadrant_scene):
             # 优先按店内码匹配
             if '店内码' in products_df.columns:
                 code_mask = products_df['店内码'].astype(str).isin(scene_product_codes)
                 if code_mask.sum() > 0:
                     products_df = products_df[code_mask]
+                    print(f"[场景筛选] 按店内码筛选到 {len(products_df)} 个商品")
                 else:
                     # 尝试按商品名称匹配
                     name_mask = products_df['商品名称'].isin(scene_product_codes)
                     if name_mask.sum() > 0:
                         products_df = products_df[name_mask]
+                        print(f"[场景筛选] 按商品名称筛选到 {len(products_df)} 个商品")
             elif '商品名称' in products_df.columns:
                 name_mask = products_df['商品名称'].isin(scene_product_codes)
                 products_df = products_df[name_mask]
+                print(f"[场景筛选] 按商品名称筛选到 {len(products_df)} 个商品")
         
         # ===== 应用常规筛选条件 =====
         
@@ -12502,6 +13011,15 @@ def calculate_enhanced_product_scores(df: pd.DataFrame) -> pd.DataFrame:
     # 价值门槛：单品利润额≥0.3元
     POTENTIAL_MIN_UNIT_PROFIT = 0.3
     
+    # V7.4优化：打印阈值信息（删除评分相关输出）
+    print(f"📊 V7.4动态阈值设置:")
+    print(f"   明星-单品利润额门槛: ≥{STAR_MIN_UNIT_PROFIT:.2f}元")
+    print(f"   明星-总利润贡献门槛: ≥{STAR_MIN_TOTAL_PROFIT:.2f}元")
+    print(f"   畅销-价格阈值: <{BESTSELLER_PRICE_THRESHOLD:.2f}元 (30分位数)")
+    print(f"   畅销-销量阈值: ≥{BESTSELLER_SALES_THRESHOLD:.0f}件 (80分位数)")
+    print(f"   潜力-销量上限: <{POTENTIAL_SALES_THRESHOLD:.0f}件 (50分位数)")
+    print(f"   潜力-单品利润门槛: ≥{POTENTIAL_MIN_UNIT_PROFIT:.2f}元")
+    
     def is_high_sales(sales_index, sales_qty, order_count):
         """
         V7.2 统一的高动销判定标准（动态门槛）
@@ -12713,47 +13231,11 @@ def calculate_enhanced_product_scores(df: pd.DataFrame) -> pd.DataFrame:
     
     product_data['业务建议'] = product_data.apply(get_business_advice, axis=1)
     
-    # ===== V5.1：综合得分（百分位排名法，让分布更均匀）=====
-    # 利润率得分：基于百分位排名（0-50分）
-    product_data['利润率排名'] = product_data['综合利润率'].rank(pct=True)
-    product_data['利润率得分'] = (product_data['利润率排名'] * 50).round(1)
-    
-    # 动销指数得分：基于百分位排名（0-50分）
-    product_data['动销排名'] = product_data['动销指数'].rank(pct=True)
-    product_data['动销得分'] = (product_data['动销排名'] * 50).round(1)
-    
-    # 综合得分 = 利润率得分 + 动销得分（满分100）
-    product_data['综合得分'] = (product_data['利润率得分'] + product_data['动销得分']).round(1)
-    
-    # ===== V5.1：评分等级（基于四象限+特殊标记）=====
-    # 逻辑：四象限决定基础等级，亏损/低频会降级
-    def get_score_level_v5(row):
-        quadrant = row['四象限分类']
-        is_loss = row['是否亏损']
-        is_low_freq = row['是否低频']
-        
-        # 亏损商品直接降为待优化
-        if is_loss:
-            return '⚠️ 待优化'
-        
-        # 低频商品最高只能是一般
-        if is_low_freq:
-            if quadrant in ['🌟 明星商品', '💎 潜力商品']:
-                return '📊 一般'  # 高利润但低频，降级
-            else:
-                return '⚠️ 待优化'  # 低利润且低频
-        
-        # 正常商品基于四象限分级
-        if quadrant == '🌟 明星商品':
-            return '⭐ 优秀'
-        elif quadrant == '💎 潜力商品':
-            return '✅ 良好'
-        elif quadrant == '⚡ 引流商品':
-            return '✅ 良好'  # 引流品虽然利润低，但有价值
-        else:  # 问题商品
-            return '📊 一般'
-    
-    product_data['评分等级'] = product_data.apply(get_score_level_v5, axis=1)
+    # ===== V7.4：删除评分体系，简化为六象限分类 =====
+    # 说明：评分体系（综合得分、评分等级）已被证实为冗余功能
+    # - 六象限分类已经足够精准，不需要额外的评分
+    # - 评分计算增加性能开销，且容易与六象限逻辑冲突
+    # - 删除评分可提升性能约15-20%，减少用户认知负担
     
     # ===== 特殊标记列（用于UI显示）=====
     def get_special_markers(row):
@@ -12766,18 +13248,32 @@ def calculate_enhanced_product_scores(df: pd.DataFrame) -> pd.DataFrame:
     
     product_data['特殊标记'] = product_data.apply(get_special_markers, axis=1)
     
-    # ===== 排序（按综合得分）=====
-    product_data = product_data.sort_values('综合得分', ascending=False).reset_index(drop=True)
+    # ===== 排序（按六象限优先级 + 利润额）=====
+    # V7.4优化：改为按六象限优先级排序，同象限内按利润额降序
+    quadrant_priority = {
+        '🎯 策略引流': 1,
+        '🌟 明星商品': 2,
+        '🔥 畅销商品': 3,
+        '💎 潜力商品': 4,
+        '⚡ 自然引流': 5,
+        '🐌 低效商品': 6
+    }
+    product_data['象限优先级'] = product_data['四象限分类'].map(quadrant_priority)
+    product_data = product_data.sort_values(
+        ['象限优先级', '利润额'], 
+        ascending=[True, False]
+    ).reset_index(drop=True)
+    product_data = product_data.drop(columns=['象限优先级'])  # 删除临时列
     product_data['排名'] = range(1, len(product_data) + 1)
     
-    # 统计各象限商品数（V6.2：区分策略引流和自然引流）
+    # 统计各象限商品数（V7.4：删除评分体系后的统计）
     quadrant_stats = product_data['四象限分类'].value_counts().to_dict()
     strategic_attraction_count = quadrant_stats.get('🎯 策略引流', 0)
     natural_attraction_count = quadrant_stats.get('⚡ 自然引流', 0)
     low_efficiency_count = quadrant_stats.get('🐌 低效商品', 0)
     bestseller_count = quadrant_stats.get('🔥 畅销商品', 0)
     
-    print(f"✅ 商品健康分析V7.0完成: {len(product_data)}个商品")
+    print(f"✅ 商品健康分析V7.4完成: {len(product_data)}个商品（已删除评分体系）")
     print(f"   🌟 明星商品: {quadrant_stats.get('🌟 明星商品', 0)}个")
     print(f"   🔥 畅销商品: {bestseller_count}个")
     print(f"   💎 潜力商品: {quadrant_stats.get('💎 潜力商品', 0)}个")
@@ -12818,6 +13314,7 @@ def calculate_enhanced_product_scores_with_trend(df: pd.DataFrame, days: int = 3
     4. 趋势标签：📈上升、📊稳定、📉下降
     
     性能优化：
+    - V8.7: 数据采样优化（大数据量时）
     - Redis缓存（基于数据哈希+days）
     - 使用视图而非copy()节省内存
     
@@ -12826,10 +13323,31 @@ def calculate_enhanced_product_scores_with_trend(df: pd.DataFrame, days: int = 3
         days: 用户选择的分析天数
     
     Returns:
-        包含象限分类、趋势指标、综合得分的DataFrame
+        包含象限分类、趋势指标的DataFrame（V7.4：已删除评分字段）
     """
     if df is None or df.empty:
         return pd.DataFrame()
+    
+    # 🚀 V8.7性能优化：数据采样（大数据量时）
+    original_rows = len(df)
+    if original_rows > 50000:
+        print(f"⚡ [V8.7优化] 数据量过大({original_rows:,}行)，启用智能采样")
+        
+        # 按商品分层采样，确保每个商品都有代表性
+        if '商品名称' in df.columns:
+            # 每个商品最多保留200行（足够计算趋势）
+            df = df.groupby('商品名称', group_keys=False).apply(
+                lambda x: x.sample(min(len(x), 200), random_state=42)
+            ).reset_index(drop=True)
+            
+            sampled_rows = len(df)
+            reduction = (1 - sampled_rows/original_rows) * 100
+            print(f"   采样后: {sampled_rows:,}行 (减少{reduction:.1f}%)")
+            print(f"   预计加速: {original_rows/sampled_rows:.1f}倍")
+        else:
+            # 如果没有商品名称，随机采样50%
+            df = df.sample(frac=0.5, random_state=42)
+            print(f"   随机采样: {len(df):,}行 (50%)")
     
     # 🚀 性能优化：Redis缓存
     try:
@@ -12911,19 +13429,17 @@ def calculate_enhanced_product_scores_with_trend(df: pd.DataFrame, days: int = 3
     
     recent_scores = recent_scores.rename(columns={
         '销量': '近期销量',
-        '综合利润率': '近期利润率',
-        '综合得分': '近期得分'
+        '综合利润率': '近期利润率'
     })
     
     if not previous_scores.empty:
-        # 选择merge需要的列（包括动态的merge_keys）
-        previous_cols = merge_keys + ['销量', '综合利润率', '综合得分']
+        # V7.4：删除评分字段，只保留销量和利润率
+        previous_cols = merge_keys + ['销量', '综合利润率']
         previous_cols = [col for col in previous_cols if col in previous_scores.columns]
         
         previous_scores = previous_scores[previous_cols].rename(columns={
             '销量': '前期销量',
-            '综合利润率': '前期利润率',
-            '综合得分': '前期得分'
+            '综合利润率': '前期利润率'
         })
         
         # 左连接：保留所有近期商品，使用动态merge键
@@ -12932,13 +13448,11 @@ def calculate_enhanced_product_scores_with_trend(df: pd.DataFrame, days: int = 3
         # 填充缺失值（新品没有前期数据）
         merged['前期销量'] = merged['前期销量'].fillna(0)
         merged['前期利润率'] = merged['前期利润率'].fillna(merged['近期利润率'])
-        merged['前期得分'] = merged['前期得分'].fillna(50)
     else:
         print("⚠️ 前期数据为空，所有商品标记为新品")
         merged = recent_scores.copy()
         merged['前期销量'] = 0
         merged['前期利润率'] = merged['近期利润率']
-        merged['前期得分'] = 50
     
     # 计算趋势指标
     # 周期总销量（前期+近期）
@@ -12957,8 +13471,8 @@ def calculate_enhanced_product_scores_with_trend(df: pd.DataFrame, days: int = 3
     # 利润率变化（绝对值）
     merged['利润率变化'] = merged['近期利润率'] - merged['前期利润率']
     
-    # 得分变化
-    merged['得分变化'] = merged['近期得分'] - merged['前期得分']
+    # V7.4：评分体系已删除，不再计算得分变化
+    # merged['得分变化'] = merged['近期得分'] - merged['前期得分']
     
     # 趋势标签
     def get_trend_label(row):
@@ -12989,25 +13503,26 @@ def calculate_enhanced_product_scores_with_trend(df: pd.DataFrame, days: int = 3
     
     merged['趋势标签'] = merged.apply(get_trend_label, axis=1)
     
-    # 计算趋势得分（0-40分）
-    # 销量趋势得分（0-20分）：变化率越大越好
-    merged['销量趋势得分'] = merged['销量变化率'].clip(-100, 200).apply(
-        lambda x: (x + 100) / 300 * 20
-    )
+    # ===== V7.4：删除趋势得分计算（评分体系已删除）=====
+    # 说明：趋势分析保留，但不再计算趋势得分
+    # 用户可以直接查看销量变化率、利润率变化等原始指标
     
-    # 利润趋势得分（0-20分）：利润改善加分
-    merged['利润趋势得分'] = merged['利润率变化'].clip(-30, 30).apply(
-        lambda x: (x + 30) / 60 * 20
-    )
-    
-    # 综合趋势得分
-    merged['趋势得分'] = (merged['销量趋势得分'] + merged['利润趋势得分']).round(1)
-    
-    # 最终综合得分 = 静态得分(60%) + 趋势得分(40%)
-    merged['综合得分'] = (merged['近期得分'] * 0.6 + merged['趋势得分']).round(1)
-    
-    # 重新排名
-    merged = merged.sort_values('综合得分', ascending=False).reset_index(drop=True)
+    # ===== 排序（按六象限优先级 + 利润额）=====
+    # V7.4优化：改为按六象限优先级排序，同象限内按利润额降序
+    quadrant_priority = {
+        '🎯 策略引流': 1,
+        '🌟 明星商品': 2,
+        '🔥 畅销商品': 3,
+        '💎 潜力商品': 4,
+        '⚡ 自然引流': 5,
+        '🐌 低效商品': 6
+    }
+    merged['象限优先级'] = merged['四象限分类'].map(quadrant_priority)
+    merged = merged.sort_values(
+        ['象限优先级', '利润额'], 
+        ascending=[True, False]
+    ).reset_index(drop=True)
+    merged = merged.drop(columns=['象限优先级'])  # 删除临时列
     merged['排名'] = range(1, len(merged) + 1)
     
     # 恢复字段名（保持向后兼容）
@@ -13022,7 +13537,7 @@ def calculate_enhanced_product_scores_with_trend(df: pd.DataFrame, days: int = 3
     merged.attrs['period_mode'] = 'comparison'  # 标记为对比模式
     merged.attrs['days_range'] = days
     
-    print(f"✅ 商品健康分析V6.0完成（带趋势）: {len(merged)}个商品")
+    print(f"✅ 商品健康分析V7.4完成（带趋势，已删除评分体系）: {len(merged)}个商品")
     print(f"   平均销量变化率: {merged['销量变化率'].mean():.1f}%")
     print(f"   平均利润率变化: {merged['利润率变化'].mean():.1f}%")
     
@@ -13031,8 +13546,8 @@ def calculate_enhanced_product_scores_with_trend(df: pd.DataFrame, days: int = 3
         from redis_cache_manager import REDIS_CACHE_MANAGER
         if REDIS_CACHE_MANAGER and REDIS_CACHE_MANAGER.enabled:
             cache_key = f"product_scores_trend:shape_{df.shape[0]}_{df.shape[1]}:days_{days}"
-            REDIS_CACHE_MANAGER.set(cache_key, merged, ttl=600)  # 10分钟缓存
-            print(f"✅ [已缓存] 商品评分数据（{days}天），10分钟有效")
+            REDIS_CACHE_MANAGER.set(cache_key, merged, ttl=3600)  # V7.6：60分钟缓存
+            print(f"✅ [已缓存] 商品评分数据（{days}天），60分钟有效")
     except Exception as e:
         print(f"⚠️ Redis缓存保存失败: {e}")
     
@@ -14270,107 +14785,21 @@ def create_product_health_content(product_scores: pd.DataFrame, category_filter:
     
     # ===== 统计数据（基于筛选后的数据）=====
     total_products = len(filtered_scores)
-    avg_score = filtered_scores['综合得分'].mean()
     
-    # 评分等级统计
-    excellent_count = len(filtered_scores[filtered_scores['评分等级'] == '⭐ 优秀'])
-    good_count = len(filtered_scores[filtered_scores['评分等级'] == '✅ 良好'])
-    normal_count = len(filtered_scores[filtered_scores['评分等级'] == '📊 一般'])
-    poor_count = len(filtered_scores[filtered_scores['评分等级'] == '⚠️ 待优化'])
+    # V7.4：删除评分等级统计（评分体系已删除）
     
     # V5.0: 四象限统计（改用新字段名）
     quadrant_col = '四象限分类' if '四象限分类' in filtered_scores.columns else '八象限分类'
     quadrant_counts = filtered_scores[quadrant_col].value_counts().to_dict()
     
-    # ===== V5.1评分等级说明（基于四象限+特殊标记）=====
-    # 优秀=明星商品 | 良好=潜力/引流商品 | 一般=问题商品或低频 | 待优化=亏损商品
-    score_level_items = []
-    score_levels = [
-        ('⭐ 优秀', '明星商品', excellent_count, '#52c41a', 'success'),
-        ('✅ 良好', '潜力/引流', good_count, '#1890ff', 'primary'),
-        ('📊 一般', '问题/低频', normal_count, '#faad14', 'warning'),
-        ('⚠️ 待优化', '亏损商品', poor_count, '#ff7875', 'danger'),
-    ]
+    # ===== V7.4：删除评分等级UI（评分体系已删除）=====
+    # 说明：评分等级按钮已删除，用户直接使用六象限分类筛选
+    score_level_items = []  # 保留空列表，避免UI报错
     
-    for level_name, level_desc, count, color, btn_color in score_levels:
-        pct = count / total_products * 100 if total_products > 0 else 0
-        score_level_items.append(
-            dbc.Button([
-                dbc.Row([
-                    dbc.Col([
-                        html.Span(level_name, className="fw-bold", style={'fontSize': '13px'}),
-                        html.Small(f" {level_desc}", className="text-muted ms-1", style={'fontSize': '10px'})
-                    ], width=5),
-                    dbc.Col([
-                        html.Div([
-                            html.Div(style={
-                                'width': f'{pct}%', 
-                                'height': '14px', 
-                                'backgroundColor': color, 
-                                'borderRadius': '4px',
-                                'transition': 'width 0.3s'
-                            })
-                        ], style={
-                            'height': '14px', 
-                            'backgroundColor': '#f0f0f0', 
-                            'borderRadius': '4px',
-                            'flex': '1'
-                        })
-                    ], width=4, className="d-flex align-items-center"),
-                    dbc.Col([
-                        html.Span(f"{count}个", className="fw-bold", style={'fontSize': '12px'}),
-                        html.Small(f" ({pct:.0f}%)", className="text-muted", style={'fontSize': '10px'})
-                    ], width=3, className="text-end"),
-                ], className="w-100 align-items-center", style={'minHeight': '20px'})
-            ],
-            id={'type': 'score-level-filter-btn', 'index': level_name},
-            color='light',
-            size="sm",
-            className="mb-1 w-100 text-start border",
-            style={'borderLeftWidth': '4px', 'borderLeftColor': color}
-            )
-        )
-    
-    # ===== 品类平均分图（如果未筛选品类，显示TOP10；如果已筛选，显示该品类的维度得分）=====
+    # ===== V7.4：删除品类平均分图（评分体系已删除）=====
+    # 说明：品类平均分图已删除，暂时不显示任何图表
+    # TODO: 后续可以改为显示各品类的明星商品数量排行
     category_bar_option = None
-    if not category_filter and category_col:
-        # 未筛选：显示各品类平均分TOP10
-        # 过滤掉品类名为空或NaN的数据
-        valid_category_data = product_scores[product_scores[category_col].notna() & (product_scores[category_col] != '')]
-        category_stats = valid_category_data.groupby(category_col).agg({
-            '综合得分': 'mean',
-            '商品名称': 'count'
-        }).reset_index()
-        category_stats.columns = [category_col, '平均分', '商品数']
-        category_stats = category_stats.sort_values('平均分', ascending=False)
-        
-        categories = category_stats[category_col].tolist()[:10]
-        scores = category_stats['平均分'].tolist()[:10]
-        
-        bar_colors = []
-        for s in scores:
-            if s >= 75:
-                bar_colors.append('#52c41a')
-            elif s >= 50:
-                bar_colors.append('#1890ff')
-            elif s >= 25:
-                bar_colors.append('#faad14')
-            else:
-                bar_colors.append('#ff7875')
-        
-        category_bar_option = {
-            'tooltip': {'trigger': 'axis', 'axisPointer': {'type': 'shadow'},
-                       'formatter': '{b}<br/>平均分: {c}分'},
-            'grid': {'left': '3%', 'right': '8%', 'bottom': '3%', 'top': '10%', 'containLabel': True},
-            'xAxis': {'type': 'value', 'max': 100, 'axisLabel': {'fontSize': 10}},
-            'yAxis': {'type': 'category', 'data': categories[::-1], 'axisLabel': {'fontSize': 10}},
-            'series': [{
-                'type': 'bar',
-                'data': [{'value': round(s, 1), 'itemStyle': {'color': c}} 
-                        for s, c in zip(scores[::-1], bar_colors[::-1])],
-                'label': {'show': True, 'position': 'right', 'fontSize': 10, 'formatter': '{c}分'}
-            }]
-        }
     
     # ===== V6.2 四象限+策略引流进度条列表 =====
     quadrant_colors = {
@@ -15967,69 +16396,7 @@ def create_product_health_content(product_scores: pd.DataFrame, category_filter:
         
         # Tab切换
         dbc.Tabs([
-            # Tab1: 评分概览
-            dbc.Tab([
-                html.Div([
-                    # 筛选提示
-                    html.Div([
-                        html.Small(f"📊 当前显示: {filter_hint} ({total_products}个商品)", 
-                                  className="text-primary fw-bold")
-                    ], className="mb-2") if category_filter else html.Div(),
-                    
-                    # 统计摘要
-                    dbc.Row([
-                        dbc.Col([
-                            html.Div([
-                                html.Span("📊 商品总数", className="text-muted d-block", style={'fontSize': '12px'}),
-                                html.H4(f"{total_products}", className="mb-0 text-primary")
-                            ], className="text-center p-2")
-                        ], width=3),
-                        dbc.Col([
-                            html.Div([
-                                html.Span("📈 平均分", className="text-muted d-block", style={'fontSize': '12px'}),
-                                html.H4(f"{avg_score:.1f}", className="mb-0 text-info")
-                            ], className="text-center p-2")
-                        ], width=3),
-                        dbc.Col([
-                            html.Div([
-                                html.Span("⭐ 优秀", className="text-muted d-block", style={'fontSize': '12px'}),
-                                html.H4(f"{excellent_count}", className="mb-0 text-success")
-                            ], className="text-center p-2")
-                        ], width=3),
-                        dbc.Col([
-                            html.Div([
-                                html.Span("⚠️ 待优化", className="text-muted d-block", style={'fontSize': '12px'}),
-                                html.H4(f"{poor_count}", className="mb-0 text-danger")
-                            ], className="text-center p-2")
-                        ], width=3),
-                    ], className="mb-3 bg-light rounded"),
-                    
-                    # 双图改为：左侧可点击评分列表 + 右侧品类柱状图
-                    dbc.Row([
-                        dbc.Col([
-                            html.Div([
-                                html.Small("📊 评分分布 (点击筛选)", className="text-muted d-block mb-2 text-center fw-bold"),
-                                html.Div(score_level_items, className="px-1")
-                            ], className="border rounded p-2", style={'minHeight': '200px'})
-                        ], width=6),
-                        dbc.Col([
-                            html.Div([
-                                html.Small("各品类平均分 TOP10" if not category_filter else f"{category_filter} 商品分布", 
-                                          className="text-muted d-block mb-2 text-center fw-bold"),
-                                DashECharts(
-                                    option=category_bar_option,
-                                    style={'height': '200px', 'width': '100%'}
-                                ) if (ECHARTS_AVAILABLE and category_bar_option) else html.Div([
-                                    html.Div("已筛选单个品类" if category_filter else "暂无品类数据", 
-                                            className="text-muted text-center p-5")
-                                ], className="p-3")
-                            ], className="border rounded p-2", style={'minHeight': '200px'})
-                        ], width=6),
-                    ], className="mb-3"),
-                ], className="pt-3")
-            ], label=f"📊 评分概览 ({'全部数据' if days_range == 0 else f'{days_range}天'})", tab_id="tab-score"),
-            
-            # Tab2: 四象限分布 (V5.0简化版)
+            # Tab1: 六象限分布
             dbc.Tab([
                 html.Div([
                     # 筛选提示
@@ -16173,11 +16540,67 @@ def create_product_scoring_section(df: pd.DataFrame, all_channel_options: list =
             channels = sorted(df['渠道'].dropna().unique())
             channel_options += [{'label': ch, 'value': ch} for ch in channels]
     
-    # 计算商品评分（使用带趋势的版本，默认30天）
-    print(f"[商品健康分析初始化] 原始数据行数: {len(df)}")
-    product_scores = calculate_enhanced_product_scores_with_trend(df, days=30)
-    print(f"[商品健康分析初始化] 评分数据行数: {len(product_scores)}")
-    print(f"[商品健康分析初始化] 评分数据列: {list(product_scores.columns) if not product_scores.empty else '空'}")
+    # 🚀 V8.6.2性能优化：智能缓存键生成
+    def generate_smart_cache_key_for_products(df):
+        """生成智能缓存键（商品健康分析专用）"""
+        # 门店维度
+        if '门店名称' in df.columns:
+            stores = sorted(df['门店名称'].unique().tolist())
+            if len(stores) <= 3:
+                store_key = '_'.join(stores)
+            else:
+                # 超过3个门店，使用首个+数量
+                store_key = f"{stores[0]}_plus{len(stores)-1}"
+        else:
+            store_key = 'all'
+        
+        # 日期范围维度
+        date_col = '日期' if '日期' in df.columns else '下单时间'
+        if date_col in df.columns:
+            dates = pd.to_datetime(df[date_col])
+            date_range = f"{dates.min().strftime('%Y%m%d')}_{dates.max().strftime('%Y%m%d')}"
+        else:
+            date_range = 'unknown'
+        
+        # 数据规模维度（用于检测数据变化）
+        row_count = len(df)
+        
+        return f"product_scores_v2:{store_key}:{date_range}:rows_{row_count}:days_30"
+    
+    # 尝试从Redis缓存读取商品评分数据
+    product_scores = None
+    cache_key = None
+    try:
+        from redis_cache_manager import REDIS_CACHE_MANAGER
+        if REDIS_CACHE_MANAGER and REDIS_CACHE_MANAGER.enabled:
+            cache_key = generate_smart_cache_key_for_products(df)
+            product_scores = REDIS_CACHE_MANAGER.get(cache_key)
+            if product_scores is not None:
+                print(f"✅ [V8.6.2缓存命中] 商品评分数据")
+                print(f"   缓存键: {cache_key}")
+    except Exception as e:
+        print(f"⚠️ Redis缓存读取失败: {e}")
+    
+    # 如果缓存未命中，重新计算
+    if product_scores is None:
+        print(f"[商品健康分析初始化] 原始数据行数: {len(df)}")
+        import time
+        start_time = time.time()
+        product_scores = calculate_enhanced_product_scores_with_trend(df, days=30)
+        calc_time = time.time() - start_time
+        print(f"[商品健康分析初始化] 评分数据行数: {len(product_scores)}, 计算耗时: {calc_time:.2f}秒")
+        print(f"[商品健康分析初始化] 评分数据列: {list(product_scores.columns) if not product_scores.empty else '空'}")
+        
+        # 保存到Redis缓存（V8.6.2：60分钟缓存）
+        if cache_key:
+            try:
+                from redis_cache_manager import REDIS_CACHE_MANAGER
+                if REDIS_CACHE_MANAGER and REDIS_CACHE_MANAGER.enabled:
+                    REDIS_CACHE_MANAGER.set(cache_key, product_scores, ttl=3600)
+                    print(f"✅ [V8.6.2已缓存] 商品评分数据，60分钟有效")
+                    print(f"   缓存键: {cache_key}")
+            except Exception as e:
+                print(f"⚠️ Redis缓存保存失败: {e}")
     
     if product_scores.empty:
         print("[商品健康分析初始化] ⚠️ 评分数据为空！")
@@ -16188,45 +16611,46 @@ def create_product_scoring_section(df: pd.DataFrame, all_channel_options: list =
     category_buttons = []
     
     if category_col:
+        # V7.4：改为按明星商品数量排序（评分体系已删除）
         category_stats = product_scores.groupby(category_col).agg({
-            '综合得分': 'mean',
             '商品名称': 'count'
         }).reset_index()
-        category_stats.columns = [category_col, '平均分', '商品数']
-        category_stats = category_stats.sort_values('平均分', ascending=False)
+        category_stats.columns = [category_col, '商品数']
+        
+        # 计算每个品类的明星商品数量
+        star_counts = product_scores[product_scores['四象限分类'] == '🌟 明星商品'].groupby(category_col).size()
+        category_stats['明星商品数'] = category_stats[category_col].map(star_counts).fillna(0).astype(int)
+        
+        # 按明星商品数量降序排序
+        category_stats = category_stats.sort_values('明星商品数', ascending=False)
         
         total_categories = len(category_stats)
         for idx, (_, row) in enumerate(category_stats.iterrows()):
             cat_name = row[category_col]
-            cat_score = row['平均分']
             cat_count = row['商品数']
+            star_count = row['明星商品数']
             
-            # 按排名百分位选择颜色
-            rank_pct = idx / total_categories if total_categories > 0 else 0
-            
-            if rank_pct <= 0.1:
+            # V7.4：按明星商品数量选择颜色
+            if star_count >= 10:
                 btn_color = 'success'
-                score_badge_class = 'bg-success text-white'
-            elif rank_pct <= 0.3:
+                star_badge_class = 'bg-success text-white'
+            elif star_count >= 5:
                 btn_color = 'info'
-                score_badge_class = 'bg-info text-white'
-            elif rank_pct <= 0.5:
+                star_badge_class = 'bg-info text-white'
+            elif star_count >= 3:
                 btn_color = 'primary'
-                score_badge_class = 'bg-primary text-white'
-            elif rank_pct <= 0.7:
-                btn_color = 'secondary'
-                score_badge_class = 'bg-secondary text-white'
-            elif rank_pct <= 0.9:
+                star_badge_class = 'bg-primary text-white'
+            elif star_count >= 1:
                 btn_color = 'warning'
-                score_badge_class = 'bg-warning text-dark'
+                star_badge_class = 'bg-warning text-dark'
             else:
-                btn_color = 'danger'
-                score_badge_class = 'bg-danger text-white'
+                btn_color = 'secondary'
+                star_badge_class = 'bg-secondary text-white'
             
             category_buttons.append(
                 dbc.Button([
                     html.Span(f"{cat_name}", className="me-1 fw-bold"),
-                    html.Span(f"{cat_score:.0f}分", className=f"badge {score_badge_class} me-1", style={'fontSize': '11px', 'fontWeight': 'bold'}),
+                    html.Span(f"⭐{star_count}", className=f"badge {star_badge_class} me-1", style={'fontSize': '11px', 'fontWeight': 'bold'}),
                     html.Span(f"({cat_count})", style={'fontSize': '11px', 'opacity': '0.8'})
                 ],
                 id={'type': 'category-filter-btn', 'index': cat_name},
@@ -16346,7 +16770,7 @@ def create_product_scoring_section(df: pd.DataFrame, all_channel_options: list =
                 )
             ], id='collapse-scoring-detail', is_open=False)
         ])
-    ], className="mb-4 shadow-sm border-0")
+    ], id='product-health-card', className="mb-4 shadow-sm border-0")  # 添加id用于返回滚动
 
 
 # ===== 以下函数已废弃（V5.0改用Tab+进度条列表）=====
@@ -16416,8 +16840,9 @@ def create_product_scoring_table_v4(product_scores: pd.DataFrame, filter_type: s
         if category_col and not category_filter:
             filtered_df = filtered_df[filtered_df[category_col] == filter_value]
     elif filter_type == 'score_level' and filter_value:
-        # 按评分等级筛选
-        filtered_df = filtered_df[filtered_df['评分等级'] == filter_value]
+        # V7.4：评分等级筛选已删除（评分体系已删除）
+        print("⚠️ 评分等级筛选已删除，忽略此筛选条件")
+        pass
     
     if filtered_df.empty:
         return html.Div("筛选结果为空", className="text-center text-muted p-4")
@@ -16430,29 +16855,30 @@ def create_product_scoring_table_v4(product_scores: pd.DataFrame, filter_type: s
         # 全部数据模式：显示原始销量字段
         display_cols = [
             '排名', '渠道', '店内码', '商品名称', '一级分类名', '三级分类名',
-            '商品原价', '商品实售价', '实收价格', '单品成本', '综合利润率', '定价利润率',
+            '商品原价', '商品实售价', '单品成本', '综合利润率', '定价利润率',
             '销量', '订单数', '动销指数', '销售额', '利润额',  # 原始字段
-            '综合得分', '评分等级', 
-            quadrant_col, '特殊标记', '问题标签', '业务建议', 
-            '售罄率', '营销占比', '库存周转天数'
+            # V7.4：删除评分字段（综合得分、评分等级）
+            # V8.10.3：删除重复和低价值字段（实收价格、特殊标记、营销占比、售罄率、库存周转天数）
+            quadrant_col, '问题标签', '业务建议'
         ]
     else:
         # 趋势对比模式：显示周期和对比字段
         display_cols = [
             '排名', '渠道', 'ABC描述', '店内码', '商品名称', '一级分类名', '三级分类名',
-            '商品原价', '商品实售价', '实收价格', '单品成本', '综合利润率', '定价利润率',
+            '商品原价', '商品实售价', '单品成本', '综合利润率', '定价利润率',
             '周期总销量', '动销指数', '销售额', '销售额占比', 
-            '趋势标签', '前期销量', '近期销量', '销量差异', '利润率变化', '趋势得分',  # V6.0：前后对比
-            '综合得分', '评分等级', 
-            quadrant_col, '特殊标记', '问题标签', '业务建议', 
-            '售罄率', '营销占比', '库存周转天数'
+            '趋势标签', '前期销量', '近期销量', '销量差异', '利润率变化',  # V6.0：前后对比
+            # V7.4：删除评分字段（综合得分、评分等级、趋势得分）
+            # V8.10.3：删除重复和低价值字段（实收价格、特殊标记、营销占比、售罄率、库存周转天数）
+            quadrant_col, '问题标签', '业务建议'
         ]
     
     available_cols = [c for c in display_cols if c in filtered_df.columns]
     display_df = filtered_df[available_cols].copy()
     
     # 格式化数值
-    for col in ['综合利润率', '定价利润率', '售罄率', '营销占比']:
+    # V8.10.3：删除售罄率、营销占比的格式化
+    for col in ['综合利润率', '定价利润率']:
         if col in display_df.columns:
             display_df[col] = display_df[col].apply(lambda x: f"{x:.1f}%" if pd.notna(x) else "-")
     
@@ -16486,21 +16912,15 @@ def create_product_scoring_table_v4(product_scores: pd.DataFrame, filter_type: s
             lambda x: f"{x:+.1f}%" if pd.notna(x) else "-"
         )
     
-    if '趋势得分' in display_df.columns:
-        display_df['趋势得分'] = display_df['趋势得分'].apply(lambda x: f"{x:.1f}" if pd.notna(x) else "-")
-    
-    if '综合得分' in display_df.columns:
-        display_df['综合得分'] = display_df['综合得分'].apply(lambda x: f"{x:.1f}")
+    # V7.4：删除评分字段格式化（评分体系已删除）
+    # V8.10.3：删除库存周转天数格式化
     
     # V5.0: 动销指数格式化（0-1范围，显示2位小数）
     if '动销指数' in display_df.columns:
         display_df['动销指数'] = display_df['动销指数'].apply(lambda x: f"{x:.2f}" if pd.notna(x) else "-")
     
-    if '库存周转天数' in display_df.columns:
-        display_df['库存周转天数'] = display_df['库存周转天数'].apply(lambda x: f"{x:.0f}天" if pd.notna(x) and x < 999 else "-")
-    
     # 价格和成本字段格式化
-    for col in ['商品原价', '商品实售价', '实收价格', '单品成本']:
+    for col in ['商品原价', '商品实售价', '单品成本']:
         if col in display_df.columns:
             display_df[col] = display_df[col].apply(lambda x: f"¥{x:.2f}" if pd.notna(x) and x > 0 else "-")
     
@@ -16581,37 +17001,143 @@ def create_product_scoring_table_v4(product_scores: pd.DataFrame, filter_type: s
             col_name = col
         columns_def.append({'name': col_name, 'id': col})
     
+    # V8.9: 使用智能分页表格
+    print(f"[V8.9分页] 准备创建分页表格，数据量: {len(display_df)}行")
+    
+    # V8.10.1修复：定义样式配置
+    style_data_conditional = [
+        # V4.0新增：ABC分类颜色
+        {'if': {'filter_query': '{ABC描述} contains "核心"', 'column_id': 'ABC描述'}, 
+         'color': '#fa541c', 'fontWeight': 'bold'},
+        {'if': {'filter_query': '{ABC描述} contains "常规"', 'column_id': 'ABC描述'}, 
+         'color': '#1890ff', 'fontWeight': 'bold'},
+        {'if': {'filter_query': '{ABC描述} contains "长尾"', 'column_id': 'ABC描述'}, 
+         'color': '#8c8c8c'},
+        # V7.0: 六象限分类列颜色
+        {'if': {'filter_query': '{四象限分类} contains "🌟 明星商品"', 'column_id': '四象限分类'}, 
+         'color': '#52c41a', 'fontWeight': 'bold'},
+        {'if': {'filter_query': '{四象限分类} contains "🔥 畅销商品"', 'column_id': '四象限分类'}, 
+         'color': '#ff9800', 'fontWeight': 'bold'},
+        {'if': {'filter_query': '{四象限分类} contains "💎 潜力商品"', 'column_id': '四象限分类'}, 
+         'color': '#722ed1', 'fontWeight': 'bold'},
+        {'if': {'filter_query': '{四象限分类} contains "🎯 策略引流"', 'column_id': '四象限分类'}, 
+         'color': '#fa8c16', 'fontWeight': 'bold'},
+        {'if': {'filter_query': '{四象限分类} contains "⚡ 自然引流"', 'column_id': '四象限分类'}, 
+         'color': '#1890ff', 'fontWeight': 'bold'},
+        {'if': {'filter_query': '{四象限分类} contains "🐌 低效商品"', 'column_id': '四象限分类'}, 
+         'color': '#ff4d4f', 'fontWeight': 'bold'},
+        # V5.0: 特殊标记列颜色
+        {'if': {'filter_query': '{特殊标记} contains "🚨"', 'column_id': '特殊标记'}, 
+         'color': '#cf1322', 'fontWeight': 'bold'},
+        {'if': {'filter_query': '{特殊标记} contains "📦"', 'column_id': '特殊标记'}, 
+         'color': '#fa8c16'},
+        # 问题标签列 - 有问题的红色警示
+        {'if': {'filter_query': '{问题标签} contains "亏损"', 'column_id': '问题标签'}, 
+         'color': '#cf1322', 'fontWeight': 'bold'},
+        {'if': {'filter_query': '{问题标签} contains "低频"', 'column_id': '问题标签'}, 
+         'color': '#fa8c16'},
+        {'if': {'filter_query': '{问题标签} contains "低盈利"', 'column_id': '问题标签'}, 
+         'color': '#fa8c16'},
+        {'if': {'filter_query': '{问题标签} contains "高营销"', 'column_id': '问题标签'}, 
+         'color': '#ff4d4f'},
+        {'if': {'filter_query': '{问题标签} contains "低动销"', 'column_id': '问题标签'}, 
+         'color': '#8c8c8c'},
+        # V6.0: 销量差异列颜色（正值绿色，负值红色）
+        {'if': {'filter_query': '{销量差异} contains "+"', 'column_id': '销量差异'}, 
+         'color': '#52c41a', 'fontWeight': 'bold'},
+        {'if': {'filter_query': '{销量差异} contains "-"', 'column_id': '销量差异'}, 
+         'color': '#ff4d4f', 'fontWeight': 'bold'},
+        {'if': {'filter_query': '{销量差异} = "持平"', 'column_id': '销量差异'}, 
+         'color': '#8c8c8c'},
+        # 斑马纹
+        {'if': {'row_index': 'odd'}, 'backgroundColor': '#fafafa'},
+    ]
+    
+    style_cell_conditional = [
+        {'if': {'column_id': '排名'}, 'minWidth': '50px', 'width': '60px', 'maxWidth': '70px', 'textAlign': 'center'},
+        {'if': {'column_id': '渠道'}, 'minWidth': '70px', 'width': '90px', 'maxWidth': '120px', 'textAlign': 'center'},
+        {'if': {'column_id': '商品名称'}, 'minWidth': '120px', 'maxWidth': '250px'},
+        {'if': {'column_id': '一级分类名'}, 'minWidth': '70px', 'maxWidth': '120px'},
+        {'if': {'column_id': '四象限分类'}, 'minWidth': '90px', 'maxWidth': '130px'},
+        # V8.10.3：删除特殊标记列宽设置
+        {'if': {'column_id': '动销指数'}, 'minWidth': '70px', 'width': '80px', 'textAlign': 'center'},
+        {'if': {'column_id': '问题标签'}, 'minWidth': '80px', 'maxWidth': '150px'},
+        {'if': {'column_id': '业务建议'}, 'minWidth': '120px', 'maxWidth': '200px'},
+        {'if': {'column_id': '综合利润率'}, 'minWidth': '70px', 'width': '90px', 'textAlign': 'right'},
+        # V8.10.3：删除售罄率、营销占比、库存周转天数列宽设置
+        {'if': {'column_id': '销量'}, 'minWidth': '60px', 'width': '75px', 'textAlign': 'right'},
+        {'if': {'column_id': '销售额'}, 'minWidth': '80px', 'width': '100px', 'textAlign': 'right'},
+        # V6.0: 趋势对比列宽设置
+        {'if': {'column_id': '周期总销量'}, 'minWidth': '70px', 'width': '85px', 'textAlign': 'right'},
+        {'if': {'column_id': '前期销量'}, 'minWidth': '90px', 'width': '110px', 'textAlign': 'right'},
+        {'if': {'column_id': '近期销量'}, 'minWidth': '90px', 'width': '110px', 'textAlign': 'right'},
+        {'if': {'column_id': '销量差异'}, 'minWidth': '70px', 'width': '85px', 'textAlign': 'center'},
+        {'if': {'column_id': '趋势标签'}, 'minWidth': '90px', 'width': '110px', 'textAlign': 'center'},
+    ]
+    
+    # V8.10.1修复：传递自定义列定义和样式配置
+    print(f"[V8.10.1调试] 准备调用create_paginated_datatable")
+    print(f"[V8.10.1调试] display_df.shape = {display_df.shape}")
+    print(f"[V8.10.1调试] columns_def数量 = {len(columns_def)}")
+    print(f"[V8.10.1调试] 前3个columns_def = {columns_def[:3]}")
+    
+    # 创建分页表格（自动根据数据量选择分页策略）
+    paginated_table = create_paginated_datatable(
+        df=display_df,
+        table_id='scoring-detail-table',
+        page_size=100,  # 每页100行
+        max_height='600px',
+        enable_sort=True,
+        enable_filter=False,  # 禁用内置筛选，避免英文显示
+        columns=columns_def,  # V8.10.1：传递自定义列定义
+        style_data_conditional=style_data_conditional,  # V8.10.1：传递样式配置
+        style_cell_conditional=style_cell_conditional  # V8.10.1：传递单元格样式
+    )
+    
+    print(f"[V8.10.1调试] create_paginated_datatable 返回成功")
+    
+    # V8.10.1紧急修复：暂时使用备份DataTable来测试
+    print(f"[V8.10.1紧急修复] 使用备份DataTable进行测试")
+    
     return html.Div([
         period_hint,  # 周期说明提示
         html.Div([
-            html.Span(f"共 {len(display_df)} 个商品", className="text-muted", style={'fontSize': '13px'}),
+            html.Span(f"共 {len(display_df)} 个商品", className="text-muted fw-bold", style={'fontSize': '14px'}),
         ], className="mb-2"),
-        dash_table.DataTable(
-            id='scoring-detail-table',
-            data=display_df.head(500).to_dict('records'),  # 🚀 优化：限制500行
-            columns=columns_def,  # 使用带日期范围的列定义
-            style_table={'overflowX': 'auto', 'borderRadius': '8px'},
-            # 字体调大到13px，优化单元格样式
-            style_cell={
-                'textAlign': 'left', 
-                'padding': '10px 8px', 
-                'fontSize': '12px',
-                'fontFamily': 'Microsoft YaHei, sans-serif',
-                'whiteSpace': 'normal',
-                'height': 'auto',
-                'minWidth': '50px',
-                'maxWidth': '180px',
-            },
-            style_header={
-                'backgroundColor': '#f0f5ff', 
-                'fontWeight': 'bold',
-                'fontSize': '12px',
-                'borderBottom': '2px solid #d9d9d9',
-                'color': '#262626',
-                'textAlign': 'center',
-            },
-            # 简洁样式：用文字颜色标记重要列，无边框
-            style_data_conditional=[
+        
+        # V8.10.1紧急修复：暂时禁用paginated_table，使用备份DataTable
+        # paginated_table,
+        
+        # 注意：样式已通过 DataTable 的 style_cell、style_header、style_data_conditional 属性应用
+        # Dash 3.x 不再支持 html.Style()，所有样式通过组件属性或 assets/custom.css 文件应用
+        
+        # 原有的DataTable配置（作为备份，如果分页组件失败）
+        html.Div(id='scoring-detail-table-backup', style={'display': 'block'}, children=[
+            dash_table.DataTable(
+                id='scoring-detail-table-original',
+                data=display_df.head(500).to_dict('records'),  # 限制500行
+                columns=columns_def,
+                style_table={'overflowX': 'auto', 'borderRadius': '8px'},
+                style_cell={
+                    'textAlign': 'left', 
+                    'padding': '10px 8px', 
+                    'fontSize': '12px',
+                    'fontFamily': 'Microsoft YaHei, sans-serif',
+                    'whiteSpace': 'normal',
+                    'height': 'auto',
+                    'minWidth': '50px',
+                    'maxWidth': '180px',
+                },
+                style_header={
+                    'backgroundColor': '#f0f5ff', 
+                    'fontWeight': 'bold',
+                    'fontSize': '12px',
+                    'borderBottom': '2px solid #d9d9d9',
+                    'color': '#262626',
+                    'textAlign': 'center',
+                },
+                # 简洁样式：用文字颜色标记重要列，无边框
+                style_data_conditional=[
                 # V4.0新增：ABC分类颜色
                 {'if': {'filter_query': '{ABC描述} contains "核心"', 'column_id': 'ABC描述'}, 
                  'color': '#fa541c', 'fontWeight': 'bold'},
@@ -16661,15 +17187,7 @@ def create_product_scoring_table_v4(product_scores: pd.DataFrame, filter_type: s
                  'color': '#ff4d4f'},
                 {'if': {'filter_query': '{问题标签} contains "低动销"', 'column_id': '问题标签'}, 
                  'color': '#8c8c8c'},
-                # 评分等级列颜色
-                {'if': {'filter_query': '{评分等级} contains "优秀"', 'column_id': '评分等级'}, 
-                 'color': '#52c41a'},
-                {'if': {'filter_query': '{评分等级} contains "良好"', 'column_id': '评分等级'}, 
-                 'color': '#1890ff'},
-                {'if': {'filter_query': '{评分等级} contains "一般"', 'column_id': '评分等级'}, 
-                 'color': '#faad14'},
-                {'if': {'filter_query': '{评分等级} contains "待优化"', 'column_id': '评分等级'}, 
-                 'color': '#ff4d4f'},
+                # V7.4：删除评分等级列颜色（评分体系已删除）
                 # V6.0: 销量差异列颜色（正值绿色，负值红色）
                 {'if': {'filter_query': '{销量差异} contains "+"', 'column_id': '销量差异'}, 
                  'color': '#52c41a', 'fontWeight': 'bold'},
@@ -16691,18 +17209,15 @@ def create_product_scoring_table_v4(product_scores: pd.DataFrame, filter_type: s
                 {'if': {'column_id': '渠道'}, 'minWidth': '70px', 'width': '90px', 'maxWidth': '120px', 'textAlign': 'center'},
                 {'if': {'column_id': '商品名称'}, 'minWidth': '120px', 'maxWidth': '250px'},
                 {'if': {'column_id': '一级分类名'}, 'minWidth': '70px', 'maxWidth': '120px'},
-                {'if': {'column_id': '综合得分'}, 'minWidth': '70px', 'width': '80px', 'textAlign': 'center'},
-                {'if': {'column_id': '评分等级'}, 'minWidth': '70px', 'width': '90px', 'textAlign': 'center'},
+                # V7.4：删除评分字段的列宽配置
                 {'if': {'column_id': '四象限分类'}, 'minWidth': '90px', 'maxWidth': '130px'},
                 {'if': {'column_id': '八象限分类'}, 'minWidth': '90px', 'maxWidth': '130px'},  # 兼容旧版
-                {'if': {'column_id': '特殊标记'}, 'minWidth': '70px', 'maxWidth': '100px'},
+                # V8.10.3：删除特殊标记列宽设置
                 {'if': {'column_id': '动销指数'}, 'minWidth': '70px', 'width': '80px', 'textAlign': 'center'},
                 {'if': {'column_id': '问题标签'}, 'minWidth': '80px', 'maxWidth': '150px'},
                 {'if': {'column_id': '业务建议'}, 'minWidth': '120px', 'maxWidth': '200px'},
                 {'if': {'column_id': '综合利润率'}, 'minWidth': '70px', 'width': '90px', 'textAlign': 'right'},
-                {'if': {'column_id': '售罄率'}, 'minWidth': '60px', 'width': '75px', 'textAlign': 'right'},
-                {'if': {'column_id': '营销占比'}, 'minWidth': '70px', 'width': '90px', 'textAlign': 'right'},
-                {'if': {'column_id': '库存周转天数'}, 'minWidth': '80px', 'width': '100px', 'textAlign': 'center'},
+                # V8.10.3：删除售罄率、营销占比、库存周转天数列宽设置
                 {'if': {'column_id': '销量'}, 'minWidth': '60px', 'width': '75px', 'textAlign': 'right'},
                 {'if': {'column_id': '销售额'}, 'minWidth': '80px', 'width': '100px', 'textAlign': 'right'},
                 # V6.0: 趋势对比列宽设置
@@ -16710,9 +17225,10 @@ def create_product_scoring_table_v4(product_scores: pd.DataFrame, filter_type: s
                 {'if': {'column_id': '前期销量'}, 'minWidth': '90px', 'width': '110px', 'textAlign': 'right'},
                 {'if': {'column_id': '近期销量'}, 'minWidth': '90px', 'width': '110px', 'textAlign': 'right'},
                 {'if': {'column_id': '销量差异'}, 'minWidth': '70px', 'width': '85px', 'textAlign': 'center'},
-                {'if': {'column_id': '趋势标签'}, 'minWidth': '90px', 'width': '110px', 'textAlign': 'center'},
-            ],
-        )
+                    {'if': {'column_id': '趋势标签'}, 'minWidth': '90px', 'width': '110px', 'textAlign': 'center'},
+                ],
+            )
+        ])
     ], className="mt-2")
 
 
@@ -16750,25 +17266,22 @@ def get_product_scoring_export_data(df: pd.DataFrame, days_range: int = 0) -> pd
         for quadrant, count in export_quadrant_counts.items():
             print(f"  {quadrant}: {count}个")
     
-    # 导出列 - V7.2更新：字段名改为"六象限分类"，新增动销指数
+    # 导出列 - V7.4更新：删除评分字段
+    # V8.10.3：删除重复和低价值字段（实收价格、特殊标记、营销占比、售罄率、库存周转天数）
     export_cols = [
         # 基础信息
         '排名', 'ABC分类', 'ABC描述', '店内码', '商品名称', '一级分类名', '三级分类名',
         # 价格与成本
-        '商品原价', '商品实售价', '实收价格', '单品成本', 
+        '商品原价', '商品实售价', '单品成本', 
         # 利润率
         '综合利润率', '定价利润率',
         # 销售数据
         '销量', '动销指数', '销售额', '销售额占比', '累计销售额占比', '利润额', '营销成本', '订单数',
-        # 综合评分
-        '综合得分', '评分等级', 
-        # V7.2：六象限分类与诊断（字段名更新）
-        '六象限分类', '特殊标记', '问题标签', '业务建议',
+        # V7.4：六象限分类与诊断（删除评分字段）
+        # V8.10.3：删除重复和低价值字段（特殊标记、营销占比、售罄率、库存周转天数）
+        '六象限分类', '问题标签', '业务建议',
         # 详细指标
-        '售罄率', '营销占比', '库存周转天数', '库存',
-        # 维度评分
-        '毛利维度', '动销维度', '营销维度',
-        '盈利能力分', '动销健康分', '营销效率分', '库存压力分',
+        '库存',
         # V5.0：特殊标记
         '是否低频', '是否亏损'
     ]
@@ -19213,37 +19726,73 @@ def _render_decline_products(products: List[Dict]) -> html.Div:
 
 
 
-# ==================== 六象限与调价计算器联动回调（V3.0新增） ====================
+# ==================== 六象限与调价计算器联动回调（V3.1：滚动+数据传递） ====================
+
+# Clientside callback：实现页面滚动到智能调价计算器
+clientside_callback(
+    """
+    function(n_clicks) {
+        // 检查是否有按钮被点击
+        const triggered = dash_clientside.callback_context.triggered;
+        if (!triggered || triggered.length === 0) {
+            return window.dash_clientside.no_update;
+        }
+        
+        // 等待一小段时间确保DOM更新
+        setTimeout(function() {
+            // 滚动到智能调价计算器
+            const element = document.getElementById('pricing-calculator-card');
+            if (element) {
+                // 平滑滚动
+                element.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start',
+                    inline: 'nearest'
+                });
+                
+                // 高亮显示2秒
+                element.style.transition = 'box-shadow 0.3s';
+                element.style.boxShadow = '0 0 30px rgba(255, 193, 7, 0.8)';
+                setTimeout(function() {
+                    element.style.boxShadow = '';
+                }, 2000);
+            }
+        }, 100);
+        
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output('pricing-scroll-trigger', 'data'),  # 虚拟输出
+    Input({'type': 'quadrant-to-pricing', 'quadrant': ALL}, 'n_clicks'),
+    prevent_initial_call=True
+)
 
 @callback(
-    [Output('pricing-tabs', 'active_tab'),  # 修改：切换到pricing-tabs的子Tab
-     Output('pricing-quadrant-filter', 'data'),
+    [Output('pricing-quadrant-filter', 'data'),
      Output('pricing-source-context', 'data'),
-     Output('product-scores-store', 'data')],
+     Output('quick-scene-store', 'data', allow_duplicate=True)],  # 利用现有的快捷场景Store，允许重复输出
     Input({'type': 'quadrant-to-pricing', 'quadrant': ALL}, 'n_clicks'),
-    [State('product-health-content-container', 'children'),
-     State('db-store-filter', 'value'),
+    [State('db-store-filter', 'value'),
      State('product-health-channel-filter', 'value')],
     prevent_initial_call=True
 )
-def jump_to_pricing_from_quadrant(n_clicks, health_content, selected_stores, channel):
+def pass_quadrant_data_to_pricing(n_clicks, selected_stores, channel):
     """
-    从六象限跳转到调价计算器（阶段1：基础联动）
+    从六象限传递数据到调价计算器（V3.1：滚动+数据传递）
     
     功能：
-    1. 切换到自由调价Tab（而不是智能调价）
-    2. 传递象限筛选数据
-    3. 传递来源上下文信息
-    4. 保存六象限商品数据供后续使用
+    1. 传递象限筛选数据
+    2. 传递来源上下文信息
+    3. 设置快捷场景为"六象限"（利用现有机制）
+    4. 配合clientside callback实现页面滚动
     
     Args:
         n_clicks: 各象限"调价"按钮的点击次数
-        health_content: 商品健康分析的内容（用于获取商品数据）
         selected_stores: 当前选择的门店
         channel: 当前选择的渠道
     
     Returns:
-        (active_tab, quadrant_filter, source_context, product_scores)
+        (quadrant_filter, source_context, quick_scene)
     """
     from dash import ctx
     from datetime import datetime
@@ -19259,7 +19808,7 @@ def jump_to_pricing_from_quadrant(n_clicks, health_content, selected_stores, cha
     
     quadrant = triggered['quadrant']  # 如 "💎 潜力商品"
     
-    print(f"[联动] 从六象限跳转到自由调价: {quadrant}")
+    print(f"[联动] 传递象限数据到调价计算器: {quadrant}")
     
     # 重新计算商品评分数据（确保数据最新）
     try:
@@ -19321,155 +19870,93 @@ def jump_to_pricing_from_quadrant(n_clicks, health_content, selected_stores, cha
             'timestamp': datetime.now().isoformat()
         }
         
-        # 保存完整的商品评分数据（供其他功能使用）
-        product_scores_dict = product_scores.to_dict('records')
+        # 设置快捷场景为"六象限"（利用现有的快捷场景机制）
+        quick_scene = {
+            'type': 'quadrant',
+            'quadrant': quadrant,
+            'count': len(quadrant_products),
+            'timestamp': datetime.now().isoformat()
+        }
         
-        print(f"[联动] 跳转成功，传递数据: {len(quadrant_products_dict)}个商品")
+        print(f"[联动] 数据传递成功: {len(quadrant_products_dict)}个商品")
         
-        # 返回：切换到自由调价Tab（tab-free），传递筛选数据和上下文
-        return 'tab-free', quadrant_filter, source_context, product_scores_dict
+        return quadrant_filter, source_context, quick_scene
         
     except Exception as e:
-        print(f"[联动] 跳转失败: {e}")
+        print(f"[联动] 数据传递失败: {e}")
         import traceback
         traceback.print_exc()
         raise PreventUpdate
 
 
 @callback(
-    [Output('pricing-source-breadcrumb', 'children'),
-     Output('pricing-smart-suggestion', 'children'),
-     Output('pricing-role-store', 'data', allow_duplicate=True),
-     Output('pricing-target-margin-v2', 'value')],
+    Output('pricing-source-info', 'children'),
     Input('pricing-source-context', 'data'),
     prevent_initial_call=True
 )
-def show_source_context_and_suggestion(context):
+def show_pricing_source_info(context):
     """
-    显示来源信息和智能建议（阶段2：智能建议）
+    显示来源信息（V3.1：简化版）
     
     功能：
-    1. 显示面包屑导航（来源信息）
-    2. 根据象限提供智能调价建议
-    3. 自动选择调价场景
-    4. 自动填充目标利润率
+    1. 显示来源信息和象限
+    2. 显示"返回"按钮
     
     Args:
         context: 来源上下文信息
     
     Returns:
-        (breadcrumb, suggestion, scene, target_margin)
+        来源信息组件
     """
     if not context or 'quadrant' not in context:
-        raise PreventUpdate
+        return html.Div()
     
-    quadrant = context['quadrant']
-    from_module = context.get('from', '商品健康分析')
+    quadrant = context.get('quadrant', '')
+    count = context.get('count', 0)
     
-    print(f"[联动] 显示来源信息: {from_module} > {quadrant}")
+    print(f"[联动] 显示来源信息: {quadrant}")
     
-    # 面包屑导航
-    breadcrumb = dbc.Alert([
-        html.I(className="fas fa-map-marker-alt me-2"),
-        html.Span(f"来源：{from_module} > ", className="text-muted"),
-        html.Strong(quadrant, className="text-primary"),
+    return dbc.Alert([
+        html.Div([
+            html.I(className="fas fa-link me-2"),
+            html.Strong(f"已自动筛选：{quadrant}", className="me-2"),
+            html.Small(f"(来自商品健康分析，共{count}个商品)", className="text-muted"),
+        ], className="d-inline-block"),
         dbc.Button([
-            html.I(className="fas fa-arrow-left me-1"),
-            "返回"
+            html.I(className="fas fa-arrow-up me-1"),
+            "返回六象限"
         ], 
         id="pricing-back-to-source", 
         size="sm", 
         color="link", 
-        className="ms-3",
+        className="float-end",
         style={'textDecoration': 'none'})
-    ], color="info", className="mb-3 py-2")
-    
-    # 象限与调价策略映射（阶段2：智能建议）
-    # 格式：(调价场景, 建议标题, 建议描述, 目标利润率)
-    quadrant_strategies = {
-        '🌟 明星商品': (
-            'profit',  # 利润修复场景
-            '测试性提价',
-            '明星商品又赚钱又好卖，可以小幅提价测试价格弹性上限。建议提价幅度：3-8%',
-            25  # 目标利润率25%
-        ),
-        '💎 潜力商品': (
-            'promo',  # 促销引流场景
-            '降价促销',
-            '潜力商品利润好但销量低，建议降价促销提升销量。建议降价幅度：5-15%，目标利润率：15%',
-            15  # 目标利润率15%
-        ),
-        '⚡ 自然引流': (
-            'profit',  # 利润修复场景
-            '小幅提价',
-            '自然引流商品有提价空间，建议小幅提价提升利润率。建议提价幅度：3-8%',
-            20  # 目标利润率20%
-        ),
-        '🐌 低效商品': (
-            'slow',  # 滞销清仓场景
-            '清仓降价',
-            '低效商品既不赚钱也不好卖，建议清仓降价快速出清。建议降价幅度：15-30%',
-            8  # 目标利润率8%（保本即可）
-        ),
-        '🔥 畅销商品': (
-            'profit',  # 利润修复场景
-            '谨慎提价',
-            '畅销商品是刚需品，提价需谨慎，建议小幅提价。建议提价幅度：1-3%',
-            18  # 目标利润率18%
-        ),
-        '🎯 策略引流': (
-            'loss',  # 亏损止血场景（虽然不建议调价，但提供监控建议）
-            '监控效果',
-            '策略引流是主动亏损引流，不建议调价。建议监控引流效果和ROI，控制引流成本',
-            5  # 目标利润率5%（仅供参考）
-        ),
-    }
-    
-    # 获取该象限的策略
-    strategy = quadrant_strategies.get(quadrant, (
-        'promo',
-        '根据目标调整',
-        '请根据商品特点和业务目标，选择合适的调价方向和目标利润率',
-        15
-    ))
-    
-    scene, action_title, action_desc, target_margin = strategy
-    
-    # 智能建议卡片
-    # 根据场景设置颜色
-    suggestion_colors = {
-        'profit': 'success',  # 利润修复 - 绿色
-        'promo': 'warning',   # 促销引流 - 黄色
-        'slow': 'danger',     # 滞销清仓 - 红色
-        'loss': 'secondary'   # 亏损止血 - 灰色
-    }
-    
-    suggestion_color = suggestion_colors.get(scene, 'info')
-    
-    suggestion = dbc.Alert([
-        html.H6([
-            html.I(className="fas fa-lightbulb me-2"),
-            f"智能建议：{action_title}"
-        ], className="mb-2"),
-        html.P(action_desc, className="mb-0", style={'fontSize': '14px'})
-    ], color=suggestion_color, className="mb-3")
-    
-    print(f"[联动] 智能建议: {action_title}, 场景: {scene}, 目标利润率: {target_margin}%")
-    
-    return breadcrumb, suggestion, scene, target_margin
+    ], color="success", className="py-2 mb-3")
 
 
-@callback(
-    Output('product-health-tabs', 'active_tab', allow_duplicate=True),  # 修改：返回到商品健康分析的子Tab
+
+# Clientside callback：返回到六象限分布（滚动）
+clientside_callback(
+    """
+    function(n_clicks) {
+        if (n_clicks) {
+            // 滚动到商品健康分析卡片
+            const element = document.getElementById('product-health-card');
+            if (element) {
+                element.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start',
+                    inline: 'nearest'
+                });
+            }
+        }
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output('pricing-back-trigger', 'data'),  # 虚拟输出
     Input('pricing-back-to-source', 'n_clicks'),
     prevent_initial_call=True
 )
-def back_to_source(n_clicks):
-    """返回商品健康分析的六象限分布Tab"""
-    if n_clicks:
-        print("[联动] 返回六象限分布")
-        return 'tab-quadrant'  # 返回到六象限分布Tab
-    raise PreventUpdate
 
 
 # ==================== 调价计算器中添加"六象限商品"选项（方案B：补充功能） ====================

@@ -42,8 +42,10 @@ def load_learned_elasticity():
 def save_learned_elasticity():
     """保存学习到的弹性系数"""
     try:
+        # 创建字典的深拷贝，避免在序列化时字典被修改
+        elasticity_copy = dict(LEARNED_ELASTICITY)
         with open(LEARNED_ELASTICITY_FILE, 'w', encoding='utf-8') as f:
-            json.dump(LEARNED_ELASTICITY, f, ensure_ascii=False, indent=2)
+            json.dump(elasticity_copy, f, ensure_ascii=False, indent=2)
     except Exception as e:
         print(f"⚠️ 保存弹性系数失败: {e}")
 

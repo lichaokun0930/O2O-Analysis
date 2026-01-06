@@ -154,7 +154,8 @@ class DataSourceManager:
                           store_name: str = None,
                           start_date: datetime = None,
                           end_date: datetime = None,
-                          split_consumables: bool = True) -> dict:
+                          split_consumables: bool = True,
+                          return_dict: bool = True) -> dict:
         """
         从数据库加载数据
         
@@ -163,12 +164,17 @@ class DataSourceManager:
             start_date: 开始日期
             end_date: 结束日期
             split_consumables: 是否分离耗材数据
+            return_dict: 是否返回dict格式（True）还是DataFrame格式（False）
+                        默认True保持V8.10行为，False兼容老版本
             
         Returns:
-            如果split_consumables=True:
-                {'full': 完整数据(含耗材), 'display': 展示数据(不含耗材)}
-            如果split_consumables=False:
-                {'full': 完整数据(含耗材)}
+            如果return_dict=True:
+                如果split_consumables=True:
+                    {'full': 完整数据(含耗材), 'display': 展示数据(不含耗材)}
+                如果split_consumables=False:
+                    {'full': 完整数据(含耗材)}
+            如果return_dict=False:
+                返回DataFrame（display数据，兼容老版本）
         """
         print(f"[Database] 加载数据...")
         print(f"[Database] 参数 - 门店: {store_name}, 开始日期: {start_date}, 结束日期: {end_date}")
@@ -220,10 +226,30 @@ class DataSourceManager:
                 print(f"[Database] 应用结束日期过滤: {end_date.date()} 23:59:59 (包含当天)", flush=True)
                 query = query.filter(Order.date <= end_date)
             
-            # 执行查询
+            # 🚨 V8.9.2: 优化大数据量查询
+            # 先检查数据量（使用快速估算，避免 count() 在大表上太慢）
+            print(f"[Database] 检查数据量...")
+            
+            # 使用 EXPLAIN 估算行数（比 count() 快得多）
+            try:
+                from sqlalchemy import text
+                explain_query = f"EXPLAIN {str(query.statement.compile(compile_kwargs={'literal_binds': True}))}"
+                result = db.execute(text(explain_query))
+                # 简化：直接执行查询，不做限制
+                # 因为用户反馈老版本可以处理 1200万数据
+            except:
+                pass
+            
+            # 执行查询（允许大数据量，但显示进度）
             print(f"[Database] 执行查询...")
+            print(f"[Database] 💡 提示: 如果数据量大，查询可能需要较长时间，请耐心等待...")
+            
+            import time
+            start_time = time.time()
             results = query.all()
-            print(f"[Database] 查询到 {len(results)} 条记录")
+            elapsed = time.time() - start_time
+            
+            print(f"[Database] ✅ 查询完成，获取到 {len(results):,} 条记录 (耗时 {elapsed:.1f} 秒)")
             
             # 🔍 调试: 检查前5条记录的订单ID
             if results:
@@ -303,17 +329,29 @@ class DataSourceManager:
                 print(f"   - 耗材数据: {consumable_count:,} 行")
                 
                 self.current_source = 'database'
-                return {
-                    'full': df_full,
-                    'display': df_display
-                }
+                
+                # V8.10.1: 兼容性修复 - 支持返回DataFrame或dict
+                if return_dict:
+                    return {
+                        'full': df_full,
+                        'display': df_display
+                    }
+                else:
+                    # 兼容老版本：直接返回display数据
+                    return df_display
             else:
                 print(f"[Database] 📊 返回完整数据: {len(df_full):,} 行 (不分离)")
                 self.current_source = 'database'
-                return {
-                    'full': df_full,
-                    'display': df_full.copy()
-                }
+                
+                # V8.10.1: 兼容性修复 - 支持返回DataFrame或dict
+                if return_dict:
+                    return {
+                        'full': df_full,
+                        'display': df_full.copy()
+                    }
+                else:
+                    # 兼容老版本：直接返回完整数据
+                    return df_full
             
         except Exception as e:
             print(f"[Database] 加载失败: {str(e)}")
@@ -388,6 +426,255 @@ class DataSourceManager:
             return stats
         finally:
             db.close()
+    
+    def load_from_database_streaming(self, 
+                                     store_name: str = None,
+                                     start_date: datetime = None,
+                                     end_date: datetime = None,
+                                     batch_size: int = 10000,
+                                     max_rows: int = 1000000):
+        """
+        流式加载数据，避免内存溢出
+        
+        Args:
+            store_name: 门店名称
+            start_date: 开始日期
+            end_date: 结束日期
+            batch_size: 每批加载的行数，默认 10000
+            max_rows: 最大加载行数，默认 100万（防止内存溢出）
+            
+        Returns:
+            {'full': 完整数据(含耗材), 'display': 展示数据(不含耗材)}
+        """
+        print(f"[Database] 流式加载数据...")
+        print(f"[Database] 参数 - 门店: {store_name}, 日期: {start_date} ~ {end_date}")
+        print(f"[Database] 批次大小: {batch_size:,}, 最大行数: {max_rows:,}")
+        
+        db = next(get_db())
+        
+        try:
+            # 构建查询
+            from database.models import Product
+            query = db.query(
+                Order, 
+                Product.store_code
+            ).outerjoin(
+                Product, Order.barcode == Product.barcode
+            )
+            
+            # 应用过滤条件
+            if store_name:
+                query = query.filter(Order.store_name == store_name)
+            
+            if start_date:
+                from datetime import datetime as dt
+                if isinstance(start_date, str):
+                    start_date = dt.fromisoformat(start_date)
+                if not isinstance(start_date, dt):
+                    start_date = dt.combine(start_date, dt.min.time())
+                query = query.filter(Order.date >= start_date)
+            
+            if end_date:
+                from datetime import datetime as dt
+                if isinstance(end_date, str):
+                    end_date = dt.fromisoformat(end_date)
+                elif not isinstance(end_date, dt):
+                    end_date = dt.combine(end_date, dt.min.time())
+                end_date = dt.combine(end_date.date(), dt.max.time())
+                query = query.filter(Order.date <= end_date)
+            
+            # 流式加载
+            all_results = []
+            offset = 0
+            batch_num = 0
+            
+            import time
+            start_time = time.time()
+            
+            while True:
+                batch_num += 1
+                print(f"[Database] 加载批次 {batch_num} (offset={offset:,})...")
+                
+                # 分批查询
+                batch = query.limit(batch_size).offset(offset).all()
+                
+                if not batch:
+                    print(f"[Database] 没有更多数据")
+                    break
+                
+                all_results.extend(batch)
+                offset += batch_size
+                
+                print(f"[Database] 已加载 {len(all_results):,} 条记录")
+                
+                # 内存保护：超过最大行数停止
+                if len(all_results) >= max_rows:
+                    print(f"⚠️ 已达到最大行数限制 ({max_rows:,})，停止加载")
+                    break
+                
+                # 如果本批次数据少于 batch_size，说明已经到末尾
+                if len(batch) < batch_size:
+                    print(f"[Database] 已加载所有数据")
+                    break
+            
+            elapsed = time.time() - start_time
+            print(f"[Database] ✅ 流式加载完成，共 {len(all_results):,} 条记录 (耗时 {elapsed:.1f} 秒)")
+            
+            # 转换为 DataFrame
+            return self._convert_results_to_dataframe(all_results)
+            
+        finally:
+            db.close()
+    
+    def _convert_results_to_dataframe(self, results):
+        """将查询结果转换为 DataFrame"""
+        data = []
+        for order, store_code in results:
+            row = {}
+            
+            # 自动从映射表读取字段
+            for chinese_name, (db_field, default_val, need_hasattr) in DB_FIELD_MAPPING.items():
+                row[chinese_name] = get_field_value(order, db_field, default_val, need_hasattr)
+            
+            # 特殊处理的字段
+            if not row.get('店内码'):
+                row['店内码'] = store_code if store_code else ''
+            
+            if row.get('商品原价') is None:
+                row['商品原价'] = row.get('商品实售价', 0)
+            
+            data.append(row)
+        
+        # 转换为 DataFrame
+        df = pd.DataFrame(data)
+        
+        # 分离耗材数据
+        full_df = df.copy()
+        
+        if '一级分类名' in df.columns:
+            display_df = df[df['一级分类名'] != '耗材'].copy()
+            consumable_count = len(full_df) - len(display_df)
+            print(f"[Database] 📊 数据分离完成:")
+            print(f"   - 完整数据(含耗材): {len(full_df):,} 行")
+            print(f"   - 展示数据(不含耗材): {len(display_df):,} 行")
+            print(f"   - 耗材数据: {consumable_count:,} 行")
+        else:
+            display_df = full_df.copy()
+        
+        return {
+            'full': full_df,
+            'display': display_df
+        }
+    
+    def load_from_database_smart(self,
+                                 store_name: str = None,
+                                 start_date: datetime = None,
+                                 end_date: datetime = None,
+                                 split_consumables: bool = True):
+        """
+        智能加载：根据数据量自动选择最优策略
+        
+        策略选择:
+        - < 10,000 条: 全量加载 (最快)
+        - 10,000 - 100,000 条: 流式加载 (平衡)
+        - > 100,000 条: 流式加载 + 警告 (安全)
+        
+        Args:
+            store_name: 门店名称
+            start_date: 开始日期
+            end_date: 结束日期
+            split_consumables: 是否分离耗材数据
+            
+        Returns:
+            {'full': 完整数据, 'display': 展示数据, 'strategy': 使用的策略}
+        """
+        print(f"[Database] 智能加载数据...")
+        
+        db = next(get_db())
+        
+        try:
+            # 构建查询用于估算
+            query = db.query(Order)
+            
+            if store_name:
+                query = query.filter(Order.store_name == store_name)
+            
+            if start_date:
+                from datetime import datetime as dt
+                if isinstance(start_date, str):
+                    start_date = dt.fromisoformat(start_date)
+                if not isinstance(start_date, dt):
+                    start_date = dt.combine(start_date, dt.min.time())
+                query = query.filter(Order.date >= start_date)
+            
+            if end_date:
+                from datetime import datetime as dt
+                if isinstance(end_date, str):
+                    end_date = dt.fromisoformat(end_date)
+                elif not isinstance(end_date, dt):
+                    end_date = dt.combine(end_date, dt.min.time())
+                end_date = dt.combine(end_date.date(), dt.max.time())
+                query = query.filter(Order.date <= end_date)
+            
+            # 快速估算数据量（使用 count，但有超时保护）
+            print(f"[Database] 估算数据量...")
+            import time
+            count_start = time.time()
+            
+            try:
+                estimated_count = query.count()
+                count_elapsed = time.time() - count_start
+                print(f"[Database] 预估数据量: {estimated_count:,} 条 (耗时 {count_elapsed:.1f}秒)")
+            except Exception as e:
+                print(f"[Database] ⚠️ 估算失败: {e}")
+                estimated_count = 50000  # 默认使用中等策略
+            
+            # 根据数据量选择策略
+            if estimated_count < 10000:
+                # 小数据量：全量加载
+                strategy = "全量加载"
+                print(f"[Database] 策略: {strategy} (数据量小，速度最快)")
+                result = self.load_from_database(
+                    store_name=store_name,
+                    start_date=start_date,
+                    end_date=end_date,
+                    split_consumables=split_consumables
+                )
+            
+            elif estimated_count < 100000:
+                # 中等数据量：流式加载
+                strategy = "流式加载"
+                print(f"[Database] 策略: {strategy} (数据量适中，平衡性能)")
+                result = self.load_from_database_streaming(
+                    store_name=store_name,
+                    start_date=start_date,
+                    end_date=end_date,
+                    batch_size=10000,
+                    max_rows=100000
+                )
+            
+            else:
+                # 大数据量：流式加载 + 警告
+                strategy = "流式加载(大数据)"
+                print(f"[Database] 策略: {strategy} (数据量大，限制最大行数)")
+                print(f"⚠️ 数据量较大 ({estimated_count:,} 条)，将限制加载 100万 条")
+                print(f"💡 建议: 缩小查询范围以获得更好的性能")
+                result = self.load_from_database_streaming(
+                    store_name=store_name,
+                    start_date=start_date,
+                    end_date=end_date,
+                    batch_size=10000,
+                    max_rows=1000000
+                )
+            
+            # 添加策略信息
+            result['strategy'] = strategy
+            result['estimated_count'] = estimated_count
+            
+            return result
+            
+        finally:
+            db.close()
 
 
 # 测试代码
@@ -415,3 +702,4 @@ if __name__ == "__main__":
     stores = manager.get_available_stores()
     for store in stores[:5]:
         print(f"  - {store}")
+

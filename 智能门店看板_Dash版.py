@@ -146,6 +146,17 @@ except ImportError as e:
     create_tab_skeleton = lambda *args, **kwargs: html.Div()
     create_dashboard_skeleton = lambda *args, **kwargs: html.Div()
 
+# 🎯 导入系统监控面板组件（V8.4生产级）
+try:
+    from components.system_monitor_panel import create_monitor_panel, register_monitor_callbacks
+    SYSTEM_MONITOR_AVAILABLE = True
+    print("✅ 系统监控面板组件已加载")
+except ImportError as e:
+    SYSTEM_MONITOR_AVAILABLE = False
+    print(f"⚠️ 系统监控面板组件加载失败: {e}")
+    create_monitor_panel = lambda: html.Div()
+    register_monitor_callbacks = lambda *args: None
+
 # 导入商品场景智能打标引擎
 try:
     from 商品场景智能打标引擎 import ProductSceneTagger
@@ -810,23 +821,17 @@ def optimize_dataframe_dtypes(df):
     return df
 
 # ✅ Redis缓存管理器实例（多用户共享）
+# V8.9修复：直接使用redis_cache_manager模块中已初始化的全局实例
 REDIS_CACHE_MANAGER = None
 if REDIS_CACHE_AVAILABLE:
     try:
-        REDIS_CACHE_MANAGER = get_cache_manager(
-            host='localhost',
-            port=6379,
-            db=0,
-            default_ttl=1800  # 默认30分钟
-        )
-        if REDIS_CACHE_MANAGER.enabled:
+        # 导入已初始化的全局实例
+        from redis_cache_manager import REDIS_CACHE_MANAGER
+        
+        if REDIS_CACHE_MANAGER and REDIS_CACHE_MANAGER.enabled:
             print("✅ Redis缓存已启用 - 支持多用户数据共享")
             print(f"📊 缓存配置: TTL=30分钟, 自动过期")
-            
-            # 🔧 将实例同步到redis_cache_manager模块，供其他模块导入
-            import redis_cache_manager as rcm
-            rcm.REDIS_CACHE_MANAGER = REDIS_CACHE_MANAGER
-            print("✅ Redis缓存管理器实例已导出到redis_cache_manager模块")
+            print(f"📊 缓存统计: {REDIS_CACHE_MANAGER.get_stats()}")
         else:
             print("⚠️  Redis连接失败，将使用本地缓存")
             REDIS_CACHE_MANAGER = None
@@ -3254,6 +3259,38 @@ app.index_string = '''
             #upload-data {
                 transition: all 0.3s ease !important;
             }
+            
+            /* ========== V8.0 企业级性能优化：骨架屏CSS ========== */
+            @keyframes skeleton-loading {
+                0% { background-position: 200% 0; }
+                100% { background-position: -200% 0; }
+            }
+
+            .skeleton-pulse {
+                background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+                background-size: 200% 100%;
+                animation: skeleton-loading 1.5s ease-in-out infinite;
+                border-radius: 4px;
+            }
+
+            .skeleton-text {
+                height: 16px;
+                margin-bottom: 8px;
+            }
+
+            .skeleton-title {
+                height: 24px;
+                margin-bottom: 12px;
+                width: 60%;
+            }
+
+            .skeleton-card {
+                padding: 20px;
+                background: white;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            /* ========== 骨架屏CSS结束 ========== */
         </style>
     </head>
     <body>
@@ -5462,6 +5499,9 @@ if MANTINE_AVAILABLE:
                 ])
             ], className='main-header'),
             
+            # ========== 系统监控面板 (V8.4生产级) ==========
+            create_monitor_panel() if SYSTEM_MONITOR_AVAILABLE else html.Div(),
+            
             # ========== 全局数据信息卡片 + 刷新按钮 ==========
             dbc.Row([
                 dbc.Col([
@@ -5697,8 +5737,8 @@ if MANTINE_AVAILABLE:
 else:
     # 如果Mantine不可用，使用原始Bootstrap布局
     app.layout = dbc.Container([
-        # URL 路由组件（用于页面加载检测）
-        dcc.Location(id='url', refresh=False),
+            # URL 路由组件（用于页面加载检测）
+            dcc.Location(id='url', refresh=False),
         
         # ========== Toast队列管理系统 ==========
         html.Div(id='toast-container', children=[], style={
@@ -5812,6 +5852,9 @@ else:
                 )
             ], md=1)
         ], className="mb-3", align="center"),
+        
+        # ========== 系统监控面板 (V8.4生产级) ==========
+        create_monitor_panel() if SYSTEM_MONITOR_AVAILABLE else html.Div(),
         
         # 刷新状态提示
         html.Div(id='global-refresh-status', className="mb-3"),
@@ -6413,8 +6456,8 @@ def load_from_database(n_clicks, store_name, start_date, end_date):
             QUERY_DATE_RANGE.get('cache_timestamp') is not None and
             QUERY_DATE_RANGE.get('db_min_date') is not None and
             QUERY_DATE_RANGE.get('db_max_date') is not None and
-            # 缓存有效期：5分钟
-            (datetime.now() - QUERY_DATE_RANGE.get('cache_timestamp')).total_seconds() < 300
+            # 缓存有效期：60分钟 (V7.6优化)
+            (datetime.now() - QUERY_DATE_RANGE.get('cache_timestamp')).total_seconds() < 3600
         )
         
         if not cache_valid:
@@ -6448,8 +6491,8 @@ def load_from_database(n_clicks, store_name, start_date, end_date):
                 # 保存到Redis缓存
                 if REDIS_CACHE_MANAGER and REDIS_CACHE_MANAGER.enabled and not full_df.empty:
                     full_redis_key = f"store_full_data:{store_name}"
-                    cache_dataframe(full_redis_key, full_df, ttl=1800, cache_manager=REDIS_CACHE_MANAGER)
-                    print(f"💾 完整数据已保存到Redis缓存 (TTL=30分钟)")
+                    cache_dataframe(full_redis_key, full_df, ttl=3600, cache_manager=REDIS_CACHE_MANAGER)
+                    print(f"💾 完整数据已保存到Redis缓存 (TTL=60分钟)")
             
             GLOBAL_FULL_DATA = full_df
             
@@ -6460,10 +6503,10 @@ def load_from_database(n_clicks, store_name, start_date, end_date):
                 QUERY_DATE_RANGE['cache_timestamp'] = datetime.now()
                 QUERY_DATE_RANGE['cache_store'] = store_name
                 print(f"✅ 数据库完整范围已缓存: {QUERY_DATE_RANGE['db_min_date'].strftime('%Y-%m-%d')} ~ {QUERY_DATE_RANGE['db_max_date'].strftime('%Y-%m-%d')}")
-                print(f"📦 本地缓存将在 5 分钟后过期")
+                print(f"📦 本地缓存将在 60 分钟后过期")
         else:
             print(f"✅ 使用本地缓存的数据库范围: {QUERY_DATE_RANGE['db_min_date'].strftime('%Y-%m-%d')} ~ {QUERY_DATE_RANGE['db_max_date'].strftime('%Y-%m-%d')}")
-            print(f"📦 本地缓存剩余时间: {int(300 - (datetime.now() - QUERY_DATE_RANGE['cache_timestamp']).total_seconds())} 秒")
+            print(f"📦 本地缓存剩余时间: {int(3600 - (datetime.now() - QUERY_DATE_RANGE['cache_timestamp']).total_seconds())} 秒")
         
         # 从数据库加载(带日期过滤)
         print(f"\n{'🔍'*40}", flush=True)
@@ -6625,7 +6668,7 @@ def show_cache_status(load_clicks, store_name):
     # 加载数据后显示缓存状态
     if QUERY_DATE_RANGE.get('cache_timestamp'):
         cache_age = (datetime.now() - QUERY_DATE_RANGE['cache_timestamp']).total_seconds()
-        remaining = max(0, 300 - cache_age)  # 5分钟本地缓存
+        remaining = max(0, 3600 - cache_age)  # 60分钟本地缓存 (V7.6优化)
         
         # 检查Redis缓存状态
         redis_info = ""
@@ -20819,6 +20862,66 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"⚠️ 今日必做回调函数注册失败: {e}")
     
+    # ========== V8.4 Redis健康监控（生产级）==========
+    REDIS_HEALTH_MONITOR = None
+    try:
+        from redis_health_monitor import get_health_monitor
+        
+        # 创建健康监控器
+        REDIS_HEALTH_MONITOR = get_health_monitor(
+            host='localhost',
+            port=6379,
+            check_interval=30,  # 每30秒检查一次
+            max_retry=3  # 最多重连3次
+        )
+        
+        # 启动时完整检查
+        print("🔍 Redis健康检查...")
+        health_result = REDIS_HEALTH_MONITOR.initial_check()
+        
+        if health_result['connected']:
+            print(f"✅ Redis连接成功")
+            print(f"   版本: {health_result['version']}")
+            print(f"   内存: {health_result['memory']['used_mb']}MB / {health_result['memory']['max_mb']}MB")
+            print(f"   延迟: {health_result.get('latency_ms', 0)}ms")
+            
+            # 显示警告
+            for warning in health_result.get('warnings', []):
+                print(f"   {warning}")
+            
+            # 启动后台监控
+            REDIS_HEALTH_MONITOR.start_monitoring()
+            print(f"✅ Redis健康监控已启动（每30秒检查）")
+        else:
+            print(f"❌ Redis连接失败")
+            for error in health_result.get('errors', []):
+                print(f"   {error}")
+            print(f"   缓存功能将不可用")
+    except Exception as e:
+        print(f"⚠️ Redis健康监控初始化失败: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # ========== V8.1 启动后台任务调度器 ==========
+    try:
+        from background_tasks import start_background_tasks
+        scheduler = start_background_tasks()
+        print("✅ 后台任务调度器已启动 (每5分钟更新缓存)")
+    except Exception as e:
+        print(f"⚠️ 后台任务启动失败: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # ========== V8.4 注册系统监控面板回调 ==========
+    if SYSTEM_MONITOR_AVAILABLE and REDIS_HEALTH_MONITOR:
+        try:
+            register_monitor_callbacks(app, REDIS_HEALTH_MONITOR, REDIS_CACHE_MANAGER)
+            print("✅ 系统监控面板回调已注册")
+        except Exception as e:
+            print(f"⚠️ 系统监控面板回调注册失败: {e}")
+            import traceback
+            traceback.print_exc()
+    
     # 强制刷新输出，确保日志实时显示
     sys.stdout.flush()
     sys.stderr.flush()
@@ -20914,44 +21017,40 @@ if __name__ == '__main__':
                 input("按回车键退出...")
                 sys.exit(1)
             
-            if is_windows:
-                # Windows: 直接使用Flask多线程模式 (稳定可靠)
-                print("🚀 启动生产服务器 (Flask多线程模式)...", flush=True)
-                print("   平台: Windows", flush=True)
+            # 生产模式：优先使用Waitress（支持100-200人并发）
+            try:
+                from waitress import serve
+                print("🚀 启动生产服务器 (Waitress - 企业级)...", flush=True)
+                print(f"   平台: {platform.system()}", flush=True)
+                print(f"   配置: 16线程, 200连接, 3分钟超时", flush=True)
+                print(f"   适用: 100-200人并发", flush=True)
+                print("", flush=True)
+                
+                serve(
+                    app.server,
+                    host='0.0.0.0',
+                    port=8051,
+                    threads=16,             # 16个工作线程（支持100-200人）
+                    channel_timeout=180,    # 3分钟超时
+                    connection_limit=200,   # 最多200个连接
+                    recv_bytes=16384,       # 16KB接收缓冲
+                    send_bytes=16384,       # 16KB发送缓冲
+                    asyncore_use_poll=True, # 使用poll（性能更好）
+                    cleanup_interval=30,    # 30秒清理一次
+                    log_socket_errors=False # 不记录套接字错误
+                )
+            except ImportError:
+                print("⚠️ Waitress 未安装，回退到 Flask 多线程模式", flush=True)
+                print("   建议安装: pip install waitress", flush=True)
+                print("   Flask模式仅支持5-10人并发", flush=True)
                 print("", flush=True)
                 app.run(
                     debug=False,
                     host='0.0.0.0',
                     port=8051,
-                    threaded=True,  # 多线程支持并发
+                    threaded=True,
                     use_reloader=False
                 )
-            else:
-                # Linux/Unix: 使用 Waitress (高性能)
-                try:
-                    from waitress import serve
-                    print("🚀 启动生产服务器 (Waitress)...", flush=True)
-                    print("   平台: Linux/Unix", flush=True)
-                    print("", flush=True)
-                    serve(
-                        app.server,
-                        host='0.0.0.0',
-                        port=8051,
-                        threads=4,
-                        channel_timeout=120,
-                        connection_limit=100,
-                        cleanup_interval=30
-                    )
-                except ImportError:
-                    print("⚠️ Waitress 未安装，回退到 Flask", flush=True)
-                    print("", flush=True)
-                    app.run(
-                        debug=False,
-                        host='0.0.0.0',
-                        port=8051,
-                        threaded=True,
-                        use_reloader=False
-                    )
         
         print("⚠️ 应用服务器已停止", flush=True)
     except KeyboardInterrupt:

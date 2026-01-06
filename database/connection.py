@@ -19,15 +19,16 @@ DATABASE_URL = os.getenv(
     "postgresql://postgres:postgres@localhost:5432/o2o_dashboard"
 )
 
-# 创建数据库引擎
+# 创建数据库引擎 - 企业级配置
 # 使用 pg8000 驱动避免 psycopg2 的 UTF-8 编码问题
 engine = create_engine(
     DATABASE_URL.replace('postgresql://', 'postgresql+pg8000://'),
     poolclass=QueuePool,
-    pool_size=5,              # 连接池大小
-    max_overflow=10,          # 最大溢出连接数
+    pool_size=20,             # 连接池大小 (5→20, 支持100人并发)
+    max_overflow=40,          # 最大溢出连接数 (10→40)
     pool_timeout=30,          # 连接超时
     pool_recycle=3600,        # 连接回收时间（秒）
+    pool_pre_ping=True,       # 连接前健康检查 (新增)
     echo=False,               # 不打印SQL（生产环境关闭）
 )
 

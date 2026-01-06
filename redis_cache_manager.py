@@ -506,6 +506,20 @@ if __name__ == "__main__":
 # =============================================================================
 # 🔧 导出全局缓存管理器实例（用于其他模块导入）
 # =============================================================================
-# 注意：实际的实例会在智能门店看板_Dash版.py中初始化
-# 这里只是提供一个占位符，避免导入错误
-REDIS_CACHE_MANAGER = None
+# ✅ V8.9修复：在模块加载时就初始化全局实例
+# 这样其他模块导入时就能获得有效的缓存管理器
+try:
+    REDIS_CACHE_MANAGER = get_cache_manager(
+        host='localhost',
+        port=6379,
+        db=0,
+        default_ttl=1800  # 默认30分钟
+    )
+    if REDIS_CACHE_MANAGER.enabled:
+        logger.info("✅ 全局Redis缓存管理器已初始化")
+    else:
+        logger.warning("⚠️ Redis连接失败，缓存功能已禁用")
+        REDIS_CACHE_MANAGER = None
+except Exception as e:
+    logger.error(f"❌ 全局Redis缓存管理器初始化失败: {e}")
+    REDIS_CACHE_MANAGER = None
