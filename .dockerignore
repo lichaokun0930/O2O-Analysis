@@ -1,0 +1,58 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv
+ENV
+
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Build
+dist
+build
+*.egg-info
+
+# Test
+.pytest_cache
+.coverage
+htmlcov
+
+# Logs
+*.log
+logs
+
+# Temp
+*.tmp
+*.temp
+.DS_Store
+
+# Kiro
+.kiro
+
+# 测试脚本
+*.test.py
+test_*.py
+验证*.py
+测试*.py
+检查*.py
+调试*.py
+
+# 文档（不需要打包到镜像）
+*.md
+!README.md

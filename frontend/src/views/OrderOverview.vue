@@ -66,12 +66,15 @@
     <div class="channel-section">
       <h3 class="section-title">🏪 渠道表现对比</h3>
       <el-row :gutter="16">
-        <el-col :span="6" v-for="channel in channelComparison" :key="channel.channel">
+        <el-col :span="8" v-for="channel in channelComparison" :key="channel.channel">
           <el-card class="channel-card" shadow="hover" v-loading="loading">
+            <!-- 渠道头部 -->
             <div class="channel-header">
-              <span class="channel-name">{{ channel.channel }}</span>
+              <span class="channel-name">{{ getChannelIcon(channel.channel) }} {{ channel.channel }}</span>
               <el-tag :type="getRatingType(channel.rating)" size="small">{{ channel.rating }}</el-tag>
             </div>
+            
+            <!-- 核心指标区域 -->
             <div class="channel-metrics">
               <div class="metric-row">
                 <span class="metric-label">订单数</span>
@@ -96,16 +99,101 @@
               </div>
               <div class="metric-row">
                 <span class="metric-label">客单价</span>
-                <span class="metric-value">¥{{ channel.current.avg_value.toFixed(2) }}</span>
+                <span class="metric-value">¥{{ (channel.current.avg_value || 0).toFixed(2) }}</span>
                 <span class="metric-change" :class="getChangeClass(channel.changes.avg_value)">
                   {{ formatChange(channel.changes.avg_value) }}
                 </span>
               </div>
               <div class="metric-row">
                 <span class="metric-label">利润率</span>
-                <span class="metric-value">{{ channel.current.profit_rate.toFixed(1) }}%</span>
+                <span class="metric-value" :class="getProfitRateClass(channel.current.profit_rate)">
+                  {{ (channel.current.profit_rate || 0).toFixed(1) }}%
+                </span>
                 <span class="metric-change" :class="getChangeClass(channel.changes.profit_rate)">
-                  {{ channel.changes.profit_rate >= 0 ? '+' : '' }}{{ channel.changes.profit_rate.toFixed(1) }}pp
+                  {{ formatProfitRateChange(channel.changes.profit_rate) }}
+                </span>
+              </div>
+            </div>
+            
+            <!-- 单均经济区域 -->
+            <div class="unit-economics">
+              <div class="section-label">💰 单均经济</div>
+              <el-row :gutter="8">
+                <el-col :span="8">
+                  <div class="unit-item">
+                    <span class="unit-label">单均利润</span>
+                    <span class="unit-value success">¥{{ (channel.current.avg_profit_per_order || 0).toFixed(2) }}</span>
+                  </div>
+                </el-col>
+                <el-col :span="8">
+                  <div class="unit-item">
+                    <span class="unit-label">单均营销</span>
+                    <span class="unit-value warning">¥{{ (channel.current.avg_marketing_per_order || 0).toFixed(2) }}</span>
+                  </div>
+                </el-col>
+                <el-col :span="8">
+                  <div class="unit-item">
+                    <span class="unit-label">单均配送</span>
+                    <span class="unit-value">¥{{ (channel.current.avg_delivery_per_order || 0).toFixed(2) }}</span>
+                  </div>
+                </el-col>
+              </el-row>
+            </div>
+            
+            <!-- 成本结构区域 -->
+            <div class="cost-structure">
+              <div class="section-label">📉 成本结构</div>
+              
+              <!-- 商品成本 -->
+              <div class="cost-item">
+                <div class="cost-header">
+                  <span class="cost-name">📦 商品成本</span>
+                  <span class="cost-amount">¥{{ formatNumber(channel.current.product_cost || 0) }}</span>
+                  <span class="cost-rate primary">{{ (channel.current.product_cost_rate || 0).toFixed(1) }}%</span>
+                </div>
+                <el-progress 
+                  :percentage="Math.min(channel.current.product_cost_rate || 0, 70)" 
+                  :stroke-width="8"
+                  :show-text="false"
+                  color="#409EFF"
+                />
+              </div>
+              
+              <!-- 配送成本 -->
+              <div class="cost-item">
+                <div class="cost-header">
+                  <span class="cost-name">🚚 配送成本</span>
+                  <span class="cost-amount">¥{{ formatNumber(channel.current.delivery_cost || 0) }}</span>
+                  <span class="cost-rate">{{ (channel.current.delivery_cost_rate || 0).toFixed(1) }}%</span>
+                </div>
+                <el-progress 
+                  :percentage="Math.min((channel.current.delivery_cost_rate || 0) * 3.3, 100)" 
+                  :stroke-width="8"
+                  :show-text="false"
+                  color="#909399"
+                />
+              </div>
+              
+              <!-- 平台服务费 -->
+              <div class="cost-item">
+                <div class="cost-header">
+                  <span class="cost-name">📱 平台服务费</span>
+                  <span class="cost-amount">¥{{ formatNumber(channel.current.platform_fee || 0) }}</span>
+                  <span class="cost-rate info">{{ (channel.current.platform_fee_rate || 0).toFixed(1) }}%</span>
+                </div>
+                <el-progress 
+                  :percentage="Math.min((channel.current.platform_fee_rate || 0) * 3.3, 100)" 
+                  :stroke-width="8"
+                  :show-text="false"
+                  color="#67C23A"
+                />
+              </div>
+              
+              <!-- 总成本率 -->
+              <div class="total-cost-rate">
+                <span class="total-label">📊 总成本率</span>
+                <span class="total-value" :class="getTotalCostRateClass(channel.current.total_cost_rate)">
+                  {{ (channel.current.total_cost_rate || 0).toFixed(1) }}%
                 </span>
               </div>
             </div>
@@ -306,7 +394,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { Download, Search, Refresh } from '@element-plus/icons-vue'
+import { Download, Search, Refresh, ArrowDown } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { 
@@ -336,10 +424,29 @@ const channelList = ref<string[]>([])
 const filters = ref({
   store_name: '',
 })
+
+// 日期范围（可选，不设置则加载门店所有数据）
 const dateRange = ref<string[]>([])
+
+// 是否已初始化加载（首次需要选择门店后才加载数据）
+const isInitialized = ref(false)
 const granularity = ref<'day' | 'week' | 'month'>('day')
 const trendChannel = ref('')
 const activeAnomalyTab = ref('low_profit')
+
+// 渠道对比表格V2相关状态
+const showCostDetail = ref(true)
+const costCollapseActive = ref(['cost'])
+const expandedChannel = ref<string>('')
+
+// 切换渠道展开状态
+const toggleChannelExpand = (channelName: string) => {
+  if (expandedChannel.value === channelName) {
+    expandedChannel.value = ''
+  } else {
+    expandedChannel.value = channelName
+  }
+}
 
 // 数据
 const overview = ref<OrderOverview>({
@@ -452,6 +559,89 @@ const kpiCards = computed(() => {
   ]
 })
 
+// 渠道对比表格数据
+const channelTableData = computed(() => [
+  { key: 'order_count', metric: '订单数', icon: '📦' },
+  { key: 'amount', metric: '销售额', icon: '💰' },
+  { key: 'profit', metric: '利润', icon: '💎' },
+  { key: 'avg_value', metric: '客单价', icon: '🛒' },
+  { key: 'profit_rate', metric: '利润率', icon: '📈' },
+])
+
+// 格式化单元格值
+const formatCellValue = (key: string, channel: ChannelComparison): string => {
+  const current = channel.current
+  switch (key) {
+    case 'order_count':
+      return current.order_count?.toLocaleString() || '0'
+    case 'amount':
+      return '¥' + formatNumber(current.amount || 0)
+    case 'profit':
+      return '¥' + formatNumber(current.profit || 0)
+    case 'avg_value':
+      return '¥' + (current.avg_value || 0).toFixed(2)
+    case 'profit_rate':
+      return (current.profit_rate || 0).toFixed(1) + '%'
+    default:
+      return '--'
+  }
+}
+
+// 格式化单元格变化
+const formatCellChange = (key: string, channel: ChannelComparison): string => {
+  const changes = channel.changes
+  const change = changes[key as keyof typeof changes]
+  if (change === null || change === undefined) return '--'
+  if (key === 'profit_rate') {
+    const sign = change >= 0 ? '+' : ''
+    return `${sign}${change.toFixed(1)}pp`
+  }
+  const sign = change >= 0 ? '+' : ''
+  return `${sign}${change.toFixed(1)}%`
+}
+
+// 获取单元格值样式
+const getCellValueClass = (key: string, channel: ChannelComparison): string => {
+  if (key === 'profit_rate') {
+    const rate = channel.current.profit_rate || 0
+    if (rate >= 20) return 'high-profit'
+    if (rate >= 10) return 'medium-profit'
+    return 'low-profit'
+  }
+  if (key === 'profit') {
+    return (channel.current.profit || 0) >= 0 ? 'success-text' : 'danger-text'
+  }
+  return ''
+}
+
+// 获取单元格变化样式
+const getCellChangeClass = (key: string, channel: ChannelComparison): string => {
+  const changes = channel.changes
+  const change = changes[key as keyof typeof changes]
+  if (change === null || change === undefined) return ''
+  return change >= 0 ? 'positive' : 'negative'
+}
+
+// 获取最优渠道
+const getBestChannel = (key: string): string => {
+  if (!channelComparison.value.length) return '--'
+  let best = channelComparison.value[0]
+  for (const ch of channelComparison.value) {
+    const currentVal = ch.current[key as keyof typeof ch.current] as number || 0
+    const bestVal = best.current[key as keyof typeof best.current] as number || 0
+    if (currentVal > bestVal) {
+      best = ch
+    }
+  }
+  return best.channel.substring(0, 2) // 取前两个字符
+}
+
+// 获取渠道行样式
+const getChannelRowClass = ({ row }: { row: any }): string => {
+  if (row.key === 'profit_rate') return 'highlight-row'
+  return ''
+}
+
 // 格式化函数
 const formatNumber = (num: number): string => {
   if (num === null || num === undefined) return '0'
@@ -465,6 +655,13 @@ const formatChange = (change: number): string => {
   if (change === null || change === undefined) return '--'
   const sign = change >= 0 ? '+' : ''
   return `${sign}${change.toFixed(1)}%`
+}
+
+// 格式化利润率环比（使用pp而不是%）
+const formatProfitRateChange = (change: number | null): string => {
+  if (change === null || change === undefined) return '--'
+  const sign = change >= 0 ? '+' : ''
+  return `${sign}${change.toFixed(1)}pp`
 }
 
 // 获取筛选参数
@@ -595,14 +792,21 @@ const fetchOrderList = async () => {
 
 const fetchStores = async () => {
   try {
-    // 优先使用全局缓存
-    if (globalStore.storeNames.length > 0) {
-      storeList.value = globalStore.storeNames
-      return
-    }
+    // 直接调用API获取门店列表（不依赖全局缓存）
     const res = await orderApi.getStores()
-    if (res.success) {
+    if (res.success && res.data.length > 0) {
       storeList.value = res.data
+      console.log(`✅ 门店列表加载成功: ${res.data.length} 个门店`)
+    } else {
+      // 如果orders API返回空，尝试从data API获取
+      console.log('⚠️ orders API返回空，尝试从data API获取门店列表')
+      const dataRes = await fetch('/api/v1/data/stores')
+      const dataJson = await dataRes.json()
+      if (dataJson.success && dataJson.data.length > 0) {
+        // 转换格式：data API返回的是 {label, value, order_count}
+        storeList.value = dataJson.data.map((s: any) => s.value || s.label)
+        console.log(`✅ 从data API加载门店列表: ${storeList.value.length} 个门店`)
+      }
     }
   } catch (err) {
     console.error('获取门店列表失败:', err)
@@ -790,7 +994,14 @@ const renderTrendChart = () => {
 
 // 事件处理
 const handleSearch = () => {
+  // 必须选择门店才能查询
+  if (!filters.value.store_name) {
+    ElMessage.warning('请先选择门店')
+    return
+  }
+  
   pagination.value.page = 1
+  isInitialized.value = true
   fetchAllData()
 }
 
@@ -798,7 +1009,25 @@ const handleReset = () => {
   filters.value.store_name = ''
   dateRange.value = []
   pagination.value.page = 1
-  fetchAllData()
+  isInitialized.value = false
+  
+  // 重置数据为空
+  overview.value = {
+    total_orders: 0,
+    total_actual_sales: 0,
+    total_profit: 0,
+    avg_order_value: 0,
+    profit_rate: 0,
+    active_products: 0,
+  }
+  comparison.value = null
+  channelComparison.value = []
+  trendData.value = { dates: [], order_counts: [], amounts: [], profits: [], avg_values: [] }
+  priceDistribution.value = null
+  categoryTrend.value = null
+  anomalyData.value = null
+  orderList.value = []
+  pagination.value.total = 0
 }
 
 const handleExport = async () => {
@@ -875,6 +1104,32 @@ const getProfitRateClass = (rate: number) => {
   return 'success-text'
 }
 
+// 获取渠道图标
+const getChannelIcon = (channel: string): string => {
+  if (channel.includes('美团')) return '🟡'
+  if (channel.includes('饿了么')) return '🔵'
+  if (channel.includes('京东')) return '🔴'
+  if (channel.includes('抖音')) return '🎵'
+  if (channel.includes('收银机')) return '💳'
+  if (channel.includes('闪购')) return '⚡'
+  return '📱'
+}
+
+// 获取总成本率样式类
+const getTotalCostRateClass = (rate: number): string => {
+  if (rate < 70) return 'success-text'
+  if (rate < 85) return 'warning-text'
+  return 'danger-text'
+}
+
+// 渠道下钻处理
+const handleChannelDrillDown = (channel: any) => {
+  // TODO: 实现渠道下钻功能
+  // 可以跳转到渠道详情页或打开弹窗
+  ElMessage.info(`即将深入分析渠道: ${channel.channel}`)
+  console.log('渠道下钻数据:', channel)
+}
+
 // 获取所有数据
 const fetchAllData = async () => {
   loading.value = true
@@ -903,7 +1158,9 @@ const handleResize = () => {
 
 // 监听渠道筛选变化
 watch(() => trendChannel.value, () => {
-  fetchCategoryTrend()
+  if (isInitialized.value) {
+    fetchCategoryTrend()
+  }
 })
 
 // 生命周期
@@ -911,9 +1168,11 @@ onMounted(async () => {
   // 初始化全局数据
   await globalStore.initialize()
   
+  // 只加载门店和渠道列表，不加载数据
+  // 用户需要选择门店后点击查询才加载数据
   await fetchStores()
   await fetchChannels()
-  await fetchAllData()
+  
   window.addEventListener('resize', handleResize)
 })
 
@@ -1015,48 +1274,176 @@ onUnmounted(() => {
   }
 }
 
-// 渠道卡片
-.channel-section {
-  margin-bottom: 16px;
+// 渠道卡片V3 - 简洁卡片 + 渐进披露
+.channel-section-v3 {
+  margin-bottom: 20px;
+  
+  .section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #303133;
+    margin-bottom: 16px;
+  }
 }
 
-.channel-card {
-  .channel-header {
+.channel-card-v3 {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+  border: 1px solid #ebeef5;
+  
+  &:hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+  
+  &.is-expanded {
+    box-shadow: 0 6px 24px rgba(64, 158, 255, 0.15);
+    border-color: #409EFF;
+  }
+  
+  .card-header-v3 {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    gap: 8px;
+    margin-bottom: 16px;
+    
+    .channel-icon {
+      font-size: 20px;
+    }
     
     .channel-name {
       font-size: 15px;
       font-weight: 600;
+      color: #303133;
+      flex: 1;
     }
   }
   
-  .channel-metrics {
-    .metric-row {
+  .hero-metric {
+    text-align: center;
+    padding: 16px 0;
+    border-bottom: 1px solid #f0f0f0;
+    margin-bottom: 16px;
+    
+    .hero-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #303133;
+      line-height: 1.2;
+    }
+    
+    .hero-change {
+      font-size: 13px;
+      margin-top: 4px;
+      
+      &.positive {
+        color: #67C23A;
+      }
+      
+      &.negative {
+        color: #F56C6C;
+      }
+    }
+  }
+  
+  .key-metrics {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 16px;
+    
+    .key-item {
+      text-align: center;
+      
+      .key-label {
+        display: block;
+        font-size: 12px;
+        color: #909399;
+        margin-bottom: 4px;
+      }
+      
+      .key-value {
+        font-size: 18px;
+        font-weight: 600;
+        color: #303133;
+      }
+    }
+  }
+  
+  .expand-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px;
+    color: #409EFF;
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.2s;
+    
+    &:hover {
+      background: #ecf5ff;
+    }
+    
+    .el-icon {
+      transition: transform 0.3s;
+      
+      &.is-rotate {
+        transform: rotate(180deg);
+      }
+    }
+  }
+  
+  .detail-panel {
+    padding-top: 16px;
+    border-top: 1px dashed #ebeef5;
+    margin-top: 12px;
+    
+    .detail-section {
+      margin-bottom: 16px;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+      
+      .section-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #606266;
+        margin-bottom: 10px;
+      }
+    }
+    
+    .detail-row {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 6px 0;
-      border-bottom: 1px solid #f0f0f0;
+      padding: 8px 0;
+      border-bottom: 1px solid #f5f5f5;
       
       &:last-child {
         border-bottom: none;
       }
       
-      .metric-label {
-        font-size: 12px;
-        color: #909399;
-      }
-      
-      .metric-value {
+      .detail-label {
+        flex: 1;
         font-size: 13px;
-        font-weight: 600;
+        color: #606266;
       }
       
-      .metric-change {
-        font-size: 11px;
+      .detail-value {
+        font-size: 14px;
+        font-weight: 600;
+        color: #303133;
+        margin-right: 12px;
+      }
+      
+      .detail-change {
+        font-size: 12px;
+        min-width: 50px;
+        text-align: right;
         
         &.positive {
           color: #67C23A;
@@ -1066,6 +1453,264 @@ onUnmounted(() => {
           color: #F56C6C;
         }
       }
+    }
+    
+    .unit-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      
+      .unit-item {
+        text-align: center;
+        padding: 10px 4px;
+        background: #f9f9f9;
+        border-radius: 6px;
+        
+        .unit-label {
+          display: block;
+          font-size: 11px;
+          color: #909399;
+          margin-bottom: 4px;
+        }
+        
+        .unit-value {
+          font-size: 14px;
+          font-weight: 600;
+          
+          &.success {
+            color: #67C23A;
+          }
+          
+          &.warning {
+            color: #E6A23C;
+          }
+        }
+      }
+    }
+    
+    .cost-mini-bar {
+      height: 8px;
+      background: #f0f0f0;
+      border-radius: 4px;
+      display: flex;
+      overflow: hidden;
+      margin-bottom: 8px;
+      
+      .cost-segment {
+        height: 100%;
+      }
+    }
+    
+    .cost-total {
+      font-size: 12px;
+      color: #909399;
+      text-align: right;
+      
+      strong {
+        font-size: 14px;
+      }
+    }
+  }
+}
+
+// 利润率颜色
+.high-profit, .channel-card-v3 .key-value.high-profit {
+  color: #67C23A !important;
+}
+
+.medium-profit, .channel-card-v3 .key-value.medium-profit {
+  color: #E6A23C !important;
+}
+
+.low-profit, .channel-card-v3 .key-value.low-profit {
+  color: #F56C6C !important;
+}
+
+// 保留旧版渠道卡片样式（兼容）
+.channel-section {
+  margin-bottom: 16px;
+}
+
+.channel-card {
+  height: 100%;
+  
+  .channel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #f0f0f0;
+    
+    .channel-name {
+      font-size: 15px;
+      font-weight: 600;
+    }
+  }
+  
+  .channel-metrics {
+    margin-bottom: 12px;
+    
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+      border-bottom: 1px solid #f5f5f5;
+      
+      &:last-child {
+        border-bottom: none;
+      }
+      
+      .metric-label {
+        font-size: 12px;
+        color: #909399;
+        flex: 1;
+      }
+      
+      .metric-value {
+        font-size: 13px;
+        font-weight: 600;
+        flex: 1;
+        text-align: center;
+      }
+      
+      .metric-change {
+        font-size: 11px;
+        flex: 1;
+        text-align: right;
+        
+        &.positive {
+          color: #67C23A;
+        }
+        
+        &.negative {
+          color: #F56C6C;
+        }
+      }
+    }
+  }
+  
+  // 单均经济区域
+  .unit-economics {
+    margin-bottom: 12px;
+    padding: 8px;
+    background: #f9f9f9;
+    border-radius: 6px;
+    
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #606266;
+      margin-bottom: 8px;
+    }
+    
+    .unit-item {
+      text-align: center;
+      
+      .unit-label {
+        display: block;
+        font-size: 10px;
+        color: #909399;
+        margin-bottom: 2px;
+      }
+      
+      .unit-value {
+        font-size: 13px;
+        font-weight: 600;
+        color: #606266;
+        
+        &.success {
+          color: #67C23A;
+        }
+        
+        &.warning {
+          color: #E6A23C;
+        }
+      }
+    }
+  }
+  
+  // 成本结构区域
+  .cost-structure {
+    margin-bottom: 12px;
+    
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #606266;
+      margin-bottom: 8px;
+    }
+    
+    .cost-item {
+      margin-bottom: 8px;
+      
+      .cost-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 4px;
+        
+        .cost-name {
+          font-size: 11px;
+          font-weight: 500;
+          flex: 1;
+        }
+        
+        .cost-amount {
+          font-size: 11px;
+          color: #606266;
+          margin-right: 8px;
+        }
+        
+        .cost-rate {
+          font-size: 11px;
+          font-weight: 600;
+          
+          &.primary {
+            color: #409EFF;
+          }
+          
+          &.danger {
+            color: #F56C6C;
+          }
+          
+          &.warning {
+            color: #E6A23C;
+          }
+          
+          &.info {
+            color: #67C23A;
+          }
+        }
+      }
+    }
+    
+    .total-cost-rate {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 8px;
+      margin-top: 8px;
+      border-top: 1px dashed #dcdfe6;
+      
+      .total-label {
+        font-size: 12px;
+        font-weight: 600;
+      }
+      
+      .total-value {
+        font-size: 14px;
+        font-weight: 700;
+      }
+    }
+  }
+  
+  // 下钻按钮
+  .drill-down-btn {
+    margin-top: 12px;
+    
+    .w-full {
+      width: 100%;
     }
   }
 }

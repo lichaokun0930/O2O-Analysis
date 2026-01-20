@@ -40,7 +40,7 @@ async def get_delivery_issues(
     
     定义: 配送费>阈值 且 订单毛利<配送费
     """
-    df = get_order_data()
+    df = get_order_data(store_name)
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -70,7 +70,7 @@ async def get_delivery_heatmap(
     
     用于分析配送异常高发区
     """
-    df = get_order_data()
+    df = get_order_data(store_name)
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -94,7 +94,7 @@ async def get_analysis_by_distance(
     """
     按配送距离分析
     """
-    df = get_order_data()
+    df = get_order_data(store_name)
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -118,7 +118,7 @@ async def get_analysis_by_time_period(
     """
     按时段分析配送
     """
-    df = get_order_data()
+    df = get_order_data(store_name)
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     

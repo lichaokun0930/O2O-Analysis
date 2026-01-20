@@ -19,17 +19,28 @@ DATABASE_URL = os.getenv(
     "postgresql://postgres:postgres@localhost:5432/o2o_dashboard"
 )
 
-# 创建数据库引擎 - 企业级配置
+# 创建数据库引擎 - 企业级高并发配置
 # 使用 pg8000 驱动避免 psycopg2 的 UTF-8 编码问题
+# 
+# 连接池配置说明（针对 300-500 并发优化）：
+# - pool_size: 常驻连接数，建议 = workers 数量 × 2
+# - max_overflow: 峰值时额外连接，建议 = pool_size × 2
+# - 总最大连接数 = pool_size + max_overflow = 32 + 64 = 96
+# - PostgreSQL 默认 max_connections = 100，需要调高到 200
+#
 engine = create_engine(
     DATABASE_URL.replace('postgresql://', 'postgresql+pg8000://'),
     poolclass=QueuePool,
-    pool_size=20,             # 连接池大小 (5→20, 支持100人并发)
-    max_overflow=40,          # 最大溢出连接数 (10→40)
-    pool_timeout=30,          # 连接超时
-    pool_recycle=3600,        # 连接回收时间（秒）
-    pool_pre_ping=True,       # 连接前健康检查 (新增)
+    pool_size=32,             # 常驻连接数 (20→32, 支持16个workers)
+    max_overflow=64,          # 峰值溢出连接 (40→64, 支持高并发)
+    pool_timeout=30,          # 获取连接超时（秒）
+    pool_recycle=1800,        # 连接回收时间（30分钟，避免长连接问题）
+    pool_pre_ping=True,       # 连接前健康检查，避免使用断开的连接
     echo=False,               # 不打印SQL（生产环境关闭）
+    # 连接参数优化
+    connect_args={
+        'timeout': 10,        # 连接超时10秒
+    }
 )
 
 # 创建会话工厂
@@ -163,6 +174,25 @@ def get_connection_status() -> dict:
         dict: 连接状态信息
     """
     return check_connection()
+
+
+def get_pool_status() -> dict:
+    """
+    获取连接池状态（用于监控）
+    
+    Returns:
+        dict: 连接池详细状态
+    """
+    pool = engine.pool
+    return {
+        'pool_size': pool.size(),           # 配置的连接池大小
+        'checked_in': pool.checkedin(),     # 空闲连接数
+        'checked_out': pool.checkedout(),   # 正在使用的连接数
+        'overflow': pool.overflow(),        # 溢出连接数
+        'total_connections': pool.checkedin() + pool.checkedout(),
+        'max_connections': 32 + 64,         # pool_size + max_overflow
+        'usage_percent': round((pool.checkedout() / (32 + 64)) * 100, 1)
+    }
 
 
 if __name__ == "__main__":

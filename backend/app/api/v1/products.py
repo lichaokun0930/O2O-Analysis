@@ -48,7 +48,7 @@ async def get_product_ranking(
     
     可按销售额、利润、销量排序
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -79,7 +79,7 @@ async def get_hot_products(
     
     按销量排序
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -105,7 +105,7 @@ async def get_high_profit_products(
     
     按利润额排序
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -130,7 +130,7 @@ async def get_category_analysis(
     
     按一级分类统计
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -152,7 +152,7 @@ async def get_inventory_analysis(
     
     返回低库存商品列表
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -186,7 +186,7 @@ async def get_traffic_drop_products(
     """
     获取流量下滑商品
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -219,7 +219,7 @@ async def get_product_daily_metrics(
     """
     import pandas as pd
     
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -260,7 +260,7 @@ async def get_product_list(
     """
     获取商品列表（支持分页和筛选）
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     

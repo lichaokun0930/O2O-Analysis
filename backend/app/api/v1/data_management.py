@@ -119,17 +119,20 @@ async def get_data_stats():
                         stats["total_products"] = products or 0
                         
                         # 日期范围
-                        min_date = session.query(func.min(Order.order_date)).scalar()
-                        max_date = session.query(func.max(Order.order_date)).scalar()
+                        min_date = session.query(func.min(Order.date)).scalar()
+                        max_date = session.query(func.max(Order.date)).scalar()
                         if min_date and max_date:
+                            # 处理datetime类型
+                            min_d = min_date.date() if hasattr(min_date, 'date') else min_date
+                            max_d = max_date.date() if hasattr(max_date, 'date') else max_date
                             stats["date_range"] = {
-                                "start_date": min_date.strftime("%Y-%m-%d") if min_date else None,
-                                "end_date": max_date.strftime("%Y-%m-%d") if max_date else None
+                                "start_date": min_d.strftime("%Y-%m-%d") if min_d else None,
+                                "end_date": max_d.strftime("%Y-%m-%d") if max_d else None
                             }
                             
                             # 数据新鲜度
-                            if max_date:
-                                days_old = (datetime.now().date() - max_date).days
+                            if max_d:
+                                days_old = (datetime.now().date() - max_d).days
                                 if days_old == 0:
                                     stats["data_freshness"] = "今日更新"
                                 elif days_old == 1:
@@ -138,10 +141,19 @@ async def get_data_stats():
                                     stats["data_freshness"] = f"{days_old}天前"
                                 else:
                                     stats["data_freshness"] = f"{days_old}天前"
+                    except Exception as db_err:
+                        print(f"数据库查询失败: {db_err}")
+                        # 数据库连接成功但查询失败，仍然标记为已连接
                     finally:
                         session.close()
+                else:
+                    print(f"数据库连接检查失败: {result.get('message', '未知错误')}")
             except Exception as e:
-                print(f"数据库统计获取失败: {e}")
+                print(f"数据库连接检查异常: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print("DATABASE_AVAILABLE = False，数据库模块未加载")
         
         # 检查Redis
         if REDIS_AVAILABLE:
@@ -245,9 +257,9 @@ async def load_from_database(
             
             # 日期筛选
             if start_date:
-                query = query.filter(Order.order_date >= datetime.fromisoformat(start_date).date())
+                query = query.filter(Order.date >= datetime.fromisoformat(start_date))
             if end_date:
-                query = query.filter(Order.order_date <= datetime.fromisoformat(end_date).date())
+                query = query.filter(Order.date <= datetime.fromisoformat(end_date))
             
             # 获取数据
             orders = query.all()
@@ -357,14 +369,89 @@ async def upload_orders(
                 orders = []
                 
                 for _, row in batch.iterrows():
+                    # 辅助函数：安全获取浮点数
+                    def safe_float(val, default=0):
+                        if pd.isna(val):
+                            return default
+                        try:
+                            return float(val)
+                        except:
+                            return default
+                    
+                    # 辅助函数：安全获取整数
+                    def safe_int(val, default=0):
+                        if pd.isna(val):
+                            return default
+                        try:
+                            return int(val)
+                        except:
+                            return default
+                    
+                    # 辅助函数：安全获取字符串
+                    def safe_str(val, default=''):
+                        if pd.isna(val):
+                            return default
+                        return str(val)
+                    
                     order = Order(
-                        order_id=str(row.get('订单ID', '')),
-                        store_name=str(row.get('门店名称', '')),
-                        product_name=str(row.get('商品名称', '')),
-                        order_date=pd.to_datetime(row.get('下单时间', row.get('日期'))).date() if pd.notna(row.get('下单时间', row.get('日期'))) else None,
-                        quantity=int(row.get('销量', row.get('月售', 1))) if pd.notna(row.get('销量', row.get('月售'))) else 1,
-                        unit_price=float(row.get('商品实售价', 0)) if pd.notna(row.get('商品实售价')) else 0,
-                        channel=str(row.get('渠道', '')) if pd.notna(row.get('渠道')) else None
+                        # 基础信息
+                        order_id=safe_str(row.get('订单ID', '')),
+                        order_number=safe_str(row.get('订单编号', '')),
+                        store_name=safe_str(row.get('门店名称', '')),
+                        product_name=safe_str(row.get('商品名称', '')),
+                        date=pd.to_datetime(row.get('下单时间', row.get('日期'))) if pd.notna(row.get('下单时间', row.get('日期'))) else None,
+                        channel=safe_str(row.get('渠道', '')),
+                        address=safe_str(row.get('收货地址', '')),
+                        
+                        # 分类
+                        category_level1=safe_str(row.get('一级分类名', row.get('一级分类', ''))),
+                        category_level3=safe_str(row.get('三级分类名', row.get('三级分类', ''))),
+                        
+                        # 价格和成本
+                        price=safe_float(row.get('商品实售价', 0)),
+                        original_price=safe_float(row.get('商品原价', 0)),
+                        cost=safe_float(row.get('商品采购成本', row.get('成本', 0))),
+                        actual_price=safe_float(row.get('实收价格', 0)),
+                        
+                        # 销量和金额
+                        quantity=safe_int(row.get('销量', row.get('月售', 1)), 1),
+                        stock=safe_int(row.get('库存', 0)),
+                        remaining_stock=safe_float(row.get('剩余库存', row.get('库存', 0))),
+                        amount=safe_float(row.get('预计订单收入', row.get('订单零售额', row.get('销售额', 0)))),
+                        profit=safe_float(row.get('利润额', row.get('实际利润', row.get('利润', 0)))),
+                        
+                        # 费用
+                        delivery_fee=safe_float(row.get('物流配送费', 0)),
+                        commission=safe_float(row.get('平台佣金', 0)),
+                        platform_service_fee=safe_float(row.get('平台服务费', row.get('平台佣金', 0))),
+                        
+                        # 营销活动费用
+                        user_paid_delivery_fee=safe_float(row.get('用户支付配送费', 0)),
+                        delivery_discount=safe_float(row.get('配送费减免金额', 0)),
+                        full_reduction=safe_float(row.get('满减金额', 0)),
+                        product_discount=safe_float(row.get('商品减免金额', 0)),
+                        merchant_voucher=safe_float(row.get('商家代金券', 0)),
+                        merchant_share=safe_float(row.get('商家承担部分券', 0)),
+                        packaging_fee=safe_float(row.get('打包袋金额', 0)),
+                        gift_amount=safe_float(row.get('满赠金额', 0)),
+                        other_merchant_discount=safe_float(row.get('商家其他优惠', 0)),
+                        new_customer_discount=safe_float(row.get('新客减免金额', 0)),
+                        
+                        # 利润补偿项
+                        corporate_rebate=safe_float(row.get('企客后返', 0)),
+                        
+                        # ✅ 配送信息 - 修复BUG: 之前缺少这两个字段导致配送距离数据丢失
+                        delivery_distance=safe_float(row.get('配送距离', 0)),
+                        delivery_platform=safe_str(row.get('配送平台', '')),
+                        
+                        # ✅ 门店信息 - 补充缺失字段
+                        store_id=safe_str(row.get('门店ID', '')),
+                        store_franchise_type=safe_int(row.get('门店加盟类型', 0)) if pd.notna(row.get('门店加盟类型')) else None,
+                        city=safe_str(row.get('城市名称', row.get('城市', ''))),
+                        
+                        # 条码
+                        barcode=safe_str(row.get('条码', '')),
+                        store_code=safe_str(row.get('店内码', '')),
                     )
                     orders.append(order)
                 
@@ -552,7 +639,7 @@ async def validate_data():
             
             # 检查日期异常
             future_orders = session.query(func.count(Order.id)).filter(
-                Order.order_date > datetime.now().date()
+                Order.date > datetime.now()
             ).scalar()
             if future_orders > 0:
                 issues.append({
@@ -594,9 +681,9 @@ async def export_data(params: ExportParams):
             # 日期筛选
             if params.date_range:
                 if params.date_range.start_date:
-                    query = query.filter(Order.order_date >= datetime.fromisoformat(params.date_range.start_date).date())
+                    query = query.filter(Order.date >= datetime.fromisoformat(params.date_range.start_date))
                 if params.date_range.end_date:
-                    query = query.filter(Order.order_date <= datetime.fromisoformat(params.date_range.end_date).date())
+                    query = query.filter(Order.date <= datetime.fromisoformat(params.date_range.end_date))
             
             orders = query.limit(100000).all()  # 限制导出数量
             
@@ -605,9 +692,9 @@ async def export_data(params: ExportParams):
                 "订单ID": o.order_id,
                 "门店名称": o.store_name,
                 "商品名称": o.product_name,
-                "下单时间": o.order_date,
+                "下单时间": o.date,
                 "销量": o.quantity,
-                "单价": o.unit_price,
+                "单价": o.price,
                 "渠道": o.channel
             } for o in orders]
             
@@ -662,19 +749,23 @@ async def get_store_stats(store_name: str):
             ).scalar()
             
             # 日期范围
-            min_date = session.query(func.min(Order.order_date)).filter(
+            min_date = session.query(func.min(Order.date)).filter(
                 Order.store_name == store_name
             ).scalar()
-            max_date = session.query(func.max(Order.order_date)).filter(
+            max_date = session.query(func.max(Order.date)).filter(
                 Order.store_name == store_name
             ).scalar()
+            
+            # 处理datetime类型
+            min_d = min_date.date() if min_date and hasattr(min_date, 'date') else min_date
+            max_d = max_date.date() if max_date and hasattr(max_date, 'date') else max_date
             
             return {
                 "store_name": store_name,
                 "order_count": order_count,
                 "date_range": {
-                    "start": min_date.strftime("%Y-%m-%d") if min_date else None,
-                    "end": max_date.strftime("%Y-%m-%d") if max_date else None
+                    "start": min_d.strftime("%Y-%m-%d") if min_d else None,
+                    "end": max_d.strftime("%Y-%m-%d") if max_d else None
                 }
             }
         finally:

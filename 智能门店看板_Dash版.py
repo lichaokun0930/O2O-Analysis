@@ -1197,6 +1197,37 @@ def initialize_data():
                 if df_loaded['商品实售价'].dtype == 'float32':
                     print("   ✅ float32精度正常（可精确表示0.01元）", flush=True)
             
+            # ==================== 🚀 Parquet缓存优化 ====================
+            # 优先从Parquet缓存加载，大幅减少内存占用和启动时间
+            from pathlib import Path
+            parquet_path = Path(__file__).parent / "data_cache" / "orders_optimized.parquet"
+            
+            use_parquet = False
+            if parquet_path.exists() and data_source == "PostgreSQL数据库":
+                try:
+                    print("\n📦 检测到Parquet缓存文件，尝试快速加载...", flush=True)
+                    df_from_parquet = pd.read_parquet(parquet_path)
+                    
+                    # 验证数据完整性
+                    if len(df_from_parquet) > 0 and '订单ID' in df_from_parquet.columns:
+                        # 检查数据是否最新（对比行数）
+                        if abs(len(df_from_parquet) - len(df_loaded)) < 1000:  # 允许小幅差异
+                            df_loaded = df_from_parquet
+                            use_parquet = True
+                            print(f"✅ 从Parquet缓存加载成功: {len(df_loaded):,} 行", flush=True)
+                            print(f"💡 内存优化: 数据类型已优化（Float32 + Category）", flush=True)
+                        else:
+                            print(f"⚠️ Parquet缓存数据量差异较大，使用数据库数据", flush=True)
+                            print(f"   缓存: {len(df_from_parquet):,} 行 vs 数据库: {len(df_loaded):,} 行", flush=True)
+                    else:
+                        print(f"⚠️ Parquet缓存数据不完整，使用数据库数据", flush=True)
+                except Exception as e:
+                    print(f"⚠️ Parquet加载失败: {e}，使用数据库数据", flush=True)
+            
+            if not use_parquet:
+                print("💡 提示：运行 'python 优化Dash内存占用.py' 生成Parquet缓存以提升性能", flush=True)
+            # ==================== Parquet缓存优化结束 ====================
+            
             # 完整数据
             GLOBAL_FULL_DATA = df_loaded.copy()
             
@@ -1212,7 +1243,7 @@ def initialize_data():
                 print(f"✅ 数据加载完成！", flush=True)
                 print(f"="*80, flush=True)
                 print(f"📊 数据统计:", flush=True)
-                print(f"   - 数据来源: {data_source}", flush=True)
+                print(f"   - 数据来源: {data_source}{' (Parquet缓存)' if use_parquet else ''}", flush=True)
                 print(f"   - 完整数据(GLOBAL_FULL_DATA): {len(GLOBAL_FULL_DATA):,} 行", flush=True)
                 print(f"   - 展示数据(GLOBAL_DATA): {len(GLOBAL_DATA):,} 行 (含耗材)", flush=True)
                 print(f"   - 其中耗材数据: {consumable_count:,} 行", flush=True)
@@ -1223,8 +1254,10 @@ def initialize_data():
                     process = psutil.Process()
                     mem_mb = process.memory_info().rss / 1024 / 1024
                     print(f"   - 进程内存占用: {mem_mb:.0f} MB", flush=True)
-                    if mem_mb > 1000:  # 超过1GB警告
-                        print(f"   ⚠️ 内存占用偏高，请检查是否有内存泄漏", flush=True)
+                    if use_parquet:
+                        print(f"   ✅ 使用Parquet优化，内存占用已大幅降低", flush=True)
+                    elif mem_mb > 1000:  # 超过1GB警告
+                        print(f"   ⚠️ 内存占用偏高，建议运行 'python 优化Dash内存占用.py' 生成缓存", flush=True)
                 except:
                     pass
                 
@@ -12311,15 +12344,13 @@ def calculate_order_metrics(df, calc_mode: Optional[str] = None):
     # else: 直接使用已聚合的Excel利润额字段（已在groupby中sum）
     
     # ===== Step 3: 计算商家活动成本 =====
-    # 公式: 商家活动成本 = 满减金额 + 商品减免金额 + 商家代金券 + 商家承担部分券 + 满赠金额 + 商家其他优惠
-    order_agg['商家活动成本'] = (
-        order_agg.get('满减金额', 0) + 
-        order_agg.get('商品减免金额', 0) + 
-        order_agg.get('商家代金券', 0) +
-        order_agg.get('商家承担部分券', 0) +  # 包含商家承担部分券
-        order_agg.get('满赠金额', 0) +  # ✅ 新增：满赠金额
-        order_agg.get('商家其他优惠', 0)  # ✅ 新增：商家其他优惠
-    )
+    # 公式: 商家活动成本 = 满减金额 + 商品减免金额 + 商家代金券 + 商家承担部分券 + 满赠金额 + 商家其他优惠 + 新客减免金额
+    # 说明: 配送费减免金额属于配送成本，不属于营销成本（7个营销字段）
+    marketing_fields = ['满减金额', '商品减免金额', '商家代金券', '商家承担部分券', '满赠金额', '商家其他优惠', '新客减免金额']
+    order_agg['商家活动成本'] = 0
+    for field in marketing_fields:
+        if field in order_agg.columns:
+            order_agg['商家活动成本'] += order_agg[field].fillna(0)
     
     # ===== Step 4: 订单总收入（直接使用原始数据字段"预计订单收入"）=====
     # 注：原始数据中"预计订单收入"已包含商品售价、打包费、配送费等
@@ -12529,8 +12560,9 @@ def calculate_product_marketing_cost(df):
     df['销售额占比'] = (df['商品销售额'] / df['订单总销售额']).fillna(0)
     
     # Step 4: 计算订单营销成本
-    # 营销成本 = 满减金额 + 商品减免金额 + 商家代金券 + 商家承担部分券 + 满赠金额 + 商家其他优惠
-    marketing_fields = ['满减金额', '商品减免金额', '商家代金券', '商家承担部分券', '满赠金额', '商家其他优惠']
+    # v3.1更新 - 2025-01-16：包含全部8个营销字段
+    # 营销成本 = 配送费减免金额 + 满减金额 + 商品减免金额 + 商家代金券 + 商家承担部分券 + 满赠金额 + 商家其他优惠 + 新客减免金额
+    marketing_fields = ['配送费减免金额', '满减金额', '商品减免金额', '商家代金券', '商家承担部分券', '满赠金额', '商家其他优惠', '新客减免金额']
     df['订单营销成本'] = sum(df.get(field, 0) for field in marketing_fields)
     
     # Step 5: 按比例分摊营销成本到商品

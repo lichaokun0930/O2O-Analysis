@@ -1,0 +1,7 @@
+# 预聚合数据 Parquet 文件存储目录
+# 结构:
+#   daily/kpi_daily.parquet      - 每日KPI汇总
+#   daily/channel_daily.parquet  - 每日渠道汇总
+#   daily/category_daily.parquet - 每日品类汇总
+#   weekly/                      - 周聚合
+#   monthly/                     - 月聚合

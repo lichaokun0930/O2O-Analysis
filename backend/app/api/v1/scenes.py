@@ -39,7 +39,7 @@ async def get_scene_distribution(
     
     按场景（早餐/午餐/下午茶/晚餐/夜宵）统计
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -65,7 +65,7 @@ async def get_hourly_analysis(
     
     返回每小时的订单数和销售额
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -90,7 +90,7 @@ async def get_scene_channel_cross(
     
     热力图数据
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -117,7 +117,7 @@ async def get_scene_trend(
     
     返回每个场景的日趋势
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -145,7 +145,7 @@ async def get_scene_products(
     
     场景：早餐/午餐/下午茶/晚餐/夜宵
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     

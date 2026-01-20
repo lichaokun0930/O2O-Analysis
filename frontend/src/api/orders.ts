@@ -129,18 +129,36 @@ export interface ChannelMetrics {
   profit: number
   avg_value: number
   profit_rate: number
+  // 成本结构
+  product_cost: number
+  product_cost_rate: number
+  consumable_cost: number
+  consumable_cost_rate: number
+  product_discount: number
+  product_discount_rate: number
+  activity_subsidy: number
+  activity_subsidy_rate: number
+  delivery_cost: number
+  delivery_cost_rate: number
+  platform_fee: number
+  platform_fee_rate: number
+  total_cost_rate: number
+  // 单均经济
+  avg_profit_per_order: number
+  avg_marketing_per_order: number
+  avg_delivery_per_order: number
 }
 
 export interface ChannelComparison {
   channel: string
   current: ChannelMetrics
-  previous: ChannelMetrics
+  previous: ChannelMetrics | null
   changes: {
-    order_count: number
-    amount: number
-    profit: number
-    avg_value: number
-    profit_rate: number
+    order_count: number | null
+    amount: number | null
+    profit: number | null
+    avg_value: number | null
+    profit_rate: number | null
   }
   rating: '优秀' | '良好' | '需改进'
 }

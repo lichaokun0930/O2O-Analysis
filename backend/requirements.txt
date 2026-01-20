@@ -1,6 +1,8 @@
 # Web Framework
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
+hypercorn>=0.16.0
+gunicorn>=21.0.0
 
 # Database
 sqlalchemy>=2.0.0
@@ -13,6 +15,11 @@ redis>=5.0.0
 # Data Processing
 pandas>=2.0.0
 numpy>=1.24.0
+
+# 千万级数据优化（预备）
+duckdb>=0.9.0
+pyarrow>=14.0.0
+apscheduler>=3.10.0
 
 # Auth
 python-jose[cryptography]>=3.3.0

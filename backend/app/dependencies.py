@@ -50,40 +50,132 @@ def get_cache():
 
 # ==================== 数据加载 ====================
 
-_cached_data: Optional[pd.DataFrame] = None
+import time
+
+# 内存缓存
+_memory_cache = {
+    "order_data": None,
+    "timestamp": 0,
+    "store_cache": {}  # 按门店缓存
+}
+# ✅ 优化：延长TTL到24小时（数据每天更新一次）
+CACHE_TTL = 86400  # 24小时
 
 
-def get_order_data() -> pd.DataFrame:
+def get_order_data(store_name: str = None) -> pd.DataFrame:
     """
-    获取订单数据
+    获取订单数据（带缓存）
+    
+    Args:
+        store_name: 门店名称，如果指定则只加载该门店数据
     
     Returns:
         订单DataFrame
     """
-    global _cached_data
+    global _memory_cache
+    current_time = time.time()
     
-    if _cached_data is not None:
-        return _cached_data
+    # 1. 尝试使用内存缓存
+    if store_name:
+        store_cache = _memory_cache.get("store_cache", {}).get(store_name)
+        if store_cache and current_time - store_cache.get("timestamp", 0) < CACHE_TTL:
+            print(f"📦 使用内存缓存数据 (门店: {store_name})")
+            return store_cache["data"].copy()
+    else:
+        if _memory_cache["order_data"] is not None:
+            if current_time - _memory_cache["timestamp"] < CACHE_TTL:
+                print(f"📦 使用内存缓存数据 (全部门店)")
+                return _memory_cache["order_data"].copy()
     
-    # 尝试从缓存获取
-    cache = get_cache_manager()
-    cached = cache.get_raw_data("order_data")
-    if cached is not None:
-        _cached_data = pd.DataFrame(cached)
-        return _cached_data
+    # 2. 从数据库加载
+    print(f"🔄 从数据库加载订单数据 (门店: {store_name or '全部'})...")
     
-    # 尝试从数据处理器加载
-    if DATA_PROCESSOR_AVAILABLE:
+    try:
+        # 导入数据库连接
+        import sys
+        from pathlib import Path
+        db_path = Path(__file__).resolve().parent / "database"
+        if str(db_path) not in sys.path:
+            sys.path.insert(0, str(db_path))
+        
+        from database.connection import SessionLocal
+        from database.models import Order
+        
+        session = SessionLocal()
         try:
-            processor = RealDataProcessor()
-            data = processor.load_all_data()
-            if 'sales' in data and data['sales'] is not None:
-                _cached_data = data['sales']
-                # 缓存数据
-                cache.set_raw_data("order_data", _cached_data.to_dict('records'))
-                return _cached_data
-        except Exception as e:
-            print(f"⚠️ 加载数据失败: {e}")
+            query = session.query(Order)
+            
+            # 如果指定门店，只加载该门店数据
+            if store_name:
+                query = query.filter(Order.store_name == store_name)
+            
+            orders = query.all()
+            if not orders:
+                return pd.DataFrame()
+            
+            # 转换为DataFrame
+            data = []
+            for order in orders:
+                data.append({
+                    '订单ID': order.order_id,
+                    '门店名称': order.store_name,
+                    '日期': order.date,
+                    '渠道': order.channel,
+                    '商品名称': order.product_name,
+                    '一级分类名': order.category_level1,
+                    '三级分类名': order.category_level3,
+                    '月售': order.quantity,
+                    '实收价格': float(order.actual_price or 0),
+                    '商品实售价': float(order.price or 0),
+                    '商品采购成本': float(order.cost or 0),
+                    '利润额': float(order.profit or 0),
+                    '物流配送费': float(order.delivery_fee or 0),
+                    '平台服务费': float(order.platform_service_fee or 0),
+                    '平台佣金': float(order.commission or 0),
+                    '预计订单收入': float(order.amount or 0),
+                    '企客后返': float(order.corporate_rebate or 0),
+                    '用户支付配送费': float(order.user_paid_delivery_fee or 0),
+                    '配送费减免金额': float(order.delivery_discount or 0),
+                    '满减金额': float(order.full_reduction or 0),
+                    '商品减免金额': float(order.product_discount or 0),
+                    '新客减免金额': float(order.new_customer_discount or 0),
+                    '库存': order.stock,
+                })
+            
+            df = pd.DataFrame(data)
+            print(f"✅ 数据库加载完成: {len(df)} 条记录 (门店: {store_name or '全部'})")
+            
+            # 3. 更新内存缓存
+            if store_name:
+                if "store_cache" not in _memory_cache:
+                    _memory_cache["store_cache"] = {}
+                _memory_cache["store_cache"][store_name] = {
+                    "data": df.copy(),
+                    "timestamp": current_time
+                }
+            else:
+                _memory_cache["order_data"] = df.copy()
+                _memory_cache["timestamp"] = current_time
+            
+            return df
+        finally:
+            session.close()
+            
+    except Exception as e:
+        print(f"⚠️ 数据库加载失败: {e}")
+        
+        # 备用方案：尝试从数据处理器加载
+        if DATA_PROCESSOR_AVAILABLE:
+            try:
+                processor = RealDataProcessor()
+                data = processor.load_all_data()
+                if 'sales' in data and data['sales'] is not None:
+                    df = data['sales']
+                    if store_name and '门店名称' in df.columns:
+                        df = df[df['门店名称'] == store_name]
+                    return df
+            except Exception as e2:
+                print(f"⚠️ 数据处理器加载失败: {e2}")
     
     # 返回空DataFrame
     return pd.DataFrame()

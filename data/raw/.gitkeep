@@ -1,0 +1,2 @@
+# 原始订单数据 Parquet 文件存储目录
+# 按日期分区: data/raw/YYYY/MM/orders_YYYYMMDD.parquet

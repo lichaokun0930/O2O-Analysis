@@ -1,1 +1,0 @@
-C:\Users\Lck\AppData\Local\Microsoft\WindowsApps\python.exe: can't open file 'D:\\Python\\订单数据看板\\智能门店看板_Dash版.py': [Errno 2] No such file or directory

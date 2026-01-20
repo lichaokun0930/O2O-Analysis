@@ -1,0 +1,19 @@
+{
+  "name": "预聚合表验证",
+  "description": "当修改预聚合表相关文件时，自动运行数据一致性验证脚本",
+  "trigger": {
+    "type": "onFileSave",
+    "filePattern": [
+      "**/全看板性能优化实施.py",
+      "**/修复预聚合表.py",
+      "**/aggregation_service.py",
+      "**/企业级性能优化实施.py"
+    ]
+  },
+  "action": {
+    "type": "shellCommand",
+    "command": "python 验证预聚合表一致性.py",
+    "workingDirectory": "订单数据看板/订单数据看板/O2O-Analysis"
+  },
+  "enabled": true
+}

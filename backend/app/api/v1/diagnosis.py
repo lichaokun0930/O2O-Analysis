@@ -55,7 +55,7 @@ async def get_diagnosis_summary(
     - 🟡 关注观察问题列表
     - 数据日期
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # 🔧 修复：传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -84,7 +84,7 @@ async def get_overflow_orders(
     穿底订单：订单实际利润 < 0
     公式：订单实际利润 = 利润额 - 平台服务费 - 物流配送费 + 企客后返
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # 🔧 修复：传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -115,7 +115,7 @@ async def get_high_delivery_orders(
     
     定义：配送费 > 阈值 且 订单毛利 < 配送费
     """
-    df = get_order_data()
+    df = get_order_data(store_name)
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -147,7 +147,7 @@ async def get_stockout_products(
     热销品：昨日有销量
     缺货：库存 <= 阈值
     """
-    df = get_order_data()
+    df = get_order_data(store_name)
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -179,7 +179,7 @@ async def get_traffic_drop_products(
     定义：以前卖得好，昨天突然卖不动了
     筛选：前日销量 >= min_sales 且 昨日销量环比下跌 > drop_threshold
     """
-    df = get_order_data()
+    df = get_order_data(store_name)
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -212,7 +212,7 @@ async def get_slow_moving_products(
     定义：有库存但连续N天无销量
     级别：新增滞销(3天)、持续滞销(7天)、严重滞销(15天)
     """
-    df = get_order_data()
+    df = get_order_data(store_name)
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -241,7 +241,7 @@ async def get_price_abnormal_products(
     
     异常：售价低于成本
     """
-    df = get_order_data()
+    df = get_order_data(store_name)
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -264,7 +264,7 @@ async def get_hot_products(
     """
     获取热销商品TOP N
     """
-    df = get_order_data()
+    df = get_order_data(store_name)
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -291,7 +291,7 @@ async def get_high_profit_products(
     
     定义：昨日给门店赚钱最多的商品（现金牛）
     """
-    df = get_order_data()
+    df = get_order_data(store_name)
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -322,7 +322,7 @@ async def get_customer_churn_warning(
     
     定义：过去N天内下单>=2次，但7天未下单的客户
     """
-    df = get_order_data()
+    df = get_order_data(store_name)
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -352,7 +352,7 @@ async def get_recall_suggestions(
     
     基于LTV和流失天数优先级排序
     """
-    df = get_order_data()
+    df = get_order_data(store_name)
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -392,7 +392,7 @@ async def get_aov_anomaly(
     
     检测异常高/低的订单
     """
-    df = get_order_data()
+    df = get_order_data(store_name)
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -418,7 +418,7 @@ async def get_overflow_daily_trend(
     """
     获取穿底订单每日趋势
     """
-    df = get_order_data()
+    df = get_order_data(store_name)
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     

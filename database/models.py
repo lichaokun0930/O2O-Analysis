@@ -95,9 +95,15 @@ class Order(Base):
     
     # 索引
     __table_args__ = (
+        # 原有索引
         Index('idx_date_store', 'date', 'store_name'),
         Index('idx_product_date', 'product_id', 'date'),
         Index('idx_scene_time', 'scene', 'time_period'),
+        # ✅ 性能优化索引（2025-01-19）
+        Index('idx_channel_date', 'channel', 'date'),  # 渠道趋势查询
+        Index('idx_store_channel', 'store_name', 'channel'),  # 门店渠道分析
+        Index('idx_date_store_channel', 'date', 'store_name', 'channel'),  # 全量门店对比
+        Index('idx_category_date', 'category_level1', 'date'),  # 分类趋势查询
     )
 
 

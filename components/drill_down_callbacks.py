@@ -1012,8 +1012,8 @@ def render_channel_detail(channel_name, store_name=None, start_date=None, end_da
             
             total_delivery_cost = delivery_fee - (user_paid_delivery - delivery_discount) - rebate
             
-            # (3) 营销成本 (各项补贴之和)
-            marketing_fields = ['满减金额', '商品减免金额', '商家代金券', '商家承担部分券', 
+            # (3) 营销成本 (各项补贴之和) - v3.1更新：包含全部8个营销字段
+            marketing_fields = ['配送费减免金额', '满减金额', '商品减免金额', '商家代金券', '商家承担部分券', 
                                '满赠金额', '商家其他优惠', '新客减免金额']
             total_marketing_cost = 0
             for field in marketing_fields:

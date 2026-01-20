@@ -1,0 +1,420 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-body: #020617;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --glass-bg: rgba(15, 23, 42, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --glass-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.3);
+}
+
+body {
+  background: var(--bg-body);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+/* --- LIGHT MODE OVERRIDES --- */
+body.light-mode {
+  --bg-body: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(203, 213, 225, 0.8);
+  --glass-shadow: 0 10px 30px -5px rgba(148, 163, 184, 0.3);
+}
+
+body.light-mode .aurora-bg,
+body.light-mode .bg-noise {
+  opacity: 0.1;
+  filter: grayscale(0.5);
+}
+
+body.light-mode .text-white { color: var(--text-primary) !important; }
+body.light-mode .text-slate-400 { color: var(--text-secondary) !important; }
+body.light-mode .text-slate-300 { color: #334155 !important; }
+body.light-mode .text-slate-200 { color: #1e293b !important; }
+body.light-mode .bg-slate-900\/80 { background-color: rgba(255,255,255,0.9) !important; }
+body.light-mode .bg-slate-950\/40 { background-color: rgba(255,255,255,0.8) !important; }
+body.light-mode .border-white\/5 { border-color: rgba(0,0,0,0.05) !important; }
+body.light-mode .border-white\/10 { border-color: rgba(0,0,0,0.1) !important; }
+
+/* Texture Layers */
+.bg-noise {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+.aurora-bg {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0;
+  overflow: hidden; pointer-events: none;
+}
+.aurora-blob {
+  position: absolute; filter: blur(80px); opacity: 0.4;
+  animation: aurora 30s infinite alternate; mix-blend-mode: screen; 
+}
+.blob-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, #4f46e5 0%, transparent 70%); animation-duration: 35s; }
+.blob-2 { bottom: -10%; right: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, #0891b2 0%, transparent 70%); animation-delay: -5s; }
+.blob-3 { top: 40%; left: 40%; width: 30vw; height: 30vw; background: radial-gradient(circle, #7c3aed 0%, transparent 70%); opacity: 0.3; animation-duration: 45s; }
+
+/* Glass Panel */
+.glass-panel {
+  background: var(--glass-bg); 
+  backdrop-filter: blur(16px); 
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease, filter 0.4s ease, background-color 0.5s, border-color 0.5s;
+}
+
+/* Focus Mode Logic */
+body.has-focus .glass-panel { opacity: 0.15; filter: grayscale(0.8) blur(4px); transform: scale(0.95); pointer-events: none; }
+body.has-focus aside { opacity: 0.1; filter: blur(4px); pointer-events: none; z-index: 0 !important; }
+
+body.has-focus .glass-panel.is-focused,
+body.has-focus .is-focused .glass-panel { 
+  opacity: 1 !important; 
+  filter: grayscale(0) blur(0) !important; 
+  transform: scale(1.02) !important; 
+  z-index: 50; 
+  pointer-events: auto; 
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); 
+}
+
+body.has-focus .is-focused::after {
+  content: "AI ANALYSIS MODE // 智能归因中";
+  position: absolute; top: -14px; left: 20px;
+  background: #4f46e5; color: white;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+  padding: 4px 10px; border-radius: 4px;
+  z-index: 60; pointer-events: none;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+/* Animation Stagger Classes - 错峰进场，引导视觉流 */
+.stagger-1 { animation-delay: 50ms; }
+.stagger-2 { animation-delay: 100ms; }
+.stagger-3 { animation-delay: 150ms; }
+.stagger-4 { animation-delay: 200ms; }
+.stagger-5 { animation-delay: 250ms; }
+.stagger-6 { animation-delay: 300ms; }
+.stagger-7 { animation-delay: 350ms; }
+.stagger-8 { animation-delay: 400ms; }
+
+/* 核心入场动画 - 急起缓停的物理质感 */
+@keyframes enter-keyframe {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* 主入场动画类 - 使用定制贝塞尔曲线模拟惯性 */
+.animate-enter {
+  opacity: 0;
+  animation: enter-keyframe 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 升级版 fade-in-up - 上浮 + 放大 + 渐现 + 模糊消散 */
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(28px) scale(0.97);
+    filter: blur(3px);
+  }
+  60% {
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.animate-fade-in-up {
+  opacity: 0;
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 卡片悬浮微动效 */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* 脉冲呼吸效果 */
+@keyframes breathe {
+  0%, 100% { 
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+.animate-breathe {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+/* 骨架屏扫光动画 - 带间隔停顿 */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  20% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 6s ease-in-out infinite;
+}
+
+/* 页面切换过渡 - 整体淡入 */
+@keyframes page-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-transition {
+  animation: page-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes aurora {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.1); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+
+/* ========================================
+   日历组件深色主题样式
+   ======================================== */
+.calendar-dark {
+  --rdp-cell-size: 36px;
+  --rdp-accent-color: #6366f1;
+  --rdp-background-color: #0f172a;
+}
+
+.calendar-dark .rdp {
+  margin: 0;
+}
+
+.calendar-dark .rdp-months {
+  justify-content: center;
+}
+
+.calendar-dark .rdp-month {
+  background: transparent;
+}
+
+.calendar-dark .rdp-caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  text-align: center;
+  position: relative;
+}
+
+.calendar-dark .rdp-caption_label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.calendar-dark .rdp-nav {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.calendar-dark .rdp-nav_button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.calendar-dark .rdp-nav_button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
+}
+
+.calendar-dark .rdp-head_cell {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #64748b;
+  text-transform: uppercase;
+  padding: 0.5rem 0;
+}
+
+.calendar-dark .rdp-tbody {
+  font-size: 0.875rem;
+}
+
+.calendar-dark .rdp-day {
+  width: var(--rdp-cell-size);
+  height: var(--rdp-cell-size);
+  border-radius: 0.5rem;
+  font-weight: 400;
+  color: #cbd5e1;
+  transition: all 0.15s ease;
+}
+
+.calendar-dark .rdp-day:hover:not(.rdp-day_disabled):not(.rdp-day_selected) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f1f5f9;
+}
+
+.calendar-dark .rdp-day_today {
+  font-weight: 600;
+  color: #818cf8;
+  box-shadow: inset 0 0 0 1px #6366f1;
+}
+
+.calendar-dark .rdp-day_selected {
+  background: #6366f1 !important;
+  color: white !important;
+  font-weight: 500;
+}
+
+.calendar-dark .rdp-day_selected:hover {
+  background: #4f46e5 !important;
+}
+
+.calendar-dark .rdp-day_range_start {
+  border-radius: 0.5rem 0 0 0.5rem !important;
+}
+
+.calendar-dark .rdp-day_range_end {
+  border-radius: 0 0.5rem 0.5rem 0 !important;
+}
+
+.calendar-dark .rdp-day_range_middle {
+  background: rgba(99, 102, 241, 0.2) !important;
+  color: #a5b4fc !important;
+  border-radius: 0 !important;
+}
+
+.calendar-dark .rdp-day_range_middle:hover {
+  background: rgba(99, 102, 241, 0.3) !important;
+}
+
+.calendar-dark .rdp-day_disabled {
+  color: #334155 !important;
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.calendar-dark .rdp-day_disabled:hover {
+  background: transparent !important;
+}
+
+.calendar-dark .rdp-day_outside {
+  color: #475569;
+  opacity: 0.5;
+}
+
+/* 动画效果 */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.2s ease-out forwards;
+}
+
+
+/* ========================================
+   自定义下拉选择框样式（深色主题）
+   ======================================== */
+select {
+  background-color: rgba(15, 23, 42, 0.9) !important;
+  color: #e2e8f0 !important;
+}
+
+select option {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+  padding: 12px 16px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+select option:hover,
+select option:focus,
+select option:checked {
+  background: linear-gradient(90deg, #6366f1, #4f46e5) !important;
+  color: white !important;
+}
+
+/* 浅色模式下拉框 */
+body.light-mode select {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  color: #1e293b !important;
+}
+
+body.light-mode select option {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+}
+
+body.light-mode select option:hover,
+body.light-mode select option:focus,
+body.light-mode select option:checked {
+  background: linear-gradient(90deg, #818cf8, #6366f1) !important;
+  color: white !important;
+}

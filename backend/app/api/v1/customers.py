@@ -41,7 +41,7 @@ async def get_churn_customers(
     
     定义: 过去N天内下单>=min_orders次，但no_order_days天未下单
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -74,7 +74,7 @@ async def get_churn_reasons(
     """
     import pandas as pd
     
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -103,6 +103,7 @@ async def get_churn_reasons(
 @router.get("/recall-suggestions")
 async def get_recall_suggestions(
     top_n: int = Query(10, ge=1, le=50, description="优先召回数量"),
+    store_name: Optional[str] = Depends(common_store_param),
     service: CustomerService = Depends(get_customer_service)
 ):
     """
@@ -112,7 +113,7 @@ async def get_recall_suggestions(
     """
     import pandas as pd
     
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -148,7 +149,7 @@ async def get_aov_anomaly(
     
     检测异常高/低的订单
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     

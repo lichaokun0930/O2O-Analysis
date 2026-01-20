@@ -1,0 +1,99 @@
+# 订单数据看板 - Docker Compose 编排文件
+# 一键启动所有服务：docker-compose up -d
+# 支持千万级数据优化架构
+
+version: '3.8'
+
+services:
+  # ========== 后端 API 服务 ==========
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: o2o-backend
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/o2o_analysis
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      # 挂载 Parquet 数据目录（持久化）
+      - parquet_data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - o2o-network
+    # 如果需要直接访问后端（调试用），取消下面注释
+    # ports:
+    #   - "8080:8080"
+
+  # ========== 前端 + Nginx ==========
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: o2o-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - o2o-network
+
+  # ========== PostgreSQL 数据库 ==========
+  db:
+    image: postgres:15-alpine
+    container_name: o2o-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=o2o_analysis
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # 如果有初始化 SQL，放到这里
+      # - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - o2o-network
+    # 如果需要直接访问数据库（调试用），取消下面注释
+    # ports:
+    #   - "5432:5432"
+
+  # ========== Redis 缓存 ==========
+  redis:
+    image: redis:7-alpine
+    container_name: o2o-redis
+    restart: unless-stopped
+    # 配置 4GB 内存限制，支持千万级数据缓存
+    command: redis-server --appendonly yes --maxmemory 4gb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - o2o-network
+    # 如果需要直接访问 Redis（调试用），取消下面注释
+    # ports:
+    #   - "6379:6379"
+
+# ========== 数据卷 ==========
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  parquet_data:
+    driver: local
+
+# ========== 网络 ==========
+networks:
+  o2o-network:
+    driver: bridge

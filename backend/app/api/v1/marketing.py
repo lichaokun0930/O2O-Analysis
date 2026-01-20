@@ -42,7 +42,7 @@ async def get_marketing_loss_analysis(
     - 营销关联: 参与了活动
     - 分类: 按活动类型统计
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -73,7 +73,7 @@ async def get_activity_overlap_analysis(
     
     分析同时参与多个活动的订单
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -105,7 +105,7 @@ async def get_delivery_activity_cross_analysis(
     
     分析高配送费且参与活动的订单（风险最高）
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -136,7 +136,7 @@ async def get_discount_analysis(
     
     分析各类折扣的使用情况
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     

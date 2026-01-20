@@ -40,7 +40,7 @@ async def export_orders_to_excel(
     """
     导出订单报表到Excel
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -86,7 +86,7 @@ async def export_diagnosis_to_excel(
     
     包含：穿底订单、高配送费订单、汇总统计
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -111,7 +111,7 @@ async def export_products_to_excel(
     """
     导出商品报表到Excel
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -141,7 +141,7 @@ async def export_comprehensive_to_excel(
     
     包含：KPI汇总、订单明细、商品排行、渠道分析
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     
@@ -166,7 +166,7 @@ async def export_orders_to_csv(
     """
     导出订单数据到CSV
     """
-    df = get_order_data()
+    df = get_order_data(store_name)  # ✅ 传入门店参数以利用缓存
     if df.empty:
         raise HTTPException(status_code=404, detail="暂无订单数据")
     

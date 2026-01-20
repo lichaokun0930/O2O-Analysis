@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     
     # API配置
     API_HOST: str = "0.0.0.0"
-    API_PORT: int = 8000
+    API_PORT: int = 8080
     API_PREFIX: str = "/api/v1"
     
     # CORS配置
@@ -34,15 +34,15 @@ class Settings(BaseSettings):
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
     # 数据库配置
-    DB_HOST: str = "localhost"
-    DB_PORT: int = 5432
-    DB_NAME: str = "o2o_dashboard"
-    DB_USER: str = "postgres"
-    DB_PASSWORD: str = "postgres"
+    DATABASE_HOST: str = "localhost"
+    DATABASE_PORT: int = 5432
+    DATABASE_NAME: str = "order_dashboard"
+    DATABASE_USER: str = "postgres"
+    DATABASE_PASSWORD: str = "postgres"
     
     @property
     def DATABASE_URL(self) -> str:
-        return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+        return f"postgresql://{self.DATABASE_USER}:{self.DATABASE_PASSWORD}@{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.DATABASE_NAME}"
     
     # Redis配置
     REDIS_HOST: str = "localhost"
@@ -54,10 +54,10 @@ class Settings(BaseSettings):
     DEFAULT_PAGE_SIZE: int = 50
     MAX_PAGE_SIZE: int = 500
     
-    # 缓存配置
-    CACHE_TTL_SHORT: int = 300      # 5分钟
-    CACHE_TTL_MEDIUM: int = 1800    # 30分钟
-    CACHE_TTL_LONG: int = 3600      # 1小时
+    # 缓存配置（优化：延长TTL，数据每天更新一次）
+    CACHE_TTL_SHORT: int = 3600      # 1小时（原5分钟）
+    CACHE_TTL_MEDIUM: int = 21600    # 6小时（原30分钟）
+    CACHE_TTL_LONG: int = 86400      # 24小时（原1小时）
     
     class Config:
         env_file = ".env"
