@@ -54,6 +54,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # 获取客户端IP
         client_ip = self._get_client_ip(request)
         
+        # ✅ localhost / 内网请求直接放行，不限流
+        if client_ip in ("127.0.0.1", "localhost", "::1", "0.0.0.0") or client_ip.startswith("192.168.") or client_ip.startswith("10."):
+            return await call_next(request)
+        
         # 获取用户ID（如果已认证）
         user_id = None
         if hasattr(request.state, "user") and request.state.user:

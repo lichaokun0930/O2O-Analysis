@@ -3,7 +3,7 @@
  * 展示品类的销售额、环比增长、波动系数、平均折扣、利润率
  */
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { 
+import {
   Layers, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronRight,
   ArrowUpDown, RefreshCw, ChevronLeft, Activity, Calendar, Check
 } from 'lucide-react';
@@ -42,12 +42,12 @@ const CategoryHealthTable: React.FC<Props> = () => {
   const [sortKey, setSortKey] = useState<SortKey>('current_revenue');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [periodInfo, setPeriodInfo] = useState<{ start: string; end: string } | null>(null);
-  
+
   const channelButtonRef = useRef<HTMLButtonElement>(null);
   const channelDropdownRef = useRef<HTMLDivElement>(null);
   const calendarButtonRef = useRef<HTMLButtonElement>(null);
   const calendarDropdownRef = useRef<HTMLDivElement>(null);
-  
+
   const { selectedStore, storeDateRange, channelList } = useGlobalContext();
 
   // 解析数据日期范围
@@ -65,14 +65,14 @@ const CategoryHealthTable: React.FC<Props> = () => {
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
-      if (channelDropdownOpen && 
-          channelButtonRef.current && !channelButtonRef.current.contains(target) &&
-          channelDropdownRef.current && !channelDropdownRef.current.contains(target)) {
+      if (channelDropdownOpen &&
+        channelButtonRef.current && !channelButtonRef.current.contains(target) &&
+        channelDropdownRef.current && !channelDropdownRef.current.contains(target)) {
         setChannelDropdownOpen(false);
       }
-      if (calendarOpen && 
-          calendarButtonRef.current && !calendarButtonRef.current.contains(target) &&
-          calendarDropdownRef.current && !calendarDropdownRef.current.contains(target)) {
+      if (calendarOpen &&
+        calendarButtonRef.current && !calendarButtonRef.current.contains(target) &&
+        calendarDropdownRef.current && !calendarDropdownRef.current.contains(target)) {
         setCalendarOpen(false);
       }
     };
@@ -121,14 +121,14 @@ const CategoryHealthTable: React.FC<Props> = () => {
         level: drillCategory ? 3 : 1,
         parent_category: drillCategory || undefined,
       };
-      
+
       if (periodMode === 'custom' && startDate && endDate) {
         params.start_date = startDate;
         params.end_date = endDate;
       } else {
         params.period = period;
       }
-      
+
       const res = await categoryApi.getHealth(params);
       if (res.success) {
         setData(res.data);
@@ -249,7 +249,7 @@ const CategoryHealthTable: React.FC<Props> = () => {
   // 渲染折扣（含变化）
   const renderDiscount = (discount: number, change: number) => {
     const color = discount < 8 ? 'text-rose-400' : discount < 9 ? 'text-amber-400' : 'text-slate-300';
-    
+
     // 变化箭头：正数表示折扣力度减小（价格上涨），负数表示折扣力度增大（价格下降）
     let changeEl = null;
     if (Math.abs(change) >= 0.1) {
@@ -261,7 +261,7 @@ const CategoryHealthTable: React.FC<Props> = () => {
         changeEl = <span className="text-rose-400 text-xs ml-1">↓{Math.abs(change).toFixed(1)}</span>;
       }
     }
-    
+
     return (
       <span className={`font-mono ${color}`}>
         {discount.toFixed(1)}折{changeEl}
@@ -278,7 +278,7 @@ const CategoryHealthTable: React.FC<Props> = () => {
   // 渲染迷你趋势图 (Sparkline)
   const renderSparkline = (values: number[]) => {
     if (!values || values.length < 2) return null;
-    
+
     const max = Math.max(...values);
     const min = Math.min(...values);
     const range = max - min || 1;
@@ -289,11 +289,11 @@ const CategoryHealthTable: React.FC<Props> = () => {
       const y = height - ((v - min) / range) * height;
       return `${x},${y}`;
     }).join(' ');
-    
+
     // 判断趋势
     const trend = values[values.length - 1] >= values[0] ? 'up' : 'down';
     const strokeColor = trend === 'up' ? '#34d399' : '#f87171';
-    
+
     return (
       <svg width={width} height={height} className="opacity-70">
         <polyline
@@ -313,7 +313,7 @@ const CategoryHealthTable: React.FC<Props> = () => {
     if (sortKey !== column) {
       return <ArrowUpDown size={12} className="text-slate-600" />;
     }
-    return sortOrder === 'desc' 
+    return sortOrder === 'desc'
       ? <ChevronDown size={12} className="text-indigo-400" />
       : <ChevronRight size={12} className="text-indigo-400 rotate-[-90deg]" />;
   };
@@ -337,7 +337,7 @@ const CategoryHealthTable: React.FC<Props> = () => {
               CATEGORY HEALTH METRICS · {periodInfo ? `${periodInfo.start} ~ ${periodInfo.end}` : ''}
             </p>
           </div>
-          
+
           <div className="flex items-center gap-3 flex-wrap">
             {/* 返回按钮 */}
             {drillCategory && (
@@ -349,7 +349,7 @@ const CategoryHealthTable: React.FC<Props> = () => {
                 返回上级
               </button>
             )}
-            
+
             {/* 渠道下拉选择 */}
             <div className="relative">
               <button
@@ -361,17 +361,16 @@ const CategoryHealthTable: React.FC<Props> = () => {
                 <span className="max-w-[80px] truncate">{channel || '全部'}</span>
                 <ChevronDown size={12} className={`text-slate-400 transition-transform ${channelDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
-              
+
               {channelDropdownOpen && (
-                <div 
+                <div
                   ref={channelDropdownRef}
                   className="absolute top-full left-0 mt-2 w-36 bg-slate-900 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-fade-in-up"
                 >
                   <button
                     onClick={() => handleChannelSelect('')}
-                    className={`w-full flex items-center justify-between px-4 py-2.5 text-xs transition-colors ${
-                      channel === '' ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-300 hover:bg-white/5'
-                    }`}
+                    className={`w-full flex items-center justify-between px-4 py-2.5 text-xs transition-colors ${channel === '' ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-300 hover:bg-white/5'
+                      }`}
                   >
                     <span>全部渠道</span>
                     {channel === '' && <Check size={12} className="text-cyan-400" />}
@@ -380,9 +379,8 @@ const CategoryHealthTable: React.FC<Props> = () => {
                     <button
                       key={ch}
                       onClick={() => handleChannelSelect(ch)}
-                      className={`w-full flex items-center justify-between px-4 py-2.5 text-xs transition-colors ${
-                        channel === ch ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-300 hover:bg-white/5'
-                      }`}
+                      className={`w-full flex items-center justify-between px-4 py-2.5 text-xs transition-colors ${channel === ch ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-300 hover:bg-white/5'
+                        }`}
                     >
                       <span>{ch}</span>
                       {channel === ch && <Check size={12} className="text-cyan-400" />}
@@ -391,42 +389,40 @@ const CategoryHealthTable: React.FC<Props> = () => {
                 </div>
               )}
             </div>
-            
+
             {/* 周期切换 */}
             <div className="flex items-center bg-slate-800/50 rounded-lg p-0.5 border border-white/5">
               {([7, 14, 30] as const).map((p) => (
                 <button
                   key={p}
                   onClick={() => handlePresetPeriod(p)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                    periodMode === 'preset' && period === p
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${periodMode === 'preset' && period === p
                       ? 'bg-violet-500 text-white shadow-lg'
                       : 'text-slate-400 hover:text-white'
-                  }`}
+                    }`}
                 >
                   {p}天
                 </button>
               ))}
             </div>
-            
+
             {/* 自定义日期按钮 */}
             <div className="relative">
               <button
                 ref={calendarButtonRef}
                 onClick={handleOpenCalendar}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-xs ${
-                  periodMode === 'custom'
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-xs ${periodMode === 'custom'
                     ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300'
                     : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
-                }`}
+                  }`}
               >
                 <Calendar size={14} />
                 <span>{periodMode === 'custom' && startDate && endDate ? `${startDate} ~ ${endDate}` : '自定义'}</span>
               </button>
-              
+
               {/* 日历面板 */}
               {calendarOpen && (
-                <div 
+                <div
                   ref={calendarDropdownRef}
                   className="absolute top-full right-0 mt-2 p-5 rounded-xl border shadow-2xl bg-slate-900 border-white/10 z-50"
                   style={{ width: '580px' }}
@@ -478,7 +474,7 @@ const CategoryHealthTable: React.FC<Props> = () => {
                         outside: 'text-slate-600 opacity-50',
                       }}
                       components={{
-                        Chevron: ({ orientation }) => 
+                        Chevron: ({ orientation }) =>
                           orientation === 'left' ? <ChevronLeft size={18} /> : <ChevronRight size={18} />,
                       }}
                     />
@@ -509,7 +505,7 @@ const CategoryHealthTable: React.FC<Props> = () => {
                 </div>
               )}
             </div>
-            
+
             {/* 刷新按钮 */}
             <button
               onClick={handleRefresh}
@@ -550,7 +546,7 @@ const CategoryHealthTable: React.FC<Props> = () => {
               <th className="px-3 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider font-mono sticky left-0 z-30 bg-slate-900 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)]">
                 {drillCategory ? '三级分类' : '一级分类'}
               </th>
-              <th 
+              <th
                 className="px-3 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wider font-mono cursor-pointer hover:text-white transition-colors bg-slate-900"
                 onClick={() => handleSort('current_revenue')}
               >
@@ -558,7 +554,7 @@ const CategoryHealthTable: React.FC<Props> = () => {
                   销售额 <SortIcon column="current_revenue" />
                 </div>
               </th>
-              <th 
+              <th
                 className="px-3 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wider font-mono cursor-pointer hover:text-white transition-colors bg-slate-900"
                 onClick={() => handleSort('growth_rate')}
               >
@@ -566,7 +562,7 @@ const CategoryHealthTable: React.FC<Props> = () => {
                   销售环比 <SortIcon column="growth_rate" />
                 </div>
               </th>
-              <th 
+              <th
                 className="px-3 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wider font-mono cursor-pointer hover:text-white transition-colors bg-slate-900"
                 onClick={() => handleSort('current_quantity')}
               >
@@ -574,7 +570,7 @@ const CategoryHealthTable: React.FC<Props> = () => {
                   销量 <SortIcon column="current_quantity" />
                 </div>
               </th>
-              <th 
+              <th
                 className="px-3 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wider font-mono cursor-pointer hover:text-white transition-colors bg-slate-900"
                 onClick={() => handleSort('quantity_growth_rate')}
               >
@@ -582,7 +578,7 @@ const CategoryHealthTable: React.FC<Props> = () => {
                   销量环比 <SortIcon column="quantity_growth_rate" />
                 </div>
               </th>
-              <th 
+              <th
                 className="px-3 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider font-mono cursor-pointer hover:text-white transition-colors bg-slate-900"
                 onClick={() => handleSort('volatility')}
               >
@@ -590,7 +586,7 @@ const CategoryHealthTable: React.FC<Props> = () => {
                   波动 <SortIcon column="volatility" />
                 </div>
               </th>
-              <th 
+              <th
                 className="px-3 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wider font-mono cursor-pointer hover:text-white transition-colors bg-slate-900"
                 onClick={() => handleSort('avg_discount')}
               >
@@ -598,7 +594,7 @@ const CategoryHealthTable: React.FC<Props> = () => {
                   折扣 <SortIcon column="avg_discount" />
                 </div>
               </th>
-              <th 
+              <th
                 className="px-3 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wider font-mono cursor-pointer hover:text-white transition-colors bg-slate-900"
                 onClick={() => handleSort('profit_margin')}
               >
@@ -625,8 +621,8 @@ const CategoryHealthTable: React.FC<Props> = () => {
               </tr>
             ) : (
               sortedData.map((item, index) => (
-                <tr 
-                  key={item.name} 
+                <tr
+                  key={item.name}
                   className="hover:bg-white/[0.02] transition-colors group"
                   style={{ animationDelay: `${index * 30}ms` }}
                 >
@@ -639,53 +635,53 @@ const CategoryHealthTable: React.FC<Props> = () => {
                       <span className="text-sm font-medium text-slate-200 truncate">{item.name}</span>
                     </div>
                   </td>
-                  
+
                   {/* 销售额 */}
                   <td className="px-3 py-3 whitespace-nowrap text-right">
                     <span className="text-sm font-mono text-slate-300">
                       ¥{item.current_revenue.toLocaleString()}
                     </span>
                   </td>
-                  
+
                   {/* 销售环比增长 */}
                   <td className="px-3 py-3 whitespace-nowrap text-right">
                     {renderGrowth(item.growth_rate)}
                   </td>
-                  
+
                   {/* 销量 */}
                   <td className="px-3 py-3 whitespace-nowrap text-right">
                     <span className="text-sm font-mono text-slate-300">
                       {item.current_quantity.toLocaleString()}
                     </span>
                   </td>
-                  
+
                   {/* 销量环比增长 */}
                   <td className="px-3 py-3 whitespace-nowrap text-right">
                     {renderGrowth(item.quantity_growth_rate)}
                   </td>
-                  
+
                   {/* 波动系数 */}
                   <td className="px-3 py-3 whitespace-nowrap text-center">
                     {renderVolatility(item.volatility_level, item.volatility)}
                   </td>
-                  
+
                   {/* 平均折扣 */}
                   <td className="px-3 py-3 whitespace-nowrap text-right">
                     {renderDiscount(item.avg_discount, item.discount_change)}
                   </td>
-                  
+
                   {/* 利润率 */}
                   <td className="px-3 py-3 whitespace-nowrap text-right">
                     {renderProfitMargin(item.profit_margin)}
                   </td>
-                  
+
                   {/* 趋势图 */}
                   <td className="px-3 py-3 whitespace-nowrap text-center">
                     <div className="flex justify-center">
                       {renderSparkline(item.daily_revenue)}
                     </div>
                   </td>
-                  
+
                   {/* 下钻按钮 */}
                   {!drillCategory && (
                     <td className="px-2 py-3 text-center">

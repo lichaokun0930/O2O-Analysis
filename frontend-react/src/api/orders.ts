@@ -119,6 +119,28 @@ export interface OrderQueryParams {
   end_date?: string;
 }
 
+/** 全门店总览单项数据 */
+export interface AllStoresOverviewItem {
+  store_name: string;
+  total_sales: number;         // 销售额
+  order_count: number;         // 订单量
+  total_profit: number;        // 利润
+  profit_rate: number;         // 利润率 %
+  avg_order_value: number;     // 客单价
+  marketing_cost_rate: number; // 营销成本率 %
+  avg_delivery_fee: number;    // 单均配送费
+  avg_profit: number;          // 单均利润
+  // 每个指标的环比趋势
+  trend_sales?: number;           // 销售额环比 %
+  trend_orders?: number;          // 订单量环比 %
+  trend_profit?: number;          // 利润环比 %
+  trend_profit_rate?: number;     // 利润率环比 (百分点)
+  trend_avg_value?: number;       // 客单价环比 %
+  trend_marketing_rate?: number;  // 营销率环比 (百分点)
+  trend_delivery_fee?: number;    // 配送费环比 %
+  trend_avg_profit?: number;      // 单均利润环比 %
+}
+
 // ==================== API 方法 ====================
 
 export const ordersApi = {
@@ -135,6 +157,17 @@ export const ordersApi = {
    */
   getComparison(params?: OrderQueryParams): Promise<{ success: boolean; data: OrderComparison }> {
     return request.get('/orders/comparison', { params });
+  },
+
+  /**
+   * 获取全门店销售总览（经营总览 - 全门店横向对比）
+   * 不依赖 selectedStore，返回所有门店的 8 个核心指标
+   */
+  getAllStoresOverview(params?: { start_date?: string; end_date?: string; channels?: string }): Promise<{
+    success: boolean;
+    data: { stores: AllStoresOverviewItem[] };
+  }> {
+    return request.get('/orders/all-stores-overview', { params });
   },
 
   /**
@@ -506,6 +539,17 @@ export interface PeakPeriod {
   end_hour: number;
 }
 
+/** 环比数据 */
+export interface ComparisonData {
+  period: string;              // "01-21 vs 01-22" 或 "01-14~01-20 vs 01-21~01-27"
+  prev_total_orders: number;   // 上一周期订单数
+  prev_total_profit: number;   // 上一周期利润
+  prev_total_revenue?: number; // 上一周期销售额（分距离诊断专用）
+  order_change: number | null; // 订单数环比变化(%)
+  profit_change: number | null; // 利润环比变化(%)
+  revenue_change?: number | null; // 销售额环比变化(%)（分距离诊断专用）
+}
+
 /** 分时利润数据（分时段诊断图表专用） */
 export interface HourlyProfitData {
   date: string | null;
@@ -515,6 +559,7 @@ export interface HourlyProfitData {
   revenues: number[];        // 每小时销售额
   avg_profits: number[];     // 每小时单均利润
   peak_periods: PeakPeriod[]; // 智能识别的高峰时段
+  comparison?: ComparisonData | null; // 🆕 环比数据
 }
 
 /** 配送溢价雷达数据点 */

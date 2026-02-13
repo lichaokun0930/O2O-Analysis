@@ -68,11 +68,21 @@ _memory_cache = {
 
 def get_data_version(store_name: str = None) -> str:
     """
-    获取数据版本号（基于数据库最后更新时间）
+    获取数据版本号 (Global Data Versioning)
     
-    版本号 = 门店最新订单的updated_at时间戳
-    当数据有更新时，版本号会变化，触发缓存失效
+    优先使用Redis全局版本号 (Generation Clock)
+    当发生任何写入(上传/删除)时，版本号自增，导致所有旧缓存失效
     """
+    # 1. 尝试获取全局版本号 (健壮模式)
+    if REDIS_AVAILABLE:
+        try:
+            from redis_cache_manager import REDIS_CACHE_MANAGER
+            if REDIS_CACHE_MANAGER and REDIS_CACHE_MANAGER.enabled:
+                return REDIS_CACHE_MANAGER.get_global_version()
+        except Exception as e:
+            print(f"⚠️ 获取全局版本失败: {e}")
+
+    # 2. 降级模式：数据库时间戳 (仅当Redis不可用时)
     session = SessionLocal()
     try:
         from sqlalchemy import func
@@ -587,7 +597,7 @@ async def get_order_overview(
     store_name: Optional[str] = Query(None, description="门店名称筛选"),
     start_date: Optional[date] = Query(None, description="开始日期"),
     end_date: Optional[date] = Query(None, description="结束日期"),
-    use_aggregation: bool = Query(True, description="是否使用预聚合表（性能优化）")
+    use_aggregation: bool = Query(False, description="是否使用预聚合表（默认禁用，确保数据与看板系统一致）")
 ) -> Dict[str, Any]:
     """
     获取订单数据概览（六大核心卡片）
@@ -595,12 +605,13 @@ async def get_order_overview(
     与老版本Tab1完全一致的指标:
     - 📦 订单总数
     - 💰 商品实收额
-    - 💎 总利润
+    - 💎 总利润（订单实际利润 = 利润额 - 平台服务费 - 物流配送费 + 企客后返）
     - 🛒 平均客单价
     - 📈 总利润率
     - 🏷️ 动销商品数
     
-    优化：优先使用预聚合表，查询时间从~500ms降到~2ms
+    注意：默认使用原始查询，确保数据与看板系统一致
+    （原始查询会过滤收费渠道中平台服务费=0的异常订单）
     """
     import time
     query_start = time.time()
@@ -614,14 +625,15 @@ async def get_order_overview(
                 start_date=start_date,
                 end_date=end_date
             )
-            if result:
-                # 检查预聚合表是否有GMV数据
+            # 🔧 修复：检查预聚合表是否有有效数据（订单数 > 0）
+            if result and result.get("total_orders", 0) > 0:
+                # 预聚合表有数据
                 if result.get("gmv", 0) > 0:
                     # 预聚合表有GMV数据，直接使用
                     print(f"✅ [预聚合表+GMV] overview查询耗时: {(time.time()-query_start)*1000:.1f}ms")
                     return {"success": True, "data": result}
                 else:
-                    # 预聚合表没有GMV数据，需要从原始数据计算
+                    # 预聚合表没有GMV数据，需要从原始数据计算GMV
                     df = get_order_data(store_name)
                     if not df.empty:
                         # 日期筛选
@@ -644,6 +656,9 @@ async def get_order_overview(
                     
                     print(f"✅ [预聚合表+原始GMV] overview查询耗时: {(time.time()-query_start)*1000:.1f}ms")
                     return {"success": True, "data": result}
+            else:
+                # 🔧 预聚合表没有数据，回退到原始查询
+                print(f"⚠️ 预聚合表无数据(store={store_name})，回退到原始查询")
         except Exception as e:
             print(f"⚠️ 预聚合表查询失败，回退到原始查询: {e}")
     
@@ -723,6 +738,240 @@ async def get_order_overview(
     }
 
 
+@router.get("/all-stores-overview")
+async def get_all_stores_overview(
+    start_date: Optional[date] = Query(None, description="开始日期"),
+    end_date: Optional[date] = Query(None, description="结束日期"),
+    channels: Optional[str] = Query(None, description="渠道筛选，多个渠道用逗号分隔"),
+) -> Dict[str, Any]:
+    """
+    获取全门店销售总览数据（经营总览 - 全门店横向对比）
+    
+    不依赖 selectedStore，始终加载所有门店进行对比。
+    复用 calculate_order_metrics 和 calculate_gmv 确保计算结果与单门店概览一致。
+    
+    返回每个门店的 8 个指标：
+    - 销售额、订单量、利润、利润率
+    - 客单价、营销成本率、单均配送费、单均利润
+    """
+    import time
+    query_start = time.time()
+    
+    # 加载全部门店数据（不指定 store_name）
+    df = get_order_data(store_name=None)
+    
+    if df.empty or '门店名称' not in df.columns:
+        return {"success": True, "data": {"stores": []}}
+    
+    # 渠道筛选（支持多选，逗号分隔）
+    if channels and '渠道' in df.columns:
+        channel_list = [ch.strip() for ch in channels.split(',') if ch.strip()]
+        if channel_list:
+            df = df[df['渠道'].isin(channel_list)]
+            if df.empty:
+                return {"success": True, "data": {"stores": []}}
+    
+    # 日期预处理
+    if '日期' in df.columns:
+        df['日期'] = pd.to_datetime(df['日期'], errors='coerce')
+    
+    # 1. 计算当前周期数据
+    current_df = df.copy()
+    
+    # DEBUG: Print data types
+    print(f"DEBUG: start_date={start_date} type={type(start_date)}, end_date={end_date} type={type(end_date)}, channels={channels}")
+    
+    # 强制确保日期列为 datetime
+    if '日期' in current_df.columns:
+         current_df['日期'] = pd.to_datetime(current_df['日期'])
+
+    if start_date:
+        # start_date 已经是 date 对象 (Line 767)
+        current_df = current_df[current_df['日期'].dt.date >= start_date]
+    if end_date:
+        current_df = current_df[current_df['日期'].dt.date <= end_date]
+        
+    if current_df.empty:
+        return {"success": True, "data": {"stores": []}}
+
+    # 2. 计算环比周期数据 (Previous Period)
+    prev_start_date = None
+    prev_end_date = None
+    prev_metrics_map = {}  # {store_name: {metric: value, ...}}
+    
+    # 当未指定日期范围时，自动使用最近7天 vs 前7天计算环比
+    effective_start = start_date
+    effective_end = end_date
+    auto_trend_mode = False
+    current_sales_map = {}  # 自动环比模式下的当期销售额
+    if not start_date or not end_date:
+        if '日期' in current_df.columns and not current_df.empty:
+            max_date = current_df['日期'].dt.date.max()
+            effective_end = max_date
+            effective_start = max_date - timedelta(days=6)  # 最近7天
+            auto_trend_mode = True
+            # 计算当期（最近7天）每门店的销售额
+            curr_mask = (current_df['日期'].dt.date >= effective_start) & (current_df['日期'].dt.date <= effective_end)
+            curr_trend_df = current_df[curr_mask]
+            if not curr_trend_df.empty and '实收价格' in curr_trend_df.columns:
+                current_sales_map = curr_trend_df.groupby('门店名称')['实收价格'].sum().to_dict()
+    
+    if effective_start and effective_end:
+        duration = effective_end - effective_start
+        prev_end_date = effective_start - timedelta(days=1)
+        prev_start_date = prev_end_date - duration
+        
+        prev_mask = (df['日期'].dt.date >= prev_start_date) & (df['日期'].dt.date <= prev_end_date)
+        prev_df = df[prev_mask]
+        
+        if not prev_df.empty:
+            # 预计算所有门店的上期销售额，避免循环内重复过滤
+            # 注意：需确保 '实收价格' 列存在且为数值
+            if '实收价格' in prev_df.columns:
+                # 预计算所有门店的上期全部指标
+                for prev_store in prev_df['门店名称'].dropna().unique():
+                    prev_store_df = prev_df[prev_df['门店名称'] == prev_store]
+                    prev_order_agg = calculate_order_metrics(prev_store_df)
+                    if prev_order_agg.empty:
+                        continue
+                    prev_oc = len(prev_order_agg)
+                    prev_ts = float(prev_order_agg['实收价格'].sum()) if '实收价格' in prev_order_agg.columns else 0
+                    prev_tp = float(prev_order_agg['订单实际利润'].sum()) if '订单实际利润' in prev_order_agg.columns else 0
+                    prev_tdf = float(prev_order_agg['物流配送费'].sum()) if '物流配送费' in prev_order_agg.columns else 0
+                    prev_pr = (prev_tp / prev_ts * 100) if prev_ts > 0 else 0
+                    prev_aov = prev_ts / prev_oc if prev_oc > 0 else 0
+                    prev_adf = prev_tdf / prev_oc if prev_oc > 0 else 0
+                    prev_ap = prev_tp / prev_oc if prev_oc > 0 else 0
+                    prev_gmv = calculate_gmv(prev_store_df)
+                    prev_mcr = prev_gmv["marketing_cost_rate"]
+                    prev_metrics_map[prev_store] = {
+                        'total_sales': prev_ts, 'order_count': prev_oc,
+                        'total_profit': prev_tp, 'profit_rate': prev_pr,
+                        'avg_order_value': prev_aov, 'marketing_cost_rate': prev_mcr,
+                        'avg_delivery_fee': prev_adf, 'avg_profit': prev_ap,
+                    }
+
+    # 自动环比模式：也需要计算当期（最近7天）的指标用于对比
+    current_trend_metrics_map = {}
+    if auto_trend_mode and effective_start and effective_end:
+        curr_mask = (current_df['日期'].dt.date >= effective_start) & (current_df['日期'].dt.date <= effective_end)
+        curr_trend_df = current_df[curr_mask]
+        if not curr_trend_df.empty:
+            for ct_store in curr_trend_df['门店名称'].dropna().unique():
+                ct_store_df = curr_trend_df[curr_trend_df['门店名称'] == ct_store]
+                ct_order_agg = calculate_order_metrics(ct_store_df)
+                if ct_order_agg.empty:
+                    continue
+                ct_oc = len(ct_order_agg)
+                ct_ts = float(ct_order_agg['实收价格'].sum()) if '实收价格' in ct_order_agg.columns else 0
+                ct_tp = float(ct_order_agg['订单实际利润'].sum()) if '订单实际利润' in ct_order_agg.columns else 0
+                ct_tdf = float(ct_order_agg['物流配送费'].sum()) if '物流配送费' in ct_order_agg.columns else 0
+                ct_pr = (ct_tp / ct_ts * 100) if ct_ts > 0 else 0
+                ct_aov = ct_ts / ct_oc if ct_oc > 0 else 0
+                ct_adf = ct_tdf / ct_oc if ct_oc > 0 else 0
+                ct_ap = ct_tp / ct_oc if ct_oc > 0 else 0
+                ct_gmv = calculate_gmv(ct_store_df)
+                ct_mcr = ct_gmv["marketing_cost_rate"]
+                current_trend_metrics_map[ct_store] = {
+                    'total_sales': ct_ts, 'order_count': ct_oc,
+                    'total_profit': ct_tp, 'profit_rate': ct_pr,
+                    'avg_order_value': ct_aov, 'marketing_cost_rate': ct_mcr,
+                    'avg_delivery_fee': ct_adf, 'avg_profit': ct_ap,
+                }
+
+    # 按门店分组计算
+    store_names = current_df['门店名称'].dropna().unique().tolist()
+    stores_result = []
+    
+    # 环比计算辅助函数
+    def calc_trend_pct(curr_val: float, prev_val: float) -> float:
+        """百分比变化率，用于绝对值指标"""
+        if prev_val > 0:
+            return round(((curr_val - prev_val) / prev_val) * 100, 1)
+        return 0.0
+    
+    def calc_trend_pt(curr_val: float, prev_val: float) -> float:
+        """百分点差值，用于率类指标"""
+        return round(curr_val - prev_val, 1)
+    
+    for store in store_names:
+        store_df = current_df[current_df['门店名称'] == store]
+        if store_df.empty:
+            continue
+        
+        # 3. 订单级聚合 (Current Metrics)
+        order_agg = calculate_order_metrics(store_df)
+        if order_agg.empty:
+            continue
+        
+        order_count = len(order_agg)
+        total_sales = float(order_agg['实收价格'].sum()) if '实收价格' in order_agg.columns else 0
+        total_profit = float(order_agg['订单实际利润'].sum()) if '订单实际利润' in order_agg.columns else 0
+        total_delivery_fee = float(order_agg['物流配送费'].sum()) if '物流配送费' in order_agg.columns else 0
+        
+        profit_rate = (total_profit / total_sales * 100) if total_sales > 0 else 0
+        avg_order_value = total_sales / order_count if order_count > 0 else 0
+        avg_delivery_fee = total_delivery_fee / order_count if order_count > 0 else 0
+        avg_profit = total_profit / order_count if order_count > 0 else 0
+        
+        # 4. GMV & 营销成本率
+        gmv_data = calculate_gmv(store_df)
+        marketing_cost_rate = gmv_data["marketing_cost_rate"]
+        
+        # 5. 每个指标的环比
+        # 自动环比模式用 current_trend_metrics_map，有日期范围时用当前完整数据
+        if auto_trend_mode:
+            curr_m = current_trend_metrics_map.get(store, {})
+        else:
+            curr_m = {
+                'total_sales': total_sales, 'order_count': order_count,
+                'total_profit': total_profit, 'profit_rate': profit_rate,
+                'avg_order_value': avg_order_value, 'marketing_cost_rate': marketing_cost_rate,
+                'avg_delivery_fee': avg_delivery_fee, 'avg_profit': avg_profit,
+            }
+        prev_m = prev_metrics_map.get(store, {})
+        
+        # 上期无数据时，所有环比返回 None（前端不渲染）
+        if not prev_m:
+            trends = {
+                'trend_sales': None, 'trend_orders': None,
+                'trend_profit': None, 'trend_profit_rate': None,
+                'trend_avg_value': None, 'trend_marketing_rate': None,
+                'trend_delivery_fee': None, 'trend_avg_profit': None,
+            }
+        else:
+            trends = {
+                'trend_sales': calc_trend_pct(curr_m.get('total_sales', 0), prev_m.get('total_sales', 0)),
+                'trend_orders': calc_trend_pct(curr_m.get('order_count', 0), prev_m.get('order_count', 0)),
+                'trend_profit': calc_trend_pct(curr_m.get('total_profit', 0), prev_m.get('total_profit', 0)),
+                'trend_profit_rate': calc_trend_pt(curr_m.get('profit_rate', 0), prev_m.get('profit_rate', 0)),
+                'trend_avg_value': calc_trend_pct(curr_m.get('avg_order_value', 0), prev_m.get('avg_order_value', 0)),
+                'trend_marketing_rate': calc_trend_pt(curr_m.get('marketing_cost_rate', 0), prev_m.get('marketing_cost_rate', 0)),
+                'trend_delivery_fee': calc_trend_pct(curr_m.get('avg_delivery_fee', 0), prev_m.get('avg_delivery_fee', 0)),
+                'trend_avg_profit': calc_trend_pct(curr_m.get('avg_profit', 0), prev_m.get('avg_profit', 0)),
+            }
+
+        stores_result.append({
+            "store_name": store,
+            "total_sales": round(total_sales, 2),
+            "order_count": int(order_count),
+            "total_profit": round(total_profit, 2),
+            "profit_rate": round(profit_rate, 2),
+            "avg_order_value": round(avg_order_value, 2),
+            "marketing_cost_rate": round(marketing_cost_rate, 2),
+            "avg_delivery_fee": round(avg_delivery_fee, 2),
+            "avg_profit": round(avg_profit, 2),
+            **trends,
+        })
+    
+    # 按销售额降序排列
+    stores_result.sort(key=lambda x: x["total_sales"], reverse=True)
+    
+    print(f"📊 [全门店总览] {len(stores_result)} 个门店, 耗时: {(time.time()-query_start)*1000:.1f}ms")
+    
+    return {"success": True, "data": {"stores": stores_result}}
+
+
 @router.get("/channels")
 async def get_channel_stats(
     store_name: Optional[str] = Query(None, description="门店名称筛选"),
@@ -743,10 +992,10 @@ async def get_channel_stats(
     # 日期筛选
     if '日期' in df.columns:
         df['日期'] = pd.to_datetime(df['日期'], errors='coerce')
-        if start_date:
-            df = df[df['日期'].dt.date >= start_date]
-        if end_date:
-            df = df[df['日期'].dt.date <= end_date]
+    if start_date:
+        df = df[df['日期'].dt.date >= start_date]
+    if end_date:
+        df = df[df['日期'].dt.date <= end_date]
     
     if df.empty or '渠道' not in df.columns:
         return {"success": True, "data": []}
@@ -814,7 +1063,7 @@ async def get_order_trend(
     start_date: Optional[str] = Query(None, description="日期范围开始(YYYY-MM-DD格式)"),
     end_date: Optional[str] = Query(None, description="日期范围结束(YYYY-MM-DD格式)"),
     granularity: str = Query("day", description="粒度: day/week/month"),
-    use_aggregation: bool = Query(True, description="是否使用预聚合表（性能优化）")
+    use_aggregation: bool = Query(False, description="是否使用预聚合表（默认禁用，确保数据一致性）")
 ) -> Dict[str, Any]:
     """
     获取订单趋势数据（与Dash版本销售趋势分析一致）
@@ -829,7 +1078,7 @@ async def get_order_trend(
     - 利润率 = 总利润 / 销售额 * 100
     - 渠道筛选：支持按渠道过滤数据
     
-    优化：优先使用预聚合表，查询时间从~200ms降到~5ms
+    注意：默认使用原始查询，确保数据与看板系统一致
     """
     import time
     query_start = time.time()
@@ -2850,9 +3099,151 @@ async def get_hourly_profit(
             "profits": [round(float(x), 2) for x in hourly_stats['profit'].tolist()],
             "revenues": [round(float(x), 2) for x in hourly_stats['revenue'].tolist()],
             "avg_profits": [float(x) for x in hourly_stats['avg_profit'].tolist()],
-            "peak_periods": peak_periods
+            "peak_periods": peak_periods,
+            "comparison": None  # 环比数据占位，下面计算
         }
     }
+    
+    result = {
+        "success": True,
+        "data": {
+            "date": date_label,
+            "hours": [f"{h:02d}:00" for h in range(24)],
+            "orders": [int(x) for x in hourly_stats['orders'].tolist()],
+            "profits": [round(float(x), 2) for x in hourly_stats['profit'].tolist()],
+            "revenues": [round(float(x), 2) for x in hourly_stats['revenue'].tolist()],
+            "avg_profits": [float(x) for x in hourly_stats['avg_profit'].tolist()],
+            "peak_periods": peak_periods,
+            "comparison": None
+        }
+    }
+    
+    # 🆕 计算环比数据（仅当选择单日期或日期范围时）
+    try:
+        # 重新加载完整数据用于环比计算
+        full_df = get_order_data(store_name)
+        if not full_df.empty and '日期' in full_df.columns:
+            full_df['日期'] = pd.to_datetime(full_df['日期'], errors='coerce')
+            full_df = full_df.dropna(subset=['日期'])
+            
+            # 渠道筛选
+            if channel and channel != 'all' and '渠道' in full_df.columns:
+                full_df = full_df[full_df['渠道'] == channel]
+            
+            # 确定当前周期和上一周期
+            if target_date:
+                # 单日期：环比为前一天
+                try:
+                    if len(target_date) == 5 and '-' in target_date:
+                        max_date = full_df['日期'].max()
+                        year = max_date.year
+                        current_date = pd.to_datetime(f"{year}-{target_date}")
+                    else:
+                        current_date = pd.to_datetime(target_date)
+                    prev_date = current_date - timedelta(days=1)
+                    
+                    # 获取上一周期数据
+                    prev_df = full_df[full_df['日期'].dt.date == prev_date.date()]
+                    if not prev_df.empty:
+                        # 计算上一周期的分时数据
+                        prev_df = prev_df.copy()
+                        prev_df['小时'] = prev_df['日期'].dt.hour
+                        quantity_field = '月售' if '月售' in prev_df.columns else '销量'
+                        if '实收价格' in prev_df.columns and quantity_field in prev_df.columns:
+                            prev_df['_销售额'] = prev_df['实收价格'].fillna(0) * prev_df[quantity_field].fillna(1)
+                        else:
+                            prev_df['_销售额'] = prev_df.get('商品实售价', 0)
+                        
+                        prev_order_agg_dict = {'利润额': 'sum', '物流配送费': 'first', '_销售额': 'sum', '小时': 'first'}
+                        if '平台服务费' in prev_df.columns:
+                            prev_order_agg_dict['平台服务费'] = 'sum'
+                        if '企客后返' in prev_df.columns:
+                            prev_order_agg_dict['企客后返'] = 'sum'
+                        
+                        prev_order_agg = prev_df.groupby('订单ID').agg(prev_order_agg_dict).reset_index()
+                        prev_order_agg['订单实际利润'] = (
+                            prev_order_agg['利润额'].fillna(0) -
+                            prev_order_agg.get('平台服务费', pd.Series(0, index=prev_order_agg.index)).fillna(0) -
+                            prev_order_agg['物流配送费'].fillna(0) +
+                            prev_order_agg.get('企客后返', pd.Series(0, index=prev_order_agg.index)).fillna(0)
+                        )
+                        
+                        prev_hourly = prev_order_agg.groupby('小时').agg({
+                            '订单ID': 'count', '订单实际利润': 'sum', '_销售额': 'sum'
+                        }).reset_index()
+                        prev_hourly.columns = ['hour', 'orders', 'profit', 'revenue']
+                        
+                        # 计算汇总环比
+                        curr_total_orders = sum(hourly_stats['orders'])
+                        curr_total_profit = sum(hourly_stats['profit'])
+                        prev_total_orders = int(prev_hourly['orders'].sum())
+                        prev_total_profit = float(prev_hourly['profit'].sum())
+                        
+                        order_change = round((curr_total_orders - prev_total_orders) / prev_total_orders * 100, 1) if prev_total_orders > 0 else None
+                        profit_change = round((curr_total_profit - prev_total_profit) / abs(prev_total_profit) * 100, 1) if prev_total_profit != 0 else None
+                        
+                        result["data"]["comparison"] = {
+                            "period": f"{prev_date.strftime('%m-%d')} vs {current_date.strftime('%m-%d')}",
+                            "prev_total_orders": prev_total_orders,
+                            "prev_total_profit": round(prev_total_profit, 2),
+                            "order_change": order_change,
+                            "profit_change": profit_change
+                        }
+                except Exception as e:
+                    print(f"⚠️ 分时段诊断环比计算失败: {e}")
+            
+            elif start_date and end_date:
+                # 日期范围：环比为相同长度的前一周期
+                try:
+                    start_dt = pd.to_datetime(start_date)
+                    end_dt = pd.to_datetime(end_date)
+                    period_days = (end_dt - start_dt).days + 1
+                    prev_end = start_dt - timedelta(days=1)
+                    prev_start = prev_end - timedelta(days=period_days - 1)
+                    
+                    prev_df = full_df[(full_df['日期'].dt.date >= prev_start.date()) & (full_df['日期'].dt.date <= prev_end.date())]
+                    if not prev_df.empty:
+                        # 简化计算：只计算订单数和利润的环比
+                        prev_df = prev_df.copy()
+                        prev_df['小时'] = prev_df['日期'].dt.hour
+                        prev_order_count = prev_df['订单ID'].nunique()
+                        
+                        # 计算利润
+                        prev_profit = 0
+                        if '利润额' in prev_df.columns:
+                            prev_order_agg = prev_df.groupby('订单ID').agg({
+                                '利润额': 'sum',
+                                '物流配送费': 'first',
+                                '平台服务费': 'sum' if '平台服务费' in prev_df.columns else 'first',
+                                '企客后返': 'sum' if '企客后返' in prev_df.columns else 'first'
+                            }).reset_index()
+                            prev_order_agg['订单实际利润'] = (
+                                prev_order_agg['利润额'].fillna(0) -
+                                prev_order_agg.get('平台服务费', pd.Series(0)).fillna(0) -
+                                prev_order_agg['物流配送费'].fillna(0) +
+                                prev_order_agg.get('企客后返', pd.Series(0)).fillna(0)
+                            )
+                            prev_profit = float(prev_order_agg['订单实际利润'].sum())
+                        
+                        curr_total_orders = sum(hourly_stats['orders'])
+                        curr_total_profit = sum(hourly_stats['profit'])
+                        
+                        order_change = round((curr_total_orders - prev_order_count) / prev_order_count * 100, 1) if prev_order_count > 0 else None
+                        profit_change = round((curr_total_profit - prev_profit) / abs(prev_profit) * 100, 1) if prev_profit != 0 else None
+                        
+                        result["data"]["comparison"] = {
+                            "period": f"{prev_start.strftime('%m-%d')}~{prev_end.strftime('%m-%d')} vs {start_date[5:]}~{end_date[5:]}",
+                            "prev_total_orders": prev_order_count,
+                            "prev_total_profit": round(prev_profit, 2),
+                            "order_change": order_change,
+                            "profit_change": profit_change
+                        }
+                except Exception as e:
+                    print(f"⚠️ 分时段诊断日期范围环比计算失败: {e}")
+    except Exception as e:
+        print(f"⚠️ 分时段诊断环比计算异常: {e}")
+    
+    return result
 
 
 # ==================== 成本结构分析API（资金流向全景桑基图专用） ====================
@@ -3312,10 +3703,13 @@ async def get_distance_analysis(
         profit = float(band_df['订单实际利润'].sum()) if '订单实际利润' in band_df.columns and order_count > 0 else 0
         
         # 配送成本（物流配送费 - 用户支付配送费 + 配送费减免金额）
+        # 🆕 同时计算物流配送费总额用于单均配送费
         delivery_cost = 0
+        total_delivery_fee = 0  # 物流配送费总额
         if order_count > 0:
             if '物流配送费' in band_df.columns:
-                delivery_cost = float(band_df['物流配送费'].sum())
+                total_delivery_fee = float(band_df['物流配送费'].sum())
+                delivery_cost = total_delivery_fee
             if '用户支付配送费' in band_df.columns:
                 delivery_cost -= float(band_df['用户支付配送费'].sum())
             if '配送费减免金额' in band_df.columns:
@@ -3325,6 +3719,7 @@ async def get_distance_analysis(
         profit_rate = round(profit / revenue * 100, 2) if revenue > 0 else 0
         delivery_cost_rate = round(delivery_cost / revenue * 100, 2) if revenue > 0 else 0
         avg_order_value = round(revenue / order_count, 2) if order_count > 0 else 0
+        avg_delivery_fee = round(total_delivery_fee / order_count, 2) if order_count > 0 else 0  # 🆕 单均配送费
         
         # 累计总计
         total_orders += order_count
@@ -3348,7 +3743,8 @@ async def get_distance_analysis(
             "profit_rate": profit_rate,
             "delivery_cost": round(delivery_cost, 2),
             "delivery_cost_rate": delivery_cost_rate,
-            "avg_order_value": avg_order_value
+            "avg_order_value": avg_order_value,
+            "avg_delivery_fee": avg_delivery_fee  # 🆕 单均配送费
         })
     
     # 计算平均配送距离
@@ -3368,10 +3764,11 @@ async def get_distance_analysis(
     elif not df.empty and '日期' in df.columns:
         analysis_date_str = df['日期'].max().strftime('%Y-%m-%d')
     
-    return {
+    # 🆕 构建结果（环比数据稍后计算）
+    result = {
         "success": True,
         "data": {
-            "date": analysis_date_str,  # 🆕 添加分析日期
+            "date": analysis_date_str,
             "distance_bands": band_stats,
             "summary": {
                 "total_orders": total_orders,
@@ -3379,9 +3776,129 @@ async def get_distance_analysis(
                 "optimal_distance": optimal_band,
                 "total_revenue": round(total_revenue, 2),
                 "total_profit": round(total_profit, 2)
-            }
+            },
+            "comparison": None
         }
     }
+    
+    # 🆕 计算环比数据（包括每个距离区间的订单量环比）
+    try:
+        # 重新加载完整数据用于环比计算
+        full_df = get_order_data(store_name)
+        if not full_df.empty and '日期' in full_df.columns:
+            full_df['日期'] = pd.to_datetime(full_df['日期'], errors='coerce')
+            full_df = full_df.dropna(subset=['日期'])
+            
+            # 渠道筛选
+            if channel and channel != 'all' and '渠道' in full_df.columns:
+                full_df = full_df[full_df['渠道'] == channel]
+            
+            # 确定当前周期和上一周期
+            prev_df = None
+            period_label = None
+            
+            if analysis_date is not None:
+                # 单日期：环比为前一天
+                prev_date = analysis_date - timedelta(days=1)
+                prev_df = full_df[full_df['日期'].dt.date == prev_date.date()]
+                period_label = f"{prev_date.strftime('%m-%d')} vs {analysis_date.strftime('%m-%d')}"
+            
+            elif start_date and end_date:
+                # 日期范围：环比为相同长度的前一周期
+                period_days = (end_date - start_date).days + 1
+                prev_end = start_date - timedelta(days=1)
+                prev_start = prev_end - timedelta(days=period_days - 1)
+                prev_df = full_df[(full_df['日期'].dt.date >= prev_start) & (full_df['日期'].dt.date <= prev_end)]
+                period_label = f"{prev_start.strftime('%m-%d')}~{prev_end.strftime('%m-%d')} vs {start_date.strftime('%m-%d')}~{end_date.strftime('%m-%d')}"
+            
+            if prev_df is not None and not prev_df.empty:
+                # 计算上一周期的订单级指标
+                prev_order_agg = calculate_order_metrics(prev_df)
+                
+                if not prev_order_agg.empty:
+                    # 获取上一周期的配送距离
+                    prev_distance_map = {}
+                    try:
+                        session = SessionLocal()
+                        try:
+                            prev_order_ids = prev_order_agg['订单ID'].unique().tolist()
+                            prev_orders_with_distance = session.query(
+                                Order.order_id, 
+                                Order.delivery_distance
+                            ).filter(
+                                Order.order_id.in_(prev_order_ids)
+                            ).all()
+                            
+                            for order_id, distance in prev_orders_with_distance:
+                                if distance is not None:
+                                    prev_distance_map[str(order_id)] = float(distance)
+                            
+                            # 检测距离单位
+                            if prev_distance_map:
+                                avg_dist = sum(prev_distance_map.values()) / len(prev_distance_map)
+                                if avg_dist > 100:
+                                    prev_distance_map = {k: v / 1000 for k, v in prev_distance_map.items()}
+                        finally:
+                            session.close()
+                    except Exception as e:
+                        print(f"⚠️ 获取上一周期配送距离失败: {e}")
+                    
+                    # 为上一周期订单分配距离区间
+                    prev_order_agg['配送距离'] = prev_order_agg['订单ID'].astype(str).map(prev_distance_map).fillna(0)
+                    prev_order_agg['距离区间'] = prev_order_agg['配送距离'].apply(get_distance_band_index)
+                    
+                    # 🆕 计算每个距离区间的上一周期订单数和利润
+                    prev_band_orders = {}
+                    prev_band_profits = {}
+                    for i, band in enumerate(DISTANCE_BANDS):
+                        prev_band_df = prev_order_agg[prev_order_agg['距离区间'] == i]
+                        prev_band_orders[i] = len(prev_band_df)
+                        prev_band_profits[i] = float(prev_band_df['订单实际利润'].sum()) if '订单实际利润' in prev_band_df.columns and len(prev_band_df) > 0 else 0
+                    
+                    # 🆕 为每个距离区间计算订单量环比和利润环比
+                    for i, band_stat in enumerate(band_stats):
+                        current_count = band_stat["order_count"]
+                        prev_count = prev_band_orders.get(i, 0)
+                        current_profit = band_stat["profit"]
+                        prev_profit = prev_band_profits.get(i, 0)
+                        
+                        # 订单量环比
+                        if prev_count > 0:
+                            order_count_change = round((current_count - prev_count) / prev_count * 100, 1)
+                        else:
+                            order_count_change = None  # 上一周期无数据
+                        
+                        # 利润环比
+                        if prev_profit != 0:
+                            profit_change = round((current_profit - prev_profit) / abs(prev_profit) * 100, 1)
+                        else:
+                            profit_change = None  # 上一周期无数据
+                        
+                        band_stat["order_count_change"] = order_count_change
+                        band_stat["profit_change"] = profit_change
+                    
+                    # 计算总量环比
+                    prev_total_orders = len(prev_order_agg)
+                    prev_total_profit = float(prev_order_agg['订单实际利润'].sum()) if '订单实际利润' in prev_order_agg.columns else 0
+                    prev_total_revenue = float(prev_order_agg['实收价格'].sum()) if '实收价格' in prev_order_agg.columns else 0
+                    
+                    order_change = round((total_orders - prev_total_orders) / prev_total_orders * 100, 1) if prev_total_orders > 0 else None
+                    profit_change = round((total_profit - prev_total_profit) / abs(prev_total_profit) * 100, 1) if prev_total_profit != 0 else None
+                    revenue_change = round((total_revenue - prev_total_revenue) / prev_total_revenue * 100, 1) if prev_total_revenue > 0 else None
+                    
+                    result["data"]["comparison"] = {
+                        "period": period_label,
+                        "prev_total_orders": prev_total_orders,
+                        "prev_total_profit": round(prev_total_profit, 2),
+                        "prev_total_revenue": round(prev_total_revenue, 2),
+                        "order_change": order_change,
+                        "profit_change": profit_change,
+                        "revenue_change": revenue_change
+                    }
+    except Exception as e:
+        print(f"⚠️ 分距离诊断环比计算失败: {e}")
+    
+    return result
 
 
 # ==================== 配送溢价雷达数据 API ====================

@@ -35,34 +35,34 @@ interface GlobalContextType {
   selectedStore: string;
   setSelectedStore: (store: string) => void;
   storesLoading: boolean;
-  
+
   // 渠道相关（全局联动）
   selectedChannel: string;
   setSelectedChannel: (channel: string) => void;
   channelList: string[];  // 🆕 当前门店的渠道列表
   channelListLoading: boolean;
-  
+
   // 日期相关
   dateRange: DateRange;
   setDateRange: (range: DateRange) => void;
   setQuickDateRange: (type: DateRangeType) => void;
-  
+
   // 门店数据日期范围（用于日历限制）
   storeDateRange: StoreDateRange | null;
   storeDateRangeLoading: boolean;
-  
+
   // 数据统计
   stats: DataStats | null;
   statsLoading: boolean;
-  
+
   // 订单概览（六大核心卡片）
   orderOverview: OrderOverview | null;
   orderComparison: OrderComparison | null;
   orderOverviewLoading: boolean;
-  
+
   // 系统状态
   systemStatus: SystemStatus;
-  
+
   // 刷新方法
   refreshStores: () => Promise<void>;
   refreshStats: () => Promise<void>;
@@ -78,7 +78,7 @@ const GlobalContext = createContext<GlobalContextType | null>(null);
 const calculateDateRange = (type: DateRangeType, referenceDate?: Date): { start: string; end: string } => {
   const baseDate = referenceDate || new Date();
   const formatDate = (d: Date) => d.toISOString().split('T')[0];
-  
+
   switch (type) {
     case 'today':
       return { start: formatDate(baseDate), end: formatDate(baseDate) };
@@ -119,32 +119,32 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStore, setSelectedStoreState] = useState<string>('');
   const [storesLoading, setStoresLoading] = useState(false);
-  
+
   // 渠道状态（全局联动：销售趋势 → 分时段诊断 → 分距离诊断）
   const [selectedChannel, setSelectedChannel] = useState<string>('all');
   const [channelList, setChannelList] = useState<string[]>([]);
   const [channelListLoading, setChannelListLoading] = useState(false);
-  
+
   // 日期状态 - 默认全部数据
   const [dateRange, setDateRange] = useState<DateRange>({
     type: 'all',
     start: '',
     end: ''
   });
-  
+
   // 门店数据日期范围
   const [storeDateRange, setStoreDateRange] = useState<StoreDateRange | null>(null);
   const [storeDateRangeLoading, setStoreDateRangeLoading] = useState(false);
-  
+
   // 数据统计
   const [stats, setStats] = useState<DataStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
-  
+
   // 订单概览数据
   const [orderOverview, setOrderOverview] = useState<OrderOverview | null>(null);
   const [orderComparison, setOrderComparison] = useState<OrderComparison | null>(null);
   const [orderOverviewLoading, setOrderOverviewLoading] = useState(false);
-  
+
   // 系统状态
   const [systemStatus, setSystemStatus] = useState<SystemStatus>({
     database: 'checking',
@@ -158,8 +158,8 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setDateRange({ type: 'all', start: '', end: '' });
     } else {
       // 使用门店数据的最大日期作为参考日期，如果没有则使用今天
-      const referenceDate = storeDateRange?.max_date 
-        ? new Date(storeDateRange.max_date) 
+      const referenceDate = storeDateRange?.max_date
+        ? new Date(storeDateRange.max_date)
         : new Date();
       const { start, end } = calculateDateRange(type, referenceDate);
       setDateRange({ type, start, end });
@@ -169,15 +169,12 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   // 刷新门店数据日期范围
   const refreshStoreDateRange = useCallback(async () => {
-    // 未选择门店时不加载
-    if (!selectedStore) {
-      setStoreDateRange(null);
-      return;
-    }
-    
     setStoreDateRangeLoading(true);
     try {
-      const params: { store_name?: string } = { store_name: selectedStore };
+      const params: { store_name?: string } = {};
+      if (selectedStore) {
+        params.store_name = selectedStore;
+      }
       const res = await ordersApi.getDateRange(params);
       if (res.success) {
         setStoreDateRange(res.data);
@@ -193,14 +190,13 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   // 🆕 刷新渠道列表（当门店变化时）
   const refreshChannelList = useCallback(async () => {
-    if (!selectedStore) {
-      setChannelList([]);
-      return;
-    }
-    
     setChannelListLoading(true);
     try {
-      const res = await ordersApi.getChannels({ store_name: selectedStore });
+      const params: { store_name?: string } = {};
+      if (selectedStore) {
+        params.store_name = selectedStore;
+      }
+      const res = await ordersApi.getChannels(params);
       if (res.success && res.data) {
         setChannelList(res.data);
         // 如果当前选中的渠道不在新列表中，重置为全部
@@ -282,22 +278,14 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   // 刷新订单概览数据
   const refreshOrderOverview = useCallback(async () => {
-    // 未选择门店时不加载数据
-    if (!selectedStore) {
-      setOrderOverview(null);
-      setOrderComparison(null);
-      setOrderOverviewLoading(false);
-      console.log('📊 未选择门店，不加载数据');
-      return;
-    }
-    
     setOrderOverviewLoading(true);
     try {
-      // 构建查询参数 - 必须有门店
-      const params: { store_name: string; start_date?: string; end_date?: string } = {
-        store_name: selectedStore
-      };
-      
+      // 🔧 store_name 可选（空=全部门店）
+      const params: { store_name?: string; start_date?: string; end_date?: string } = {};
+      if (selectedStore) {
+        params.store_name = selectedStore;
+      }
+
       // 根据日期类型决定是否传日期参数
       // "全部数据"时不传日期，让后端使用数据的完整范围
       // 其他情况传具体日期
@@ -313,7 +301,7 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         ordersApi.getOverview(params),
         ordersApi.getComparison(params)
       ]);
-      
+
       if (overviewRes.success) {
         setOrderOverview(overviewRes.data);
       } else {
@@ -326,11 +314,11 @@ export const GlobalProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       if (comparisonRes.success && comparisonRes.data) {
         const prevMetrics = comparisonRes.data.previous;
         const hasValidPrevious = prevMetrics && (
-          prevMetrics.order_count > 0 || 
-          prevMetrics.total_sales > 0 || 
+          prevMetrics.order_count > 0 ||
+          prevMetrics.total_sales > 0 ||
           prevMetrics.total_profit !== 0
         );
-        
+
         if (hasValidPrevious) {
           setOrderComparison(comparisonRes.data);
           console.log('📊 环比数据有效:', comparisonRes.data.period);
