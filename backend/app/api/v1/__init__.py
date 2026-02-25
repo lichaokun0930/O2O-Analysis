@@ -7,6 +7,7 @@ from fastapi import APIRouter
 
 from .auth import router as auth_router
 from .orders import router as orders_router
+from .orders_marketing import router as orders_marketing_router
 from .products import router as products_router
 from .diagnosis import router as diagnosis_router
 from .marketing import router as marketing_router
@@ -28,6 +29,7 @@ router = APIRouter()
 # 注册所有路由
 router.include_router(auth_router, prefix="/auth", tags=["认证"])
 router.include_router(orders_router, prefix="/orders", tags=["订单分析"])
+router.include_router(orders_marketing_router, prefix="/orders", tags=["订单分析-营销"])
 router.include_router(products_router, prefix="/products", tags=["商品分析"])
 router.include_router(diagnosis_router, prefix="/diagnosis", tags=["诊断分析-今日必做"])
 router.include_router(marketing_router, prefix="/marketing", tags=["营销分析"])
