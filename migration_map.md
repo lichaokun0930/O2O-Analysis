@@ -6,20 +6,20 @@
 
 | 函数名 | 原行范围 | 迁移状态 | 验证状态 | 源码已删 |
 |--------|----------|----------|----------|----------|
-| `get_marketing_structure()` | 4105-4256 | ⬜ 待迁移 | ⬜ 待验证 | ⬜ |
-| `get_marketing_trend()` | 4261-4410 | ⬜ 待迁移 | ⬜ 待验证 | ⬜ |
+| `get_marketing_structure()` | 4105-4256 | ✅ 已迁移 | ✅ 已验证 | ✅ |
+| `get_marketing_trend()` | 4261-4410 | ✅ 已迁移 | ✅ 已验证 | ✅ |
 
 ## orders.py → orders_analysis.py
 
 | 函数名 | 原行范围 | 迁移状态 | 验证状态 | 源码已删 |
 |--------|----------|----------|----------|----------|
-| `get_profit_distribution()` | 1411-1467 | ⬜ 待迁移 | ⬜ 待验证 | ⬜ |
-| `get_price_distribution()` | 1470-1568 | ⬜ 待迁移 | ⬜ 待验证 | ⬜ |
-| `get_price_range_color()` | 1571-1580 | ⬜ 待迁移 | ⬜ 待验证 | ⬜ |
-| `get_category_trend()` | 1583-1662 | ⬜ 待迁移 | ⬜ 待验证 | ⬜ |
-| `get_anomaly_detection()` | 2091-2202 | ⬜ 待迁移 | ⬜ 待验证 | ⬜ |
-| `get_category_hourly_trend()` | 2377-2624 | ⬜ 待迁移 | ⬜ 待验证 | ⬜ |
-| `get_top_products_by_date()` | 2627-2818 | ⬜ 待迁移 | ⬜ 待验证 | ⬜ |
+| `get_profit_distribution()` | 1411-1467 | ✅ 已迁移 | ✅ 已验证 | ✅ |
+| `get_price_distribution()` | 1470-1568 | ✅ 已迁移 | ✅ 已验证 | ✅ |
+| `get_price_range_color()` | 1571-1580 | ✅ 已迁移 | ✅ 已验证 | ✅ |
+| `get_category_trend()` | 1583-1662 | ✅ 已迁移 | ✅ 已验证 | ✅ |
+| `get_anomaly_detection()` | 2091-2202 | ✅ 已迁移 | ✅ 已验证 | ✅ |
+| `get_category_hourly_trend()` | 2377-2624 | ✅ 已迁移 | ✅ 已验证 | ✅ |
+| `get_top_products_by_date()` | 2627-2818 | ✅ 已迁移 | ✅ 已验证 | ✅ |
 
 ## orders.py → orders_delivery.py
 
