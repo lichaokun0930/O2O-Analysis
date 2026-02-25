@@ -64,3 +64,29 @@ image/
 backups/
 temp_files/
 old_docs/
+
+# 日志目录
+logs/
+
+# 部署产物
+deploy/
+nginx-server/nginx-*/html/assets/
+
+# 根目录临时诊断脚本
+/诊断*.py
+/检查*.py
+/模拟*.py
+/测试*.py
+/验证*.py
+/清理*.py
+/找出*.py
+/对比*.py
+/分析利润差异来源.py
+/彻底清理*.py
+/批量数据导入使用指南.md
+/利润差异分析报告.md
+/cpolar_tunnel.ps1
+/一键批量导入数据.ps1
+/启动数据监控服务.ps1
+/直接测试API.py
+/services/
