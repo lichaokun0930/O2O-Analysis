@@ -25,14 +25,14 @@
 
 | 函数名 | 原行范围 | 迁移状态 | 验证状态 | 源码已删 |
 |--------|----------|----------|----------|----------|
-| `identify_peak_periods()` | 2823-2893 | ⬜ 待迁移 | ⬜ 待验证 | ⬜ |
-| `get_hourly_profit()` | 2896-3246 | ⬜ 待迁移 | ⬜ 待验证 | ⬜ |
-| `get_cost_structure()` | 3251-3427 | ⬜ 待迁移 | ⬜ 待验证 | ⬜ |
-| `DISTANCE_BANDS` 常量 | 3428-3443 | ⬜ 待迁移 | ⬜ 待验证 | ⬜ |
-| `get_distance_band()` | 3444-3462 | ⬜ 待迁移 | ⬜ 待验证 | ⬜ |
-| `get_distance_band_index()` | 3465-3482 | ⬜ 待迁移 | ⬜ 待验证 | ⬜ |
-| `get_distance_analysis()` | 3485-3901 | ⬜ 待迁移 | ⬜ 待验证 | ⬜ |
-| `get_delivery_radar_data()` | 3906-4100 | ⬜ 待迁移 | ⬜ 待验证 | ⬜ |
+| `identify_peak_periods()` | 2823-2893 | ✅ 已迁移 | ✅ 已验证 | ✅ |
+| `get_hourly_profit()` | 2896-3246 | ✅ 已迁移 | ✅ 已验证 | ✅ |
+| `get_cost_structure()` | 3251-3427 | ✅ 已迁移 | ✅ 已验证 | ✅ |
+| `DISTANCE_BANDS` 常量 | 3428-3443 | ✅ 已迁移 | ✅ 已验证 | ✅ |
+| `get_distance_band()` | 3444-3462 | ✅ 已迁移 | ✅ 已验证 | ✅ |
+| `get_distance_band_index()` | 3465-3482 | ✅ 已迁移 | ✅ 已验证 | ✅ |
+| `get_distance_analysis()` | 3485-3901 | ✅ 已迁移 | ✅ 已验证 | ✅ |
+| `get_delivery_radar_data()` | 3906-4100 | ✅ 已迁移 | ✅ 已验证 | ✅ |
 
 ## 保留在 orders.py 的函数（不迁移）
 
